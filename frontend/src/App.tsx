@@ -85,11 +85,26 @@ function App() {
   React.useEffect(() => {
     const loadServices = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8001/services");
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001";
+        const endpoint = `${backendUrl}/services`;
+        
+        console.log("🔧 Loading Azure services...");
+        console.log("🌐 Backend URL:", endpoint);
+        
+        const response = await fetch(endpoint);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const servicesData = await response.json();
+        console.log("✅ Azure services loaded:", servicesData);
         setServices(servicesData);
       } catch (error) {
-        console.error("Error loading services:", error);
+        console.error("💥 Error loading services:", error);
+        // Don't show alert here as it would interrupt user experience on page load
+        // Services will just not be available for selection
+        console.warn("⚠️ Azure services not available - using fallback mode");
       }
     };
     loadServices();
@@ -107,36 +122,68 @@ function App() {
   const testArchitectureVariety = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8001/test-architecture-variety", {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001";
+      const endpoint = `${backendUrl}/test-architecture-variety`;
+      
+      console.log("🧪 Testing architecture variety...");
+      console.log("🌐 Backend URL:", endpoint);
+      
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
       });
       
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        let errorMessage = `HTTP error! status: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.detail || errorMessage;
+          console.error("❌ Backend error:", errorData);
+        } catch (parseError) {
+          const textError = await res.text();
+          console.error("❌ Backend error (text):", textError);
+          errorMessage = textError || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await res.json();
+      console.log("✅ Variety test response:", data);
       
       if (data.success) {
         const summary = data.summary;
-        alert(`Architecture Variety Test Completed Successfully!
+        alert(`🎉 Architecture Variety Test Completed Successfully!
         
+🔍 Analysis Results:
 • Tested ${summary.total_configs_tested} different configurations
-• All generated different file sizes: ${summary.all_different_sizes ? 'Yes' : 'No'}
+• All generated different file sizes: ${summary.all_different_sizes ? '✅ Yes' : '❌ No'}
 • Total unique Azure stencils used: ${summary.total_unique_stencils}
-• Variety confirmed: ${summary.variety_confirmed ? 'Yes' : 'No'}
+• Variety confirmed: ${summary.variety_confirmed ? '✅ Yes' : '❌ No'}
 
-Test Results:
-${data.test_results.map((r: any) => `• ${r.name}: ${r.unique_azure_stencils} stencils`).join('\n')}
+📊 Test Results:
+${data.test_results.map((r: any) => `• ${r.name}: ${r.unique_azure_stencils} unique Azure stencils`).join('\n')}
 
-This confirms that the system generates different architectures based on your selections!`);
+✅ This confirms the system generates different professional Azure architectures with official stencils (no emojis) based on your selections!`);
       } else {
-        throw new Error("Failed to test architecture variety");
+        throw new Error(data.detail || "Failed to test architecture variety");
       }
     } catch (err) {
-      console.error(err);
-      alert("Error: Failed to test architecture variety. Please try again.");
+      console.error("💥 Variety test error:", err);
+      
+      let errorMsg = "❌ Failed to test architecture variety.\n\n";
+      
+      if (err instanceof TypeError && err.message.includes("fetch")) {
+        errorMsg += "🌐 Network Error: Cannot connect to backend server.\n";
+        errorMsg += "💡 Check if backend server is running on port 8001\n";
+        errorMsg += "🔗 Backend URL: " + (import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001");
+      } else if (err instanceof Error) {
+        errorMsg += "🔍 Error Details: " + err.message;
+      }
+      
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -145,18 +192,43 @@ This confirms that the system generates different architectures based on your se
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Get backend URL from environment or default to localhost
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001";
+      const endpoint = `${backendUrl}/generate-comprehensive-azure-architecture`;
+      
+      console.log("🚀 Generating Azure architecture...");
+      console.log("📝 Form data:", formData);
+      console.log("🌐 Backend URL:", endpoint);
+      
       // Use the comprehensive Azure architecture endpoint for better results
-      const res = await fetch("http://127.0.0.1:8001/generate-comprehensive-azure-architecture", {
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify(formData),
       });
       
+      console.log("📡 Response status:", res.status);
+      console.log("📡 Response headers:", Object.fromEntries(res.headers.entries()));
+      
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        let errorMessage = `HTTP error! status: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.detail || errorMessage;
+          console.error("❌ Backend error:", errorData);
+        } catch (parseError) {
+          const textError = await res.text();
+          console.error("❌ Backend error (text):", textError);
+          errorMessage = textError || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await res.json();
+      console.log("✅ Backend response:", data);
       
       if (data.success) {
         // Transform the comprehensive data to match the existing interface
@@ -177,13 +249,35 @@ This confirms that the system generates different architectures based on your se
         };
         
         setResults(transformedData);
-        alert(`Architecture Generated Successfully! Using ${data.azure_stencils.unique_used} unique Azure stencils.`);
+        console.log("🎉 Architecture generated successfully!");
+        console.log("🏗️ Azure stencils used:", data.azure_stencils);
+        alert(`✅ Architecture Generated Successfully!\n\n🎨 Using ${data.azure_stencils.unique_used} unique Azure stencils (professional diagrams)\n📊 Draw.io XML size: ${Math.round(data.drawio_size / 1024)}KB\n🖼️ PNG size: ${Math.round(data.png_size / 1024)}KB\n\nNo emojis used - pure Azure stencils only!`);
       } else {
-        throw new Error("Failed to generate architecture");
+        throw new Error(data.detail || "Failed to generate architecture");
       }
     } catch (err) {
-      console.error(err);
-      alert("Error: Failed to generate architecture. Please try again.");
+      console.error("💥 Frontend error:", err);
+      
+      // Show detailed error information
+      let errorMsg = "❌ Failed to generate Azure architecture.\n\n";
+      
+      if (err instanceof TypeError && err.message.includes("fetch")) {
+        errorMsg += "🌐 Network Error: Cannot connect to backend server.\n";
+        errorMsg += "💡 Solutions:\n";
+        errorMsg += "• Check if backend server is running on port 8001\n";
+        errorMsg += "• Try: cd backend && python3 -m uvicorn main:app --reload --port 8001\n";
+        errorMsg += "• Check firewall/network settings\n";
+        errorMsg += "\n🔗 Backend URL: " + (import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001");
+      } else if (err instanceof Error) {
+        errorMsg += "🔍 Error Details: " + err.message + "\n";
+        if (err.message.includes("CORS")) {
+          errorMsg += "\n💡 This might be a CORS issue. Check backend CORS settings.";
+        }
+      }
+      
+      errorMsg += "\n\n📝 Check browser console (F12) for more details.";
+      
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -191,6 +285,9 @@ This confirms that the system generates different architectures based on your se
 
   const downloadPNG = (base64Data: string) => {
     try {
+      console.log("⬇️ Downloading PNG diagram...");
+      console.log("📊 Base64 data length:", base64Data.length);
+      
       const byteCharacters = atob(base64Data);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -208,20 +305,43 @@ This confirms that the system generates different architectures based on your se
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      alert("Azure PNG diagram download started!");
+      console.log("✅ PNG diagram download completed");
+      alert("✅ Azure PNG diagram download started!\n\n🎨 Professional diagram with official Azure icons\n📏 High resolution suitable for presentations\n🚫 No emojis - pure Azure stencils only!");
     } catch (err) {
-      console.error(err);
-      alert("Failed to download PNG diagram.");
+      console.error("💥 PNG download error:", err);
+      alert("❌ Failed to download PNG diagram.\n\n🔍 Error: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
   const downloadDrawio = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8001/generate-drawio", {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001";
+      const endpoint = `${backendUrl}/generate-drawio`;
+      
+      console.log("⬇️ Downloading Draw.io file...");
+      console.log("🌐 Backend URL:", endpoint);
+      console.log("📝 Form data:", formData);
+      
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/xml"
+        },
         body: JSON.stringify(formData),
       });
+      
+      if (!res.ok) {
+        let errorMessage = `HTTP error! status: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (parseError) {
+          const textError = await res.text();
+          errorMessage = textError || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
       
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -233,10 +353,21 @@ This confirms that the system generates different architectures based on your se
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      alert("Draw.io file download started!");
+      console.log("✅ Draw.io file download completed");
+      alert("✅ Draw.io file download started!\n\n🎨 The file contains professional Azure stencils (no emojis)\n📁 Import this file into app.diagrams.net to edit");
     } catch (err) {
-      console.error(err);
-      alert("Failed to download Draw.io file.");
+      console.error("💥 Download error:", err);
+      
+      let errorMsg = "❌ Failed to download Draw.io file.\n\n";
+      
+      if (err instanceof TypeError && err.message.includes("fetch")) {
+        errorMsg += "🌐 Network Error: Cannot connect to backend server.\n";
+        errorMsg += "🔗 Backend URL: " + (import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8001");
+      } else if (err instanceof Error) {
+        errorMsg += "🔍 Error Details: " + err.message;
+      }
+      
+      alert(errorMsg);
     }
   };
 
@@ -254,6 +385,14 @@ This confirms that the system generates different architectures based on your se
                 Professional Azure Architecture Generator with Enterprise Stencils
               </Text>
               <Badge colorScheme="blue" mt="2">Version 1.0.0 - Professional Edition</Badge>
+              <Box mt="3" p="3" bg="green.50" borderRadius="md" borderLeft="4px solid" borderColor="green.500">
+                <Text fontSize="sm" color="green.800" fontWeight="bold">
+                  ✅ Strict Azure Stencils Only - No Emojis or Generic Diagrams
+                </Text>
+                <Text fontSize="xs" color="green.600">
+                  Official Microsoft Azure icons • Professional enterprise diagrams • Draw.io compatible • High-resolution PNG output
+                </Text>
+              </Box>
             </Box>
 
             {/* Progress Indicator */}
@@ -532,8 +671,9 @@ This confirms that the system generates different architectures based on your se
                         w="full"
                         onClick={handleSubmit}
                         isLoading={loading}
+                        loadingText="Generating Azure Architecture..."
                       >
-                        🏗️ Generate Azure Landing Zone Architecture
+                        🎨 Generate Azure Architecture (Strict Azure Stencils Only)
                       </Button>
                       
                       <Button
@@ -543,9 +683,16 @@ This confirms that the system generates different architectures based on your se
                         w="full"
                         onClick={testArchitectureVariety}
                         isLoading={loading}
+                        loadingText="Testing Architecture Variety..."
                       >
-                        🧪 Test Architecture Variety (3 Different Patterns)
+                        🧪 Test Architecture Variety (3 Different Patterns with Azure Stencils)
                       </Button>
+                      
+                      <Text fontSize="xs" color="gray.500" textAlign="center">
+                        ✅ Generates professional diagrams with official Microsoft Azure icons only
+                        <br />
+                        🚫 No emojis, no generic diagrams - enterprise-grade Azure stencils
+                      </Text>
                     </VStack>
                   </VStack>
                 </CardBody>
