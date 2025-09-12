@@ -64,6 +64,7 @@
     <br /><br />
     <button onclick="generateMermaid()">Generate (Mermaid)</button>
     <button onclick="generateDrawio()">Generate (Azure Icons - Draw.io)</button>
+    <button onclick="generatePythonDiagram()">Generate (Python Diagram - PNG)</button>
 
     <h3>Raw Mermaid Syntax (debug)</h3>
     <pre id="mermaidSyntax"></pre>
@@ -73,6 +74,9 @@
 
     <h3>Azure-Style Diagram (Draw.io)</h3>
     <div id="diagramContainer"></div>
+
+    <h3>Python Generated Diagram (PNG)</h3>
+    <div id="pythonDiagramContainer"></div>
 
     <script src="viewer.min.js"></script>
 
@@ -118,6 +122,24 @@
                 viewer.setDiagram(xml);
             } catch (err) {
                 alert("❌ Error (Draw.io): " + err);
+                console.error(err);
+            }
+        }
+
+        async function generatePythonDiagram() {
+            const payload = collectInputs();
+            try {
+                const res = await fetch("http://127.0.0.1:8001/generate-python-diagram", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const blob = await res.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                const pythonDiagramContainer = document.getElementById('pythonDiagramContainer');
+                pythonDiagramContainer.innerHTML = `<img src="${imageUrl}" alt="Python Generated Diagram" style="max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 8px;">`;
+            } catch (err) {
+                alert("❌ Error (Python Diagram): " + err);
                 console.error(err);
             }
         }

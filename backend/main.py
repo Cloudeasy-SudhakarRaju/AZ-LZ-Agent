@@ -1,11 +1,22 @@
 from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import html
 import json
 import uuid
+import os
+import tempfile
 from datetime import datetime
+from diagrams import Diagram, Cluster
+from diagrams.azure.compute import VM, AKS, AppServices
+from diagrams.azure.network import VirtualNetworks, LoadBalancers, ApplicationGateway, Firewall
+from diagrams.azure.security import KeyVaults, SecurityCenter
+from diagrams.azure.identity import ActiveDirectory
+from diagrams.azure.analytics import LogAnalyticsWorkspaces
+from diagrams.azure.storage import StorageAccounts
+from diagrams.azure.database import SQLDatabases
 
 app = FastAPI(
     title="Azure Landing Zone Agent",
@@ -582,6 +593,128 @@ The proposed Azure Landing Zone follows the {template['template']['name']} patte
     }
 
 
+def generate_python_diagram(inputs: CustomerInputs) -> str:
+    """Generate Python-based diagram using diagrams library"""
+    
+    template = generate_architecture_template(inputs)
+    network_model = inputs.network_model or "hub-spoke"
+    workload = inputs.workload or "appservices"
+    
+    # Create a temporary directory for the diagram
+    temp_dir = tempfile.mkdtemp()
+    diagram_filename = f"azure_landing_zone_{uuid.uuid4().hex[:8]}"
+    diagram_path = os.path.join(temp_dir, diagram_filename)
+    
+    try:
+        with Diagram(
+            "Azure Landing Zone Architecture",
+            show=False,
+            filename=diagram_path,
+            outformat="png",
+            graph_attr={
+                "splines": "ortho",
+                "nodesep": "0.5",
+                "ranksep": "0.8",
+                "bgcolor": "white"
+            }
+        ):
+            
+            # Management Groups and Identity
+            with Cluster("Identity & Management"):
+                aad = ActiveDirectory("Azure Active Directory")
+                key_vault = KeyVaults("Key Vault")
+                security_center = SecurityCenter("Security Center")
+                
+            # Network Architecture
+            with Cluster(f"Network ({network_model.title()})"):
+                if network_model == "hub-spoke":
+                    hub_vnet = VirtualNetworks("Hub VNet")
+                    firewall = Firewall("Azure Firewall")
+                    app_gateway = ApplicationGateway("App Gateway")
+                    
+                    with Cluster("Spoke Networks"):
+                        spoke_prod = VirtualNetworks("Production VNet")
+                        spoke_dev = VirtualNetworks("Development VNet")
+                    
+                    # Connect hub-spoke
+                    hub_vnet >> [spoke_prod, spoke_dev]
+                    firewall >> hub_vnet
+                    app_gateway >> hub_vnet
+                    
+                elif network_model == "vwan":
+                    vwan = VirtualNetworks("Virtual WAN")
+                    vhub = VirtualNetworks("Virtual Hub")
+                    vpn_gw = VirtualNetworks("VPN Gateway")
+                    
+                    vwan >> vhub
+                    vhub >> vpn_gw
+                
+                else:  # mesh or other
+                    vnet1 = VirtualNetworks("VNet 1")
+                    vnet2 = VirtualNetworks("VNet 2")
+                    vnet3 = VirtualNetworks("VNet 3")
+                    
+                    vnet1 >> [vnet2, vnet3]
+                    vnet2 >> vnet3
+            
+            # Workloads
+            with Cluster(f"Workloads ({workload.upper()})"):
+                if workload == "aks":
+                    primary_workload = AKS("Azure Kubernetes Service")
+                    container_registry = StorageAccounts("Container Registry")
+                    primary_workload >> container_registry
+                    
+                elif workload == "appservices":
+                    primary_workload = AppServices("App Services")
+                    sql_db = SQLDatabases("SQL Database")
+                    primary_workload >> sql_db
+                    
+                elif workload == "vm":
+                    primary_workload = VM("Virtual Machines")
+                    load_balancer = LoadBalancers("Load Balancer")
+                    load_balancer >> primary_workload
+                    
+                else:  # Default to app services
+                    primary_workload = AppServices("App Services")
+                    storage = StorageAccounts("Storage Account")
+                    primary_workload >> storage
+            
+            # Monitoring
+            with Cluster("Monitoring & Analytics"):
+                log_analytics = LogAnalyticsWorkspaces("Log Analytics")
+                
+            # Connect the main components
+            aad >> security_center
+            key_vault >> security_center
+            
+            if network_model == "hub-spoke":
+                hub_vnet >> primary_workload
+                security_center >> hub_vnet
+            elif network_model == "vwan":
+                vhub >> primary_workload
+                security_center >> vhub
+            else:
+                vnet1 >> primary_workload
+                security_center >> vnet1
+                
+            primary_workload >> log_analytics
+            security_center >> log_analytics
+        
+        # Return the path to the generated image
+        generated_file = f"{diagram_path}.png"
+        if os.path.exists(generated_file):
+            return generated_file
+        else:
+            raise FileNotFoundError("Diagram generation failed")
+            
+    except Exception as e:
+        # Clean up temp directory on error
+        if os.path.exists(temp_dir):
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        raise e
+
+
 # ---------- API Endpoints ----------
 
 @app.get("/")
@@ -593,6 +726,7 @@ def root():
             "/docs - API Documentation",
             "/generate-diagram - Generate architecture diagram",
             "/generate-drawio - Generate Draw.io XML",
+            "/generate-python-diagram - Generate Python diagram (PNG)",
             "/health - Health check"
         ]
     }
@@ -642,6 +776,21 @@ def generate_drawio_endpoint(inputs: CustomerInputs):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating Draw.io XML: {str(e)}")
+
+@app.post("/generate-python-diagram")
+def generate_python_diagram_endpoint(inputs: CustomerInputs):
+    """Generate Python-based diagram using diagrams library"""
+    try:
+        diagram_path = generate_python_diagram(inputs)
+        
+        # Return the diagram as a file response
+        return FileResponse(
+            path=diagram_path,
+            media_type="image/png",
+            filename="azure-landing-zone-diagram.png"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating Python diagram: {str(e)}")
 
 @app.get("/templates")
 def get_templates():

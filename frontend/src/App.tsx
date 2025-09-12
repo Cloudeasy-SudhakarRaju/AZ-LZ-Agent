@@ -43,7 +43,9 @@ interface Results {
 function App() {
   const [formData, setFormData] = React.useState<FormData>({});
   const [results, setResults] = React.useState<Results | null>(null);
+  const [pythonDiagramUrl, setPythonDiagramUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [loadingPython, setLoadingPython] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState(0);
 
   const handleChange = (field: keyof FormData, value: string) => {
@@ -76,6 +78,35 @@ function App() {
       alert("Error: Failed to generate architecture. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePythonDiagram = async () => {
+    setLoadingPython(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8001/generate-python-diagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
+      // Create a blob from the response and generate a URL
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setPythonDiagramUrl(url);
+      
+      // Switch to Python diagram tab (index 4 - after TSD, HLD, LLD)
+      setActiveTab(4);
+      alert("Python Diagram Generated Successfully!");
+    } catch (error) {
+      console.error("Error generating Python diagram:", error);
+      alert("Failed to generate Python diagram. Please try again.");
+    } finally {
+      setLoadingPython(false);
     }
   };
 
@@ -351,22 +382,35 @@ function App() {
                       </SimpleGrid>
                     </Box>
 
-                    {/* Generate Button */}
-                    <Button
-                      colorScheme="blue"
-                      size="lg"
-                      w="full"
-                      onClick={handleSubmit}
-                      loading={loading}
-                    >
-                      🏗️ Generate Azure Landing Zone Architecture
-                    </Button>
+                    {/* Generate Buttons */}
+                    <VStack gap="3">
+                      <Button
+                        colorScheme="blue"
+                        size="lg"
+                        w="full"
+                        onClick={handleSubmit}
+                        loading={loading}
+                      >
+                        🏗️ Generate Azure Landing Zone Architecture
+                      </Button>
+                      
+                      <Button
+                        colorScheme="green"
+                        size="lg"
+                        w="full"
+                        onClick={handlePythonDiagram}
+                        loading={loadingPython}
+                        variant="outline"
+                      >
+                        🐍 Generate Python Diagram (PNG)
+                      </Button>
+                    </VStack>
                   </VStack>
                 </Card.Body>
               </Card.Root>
 
               {/* Results Panel */}
-              {results && (
+              {(results || pythonDiagramUrl) && (
                 <Card.Root>
                   <Card.Header>
                     <HStack justify="space-between">
@@ -385,23 +429,26 @@ function App() {
                   </Card.Header>
                   <Card.Body>
                     <VStack gap="4" align="stretch">
-                      <Box p="3" bg="green.50" borderRadius="md" borderLeft="4px solid" borderColor="green.500">
-                        <Text fontWeight="bold" color="green.800">Architecture Generated Successfully!</Text>
-                        <Text fontSize="sm" color="green.600">
-                          Template: {results.architecture_template?.template?.name}
-                        </Text>
-                      </Box>
+                      {results && (
+                        <Box p="3" bg="green.50" borderRadius="md" borderLeft="4px solid" borderColor="green.500">
+                          <Text fontWeight="bold" color="green.800">Architecture Generated Successfully!</Text>
+                          <Text fontSize="sm" color="green.600">
+                            Template: {results.architecture_template?.template?.name}
+                          </Text>
+                        </Box>
+                      )}
 
                       {/* Tab Navigation */}
                       <Box>
                         <HStack mb="4" borderBottom="1px solid" borderColor="gray.200">
-                          {["Diagram", "TSD", "HLD", "LLD"].map((tab, index) => (
+                          {["Mermaid Diagram", "Python Diagram", "TSD", "HLD", "LLD"].map((tab, index) => (
                             <Button
                               key={tab}
                               variant={activeTab === index ? "solid" : "ghost"}
                               colorScheme={activeTab === index ? "blue" : "gray"}
                               onClick={() => setActiveTab(index)}
                               size="sm"
+                              disabled={index === 1 && !pythonDiagramUrl}
                             >
                               {tab}
                             </Button>
@@ -409,9 +456,9 @@ function App() {
                         </HStack>
 
                         {/* Tab Content */}
-                        {activeTab === 0 && (
+                        {activeTab === 0 && results && (
                           <Box>
-                            <Heading size="md" mb="4">🏗️ Azure Landing Zone Architecture Diagram</Heading>
+                            <Heading size="md" mb="4">🏗️ Mermaid Architecture Diagram</Heading>
                             <Box 
                               border="1px solid" 
                               borderColor="gray.200" 
@@ -426,7 +473,34 @@ function App() {
                           </Box>
                         )}
 
-                        {activeTab === 1 && (
+                        {activeTab === 1 && pythonDiagramUrl && (
+                          <Box>
+                            <Heading size="md" mb="4">🐍 Python-Generated Diagram</Heading>
+                            <Box 
+                              border="1px solid" 
+                              borderColor="gray.200" 
+                              borderRadius="md" 
+                              p="4" 
+                              bg="white"
+                              maxH="600px"
+                              overflowY="auto"
+                              textAlign="center"
+                            >
+                              <img 
+                                src={pythonDiagramUrl} 
+                                alt="Python-generated Azure Landing Zone Architecture" 
+                                style={{ 
+                                  maxWidth: "100%", 
+                                  height: "auto",
+                                  borderRadius: "8px",
+                                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
+                                }} 
+                              />
+                            </Box>
+                          </Box>
+                        )}
+
+                        {activeTab === 2 && results && (
                           <Box>
                             <Heading size="md" mb="4">📘 Technical Specification Document (TSD)</Heading>
                             <Box 
@@ -445,7 +519,7 @@ function App() {
                           </Box>
                         )}
 
-                        {activeTab === 2 && (
+                        {activeTab === 3 && results && (
                           <Box>
                             <Heading size="md" mb="4">📗 High Level Design (HLD)</Heading>
                             <Box 
@@ -464,7 +538,7 @@ function App() {
                           </Box>
                         )}
 
-                        {activeTab === 3 && (
+                        {activeTab === 4 && results && (
                           <Box>
                             <Heading size="md" mb="4">📙 Low Level Design (LLD)</Heading>
                             <Box 
