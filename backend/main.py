@@ -139,84 +139,84 @@ AZURE_TEMPLATES = {
 
 AZURE_SERVICES_MAPPING = {
     # Compute Services
-    "virtual_machines": {"name": "Azure Virtual Machines", "icon": "🖥️", "diagram_class": VM, "category": "compute"},
-    "aks": {"name": "Azure Kubernetes Service", "icon": "☸️", "diagram_class": AKS, "category": "compute"},
-    "app_services": {"name": "Azure App Services", "icon": "🌐", "diagram_class": AppServices, "category": "compute"},
-    "web_apps": {"name": "Azure Web Apps", "icon": "🌐", "diagram_class": WebApps, "category": "compute"},
-    "functions": {"name": "Azure Functions", "icon": "⚡", "diagram_class": FunctionApps, "category": "compute"},
-    "container_instances": {"name": "Container Instances", "icon": "📦", "diagram_class": ContainerInstances, "category": "compute"},
-    "service_fabric": {"name": "Service Fabric", "icon": "🏗️", "diagram_class": ServiceFabricClusters, "category": "compute"},
-    "batch": {"name": "Azure Batch", "icon": "⚙️", "diagram_class": BatchAccounts, "category": "compute"},
+    "virtual_machines": {"name": "Azure Virtual Machines", "icon": "🖥️", "drawio_shape": "mxgraph.azure.vm", "diagram_class": VM, "category": "compute"},
+    "aks": {"name": "Azure Kubernetes Service", "icon": "☸️", "drawio_shape": "mxgraph.azure.aks", "diagram_class": AKS, "category": "compute"},
+    "app_services": {"name": "Azure App Services", "icon": "🌐", "drawio_shape": "mxgraph.azure.app_service", "diagram_class": AppServices, "category": "compute"},
+    "web_apps": {"name": "Azure Web Apps", "icon": "🌐", "drawio_shape": "mxgraph.azure.app_service", "diagram_class": WebApps, "category": "compute"},
+    "functions": {"name": "Azure Functions", "icon": "⚡", "drawio_shape": "mxgraph.azure.function_app", "diagram_class": FunctionApps, "category": "compute"},
+    "container_instances": {"name": "Container Instances", "icon": "📦", "drawio_shape": "mxgraph.azure.container_instances", "diagram_class": ContainerInstances, "category": "compute"},
+    "service_fabric": {"name": "Service Fabric", "icon": "🏗️", "drawio_shape": "mxgraph.azure.service_fabric", "diagram_class": ServiceFabricClusters, "category": "compute"},
+    "batch": {"name": "Azure Batch", "icon": "⚙️", "drawio_shape": "mxgraph.azure.batch_accounts", "diagram_class": BatchAccounts, "category": "compute"},
     
     # Networking Services
-    "virtual_network": {"name": "Virtual Network", "icon": "🌐", "diagram_class": VirtualNetworks, "category": "network"},
-    "vpn_gateway": {"name": "VPN Gateway", "icon": "🔒", "diagram_class": VirtualNetworkGateways, "category": "network"},
-    "expressroute": {"name": "ExpressRoute", "icon": "⚡", "diagram_class": ExpressrouteCircuits, "category": "network"},
-    "load_balancer": {"name": "Load Balancer", "icon": "⚖️", "diagram_class": LoadBalancers, "category": "network"},
-    "application_gateway": {"name": "Application Gateway", "icon": "🚪", "diagram_class": ApplicationGateway, "category": "network"},
-    "firewall": {"name": "Azure Firewall", "icon": "🛡️", "diagram_class": Firewall, "category": "network"},
-    "waf": {"name": "Web Application Firewall", "icon": "🛡️", "diagram_class": ApplicationGateway, "category": "network"},
-    "cdn": {"name": "Content Delivery Network", "icon": "🌍", "diagram_class": None, "category": "network"},  # No specific CDN class
-    "traffic_manager": {"name": "Traffic Manager", "icon": "🚦", "diagram_class": None, "category": "network"},  # No specific class
-    "virtual_wan": {"name": "Virtual WAN", "icon": "🌐", "diagram_class": VirtualNetworks, "category": "network"},
+    "virtual_network": {"name": "Virtual Network", "icon": "🌐", "drawio_shape": "mxgraph.azure.virtual_network", "diagram_class": VirtualNetworks, "category": "network"},
+    "vpn_gateway": {"name": "VPN Gateway", "icon": "🔒", "drawio_shape": "mxgraph.azure.vpn_gateway", "diagram_class": VirtualNetworkGateways, "category": "network"},
+    "expressroute": {"name": "ExpressRoute", "icon": "⚡", "drawio_shape": "mxgraph.azure.expressroute", "diagram_class": ExpressrouteCircuits, "category": "network"},
+    "load_balancer": {"name": "Load Balancer", "icon": "⚖️", "drawio_shape": "mxgraph.azure.load_balancer", "diagram_class": LoadBalancers, "category": "network"},
+    "application_gateway": {"name": "Application Gateway", "icon": "🚪", "drawio_shape": "mxgraph.azure.application_gateway", "diagram_class": ApplicationGateway, "category": "network"},
+    "firewall": {"name": "Azure Firewall", "icon": "🛡️", "drawio_shape": "mxgraph.azure.firewall", "diagram_class": Firewall, "category": "network"},
+    "waf": {"name": "Web Application Firewall", "icon": "🛡️", "drawio_shape": "mxgraph.azure.application_gateway", "diagram_class": ApplicationGateway, "category": "network"},
+    "cdn": {"name": "Content Delivery Network", "icon": "🌍", "drawio_shape": "mxgraph.azure.cdn", "diagram_class": None, "category": "network"},  # No specific CDN class
+    "traffic_manager": {"name": "Traffic Manager", "icon": "🚦", "drawio_shape": "mxgraph.azure.traffic_manager", "diagram_class": None, "category": "network"},  # No specific class
+    "virtual_wan": {"name": "Virtual WAN", "icon": "🌐", "drawio_shape": "mxgraph.azure.virtual_wan", "diagram_class": VirtualNetworks, "category": "network"},
     
     # Storage Services
-    "storage_accounts": {"name": "Storage Accounts", "icon": "💾", "diagram_class": StorageAccounts, "category": "storage"},
-    "blob_storage": {"name": "Blob Storage", "icon": "📄", "diagram_class": BlobStorage, "category": "storage"},
-    "file_storage": {"name": "Azure Files", "icon": "📁", "diagram_class": StorageAccounts, "category": "storage"},
-    "disk_storage": {"name": "Managed Disks", "icon": "💿", "diagram_class": StorageAccounts, "category": "storage"},
-    "data_lake": {"name": "Data Lake Storage", "icon": "🏞️", "diagram_class": DataLakeStorage, "category": "storage"},
+    "storage_accounts": {"name": "Storage Accounts", "icon": "💾", "drawio_shape": "mxgraph.azure.storage_account", "diagram_class": StorageAccounts, "category": "storage"},
+    "blob_storage": {"name": "Blob Storage", "icon": "📄", "drawio_shape": "mxgraph.azure.blob_storage", "diagram_class": BlobStorage, "category": "storage"},
+    "file_storage": {"name": "Azure Files", "icon": "📁", "drawio_shape": "mxgraph.azure.storage_account", "diagram_class": StorageAccounts, "category": "storage"},
+    "disk_storage": {"name": "Managed Disks", "icon": "💿", "drawio_shape": "mxgraph.azure.storage_account", "diagram_class": StorageAccounts, "category": "storage"},
+    "data_lake": {"name": "Data Lake Storage", "icon": "🏞️", "drawio_shape": "mxgraph.azure.data_lake_storage", "diagram_class": DataLakeStorage, "category": "storage"},
     
     # Database Services
-    "sql_database": {"name": "Azure SQL Database", "icon": "🗄️", "diagram_class": SQLDatabases, "category": "database"},
-    "sql_managed_instance": {"name": "SQL Managed Instance", "icon": "🗄️", "diagram_class": SQLDatabases, "category": "database"},
-    "cosmos_db": {"name": "Cosmos DB", "icon": "🌍", "diagram_class": CosmosDb, "category": "database"},
-    "mysql": {"name": "Azure Database for MySQL", "icon": "🐬", "diagram_class": DatabaseForMysqlServers, "category": "database"},
-    "postgresql": {"name": "Azure Database for PostgreSQL", "icon": "🐘", "diagram_class": DatabaseForPostgresqlServers, "category": "database"},
-    "mariadb": {"name": "Azure Database for MariaDB", "icon": "🗄️", "diagram_class": DatabaseForMysqlServers, "category": "database"},
-    "redis_cache": {"name": "Azure Cache for Redis", "icon": "⚡", "diagram_class": None, "category": "database"},  # No specific Redis class
+    "sql_database": {"name": "Azure SQL Database", "icon": "🗄️", "drawio_shape": "mxgraph.azure.sql_database", "diagram_class": SQLDatabases, "category": "database"},
+    "sql_managed_instance": {"name": "SQL Managed Instance", "icon": "🗄️", "drawio_shape": "mxgraph.azure.sql_database", "diagram_class": SQLDatabases, "category": "database"},
+    "cosmos_db": {"name": "Cosmos DB", "icon": "🌍", "drawio_shape": "mxgraph.azure.cosmos_db", "diagram_class": CosmosDb, "category": "database"},
+    "mysql": {"name": "Azure Database for MySQL", "icon": "🐬", "drawio_shape": "mxgraph.azure.mysql_database", "diagram_class": DatabaseForMysqlServers, "category": "database"},
+    "postgresql": {"name": "Azure Database for PostgreSQL", "icon": "🐘", "drawio_shape": "mxgraph.azure.postgresql_database", "diagram_class": DatabaseForPostgresqlServers, "category": "database"},
+    "mariadb": {"name": "Azure Database for MariaDB", "icon": "🗄️", "drawio_shape": "mxgraph.azure.mysql_database", "diagram_class": DatabaseForMysqlServers, "category": "database"},
+    "redis_cache": {"name": "Azure Cache for Redis", "icon": "⚡", "drawio_shape": "mxgraph.azure.redis_cache", "diagram_class": None, "category": "database"},  # No specific Redis class
     
     # Security Services
-    "key_vault": {"name": "Azure Key Vault", "icon": "🔐", "diagram_class": KeyVaults, "category": "security"},
-    "active_directory": {"name": "Azure Active Directory", "icon": "👤", "diagram_class": ActiveDirectory, "category": "security"},
-    "security_center": {"name": "Azure Security Center", "icon": "🛡️", "diagram_class": SecurityCenter, "category": "security"},
-    "sentinel": {"name": "Azure Sentinel", "icon": "👁️", "diagram_class": Sentinel, "category": "security"},
-    "defender": {"name": "Microsoft Defender", "icon": "🛡️", "diagram_class": SecurityCenter, "category": "security"},
-    "information_protection": {"name": "Azure Information Protection", "icon": "🔒", "diagram_class": None, "category": "security"},
+    "key_vault": {"name": "Azure Key Vault", "icon": "🔐", "drawio_shape": "mxgraph.azure.key_vault", "diagram_class": KeyVaults, "category": "security"},
+    "active_directory": {"name": "Azure Active Directory", "icon": "👤", "drawio_shape": "mxgraph.azure.azure_active_directory", "diagram_class": ActiveDirectory, "category": "security"},
+    "security_center": {"name": "Azure Security Center", "icon": "🛡️", "drawio_shape": "mxgraph.azure.security_center", "diagram_class": SecurityCenter, "category": "security"},
+    "sentinel": {"name": "Azure Sentinel", "icon": "👁️", "drawio_shape": "mxgraph.azure.sentinel", "diagram_class": Sentinel, "category": "security"},
+    "defender": {"name": "Microsoft Defender", "icon": "🛡️", "drawio_shape": "mxgraph.azure.security_center", "diagram_class": SecurityCenter, "category": "security"},
+    "information_protection": {"name": "Azure Information Protection", "icon": "🔒", "drawio_shape": "mxgraph.azure.information_protection", "diagram_class": None, "category": "security"},
     
     # Monitoring & Management
-    "monitor": {"name": "Azure Monitor", "icon": "📊", "diagram_class": None, "category": "monitoring"},  # No specific Monitor class
-    "log_analytics": {"name": "Log Analytics", "icon": "📋", "diagram_class": None, "category": "monitoring"},
-    "application_insights": {"name": "Application Insights", "icon": "📈", "diagram_class": None, "category": "monitoring"},
-    "service_health": {"name": "Service Health", "icon": "❤️", "diagram_class": None, "category": "monitoring"},
-    "advisor": {"name": "Azure Advisor", "icon": "💡", "diagram_class": None, "category": "monitoring"},
+    "monitor": {"name": "Azure Monitor", "icon": "📊", "drawio_shape": "mxgraph.azure.monitor", "diagram_class": None, "category": "monitoring"},  # No specific Monitor class
+    "log_analytics": {"name": "Log Analytics", "icon": "📋", "drawio_shape": "mxgraph.azure.log_analytics", "diagram_class": None, "category": "monitoring"},
+    "application_insights": {"name": "Application Insights", "icon": "📈", "drawio_shape": "mxgraph.azure.application_insights", "diagram_class": None, "category": "monitoring"},
+    "service_health": {"name": "Service Health", "icon": "❤️", "drawio_shape": "mxgraph.azure.service_health", "diagram_class": None, "category": "monitoring"},
+    "advisor": {"name": "Azure Advisor", "icon": "💡", "drawio_shape": "mxgraph.azure.advisor", "diagram_class": None, "category": "monitoring"},
     
     # AI/ML Services  
-    "cognitive_services": {"name": "Cognitive Services", "icon": "🧠", "diagram_class": None, "category": "ai"},
-    "machine_learning": {"name": "Azure Machine Learning", "icon": "🤖", "diagram_class": None, "category": "ai"},
-    "bot_service": {"name": "Bot Service", "icon": "🤖", "diagram_class": None, "category": "ai"},
-    "form_recognizer": {"name": "Form Recognizer", "icon": "📄", "diagram_class": None, "category": "ai"},
+    "cognitive_services": {"name": "Cognitive Services", "icon": "🧠", "drawio_shape": "mxgraph.azure.cognitive_services", "diagram_class": None, "category": "ai"},
+    "machine_learning": {"name": "Azure Machine Learning", "icon": "🤖", "drawio_shape": "mxgraph.azure.machine_learning", "diagram_class": None, "category": "ai"},
+    "bot_service": {"name": "Bot Service", "icon": "🤖", "drawio_shape": "mxgraph.azure.bot_service", "diagram_class": None, "category": "ai"},
+    "form_recognizer": {"name": "Form Recognizer", "icon": "📄", "drawio_shape": "mxgraph.azure.form_recognizer", "diagram_class": None, "category": "ai"},
     
     # Data & Analytics
-    "synapse": {"name": "Azure Synapse Analytics", "icon": "📊", "diagram_class": SynapseAnalytics, "category": "analytics"},
-    "data_factory": {"name": "Azure Data Factory", "icon": "🏭", "diagram_class": DataFactories, "category": "analytics"},
-    "databricks": {"name": "Azure Databricks", "icon": "📊", "diagram_class": Databricks, "category": "analytics"},
-    "stream_analytics": {"name": "Stream Analytics", "icon": "🌊", "diagram_class": StreamAnalyticsJobs, "category": "analytics"},
-    "power_bi": {"name": "Power BI", "icon": "📊", "diagram_class": None, "category": "analytics"},
+    "synapse": {"name": "Azure Synapse Analytics", "icon": "📊", "drawio_shape": "mxgraph.azure.synapse_analytics", "diagram_class": SynapseAnalytics, "category": "analytics"},
+    "data_factory": {"name": "Azure Data Factory", "icon": "🏭", "drawio_shape": "mxgraph.azure.data_factory", "diagram_class": DataFactories, "category": "analytics"},
+    "databricks": {"name": "Azure Databricks", "icon": "📊", "drawio_shape": "mxgraph.azure.databricks", "diagram_class": Databricks, "category": "analytics"},
+    "stream_analytics": {"name": "Stream Analytics", "icon": "🌊", "drawio_shape": "mxgraph.azure.stream_analytics", "diagram_class": StreamAnalyticsJobs, "category": "analytics"},
+    "power_bi": {"name": "Power BI", "icon": "📊", "drawio_shape": "mxgraph.azure.power_bi", "diagram_class": None, "category": "analytics"},
     
     # Integration Services
-    "logic_apps": {"name": "Logic Apps", "icon": "🔗", "diagram_class": LogicApps, "category": "integration"},
-    "service_bus": {"name": "Service Bus", "icon": "🚌", "diagram_class": ServiceBus, "category": "integration"},
-    "event_grid": {"name": "Event Grid", "icon": "⚡", "diagram_class": EventGridTopics, "category": "integration"},
-    "event_hubs": {"name": "Event Hubs", "icon": "📡", "diagram_class": EventHubs, "category": "integration"},
-    "api_management": {"name": "API Management", "icon": "🔌", "diagram_class": APIManagement, "category": "integration"},
+    "logic_apps": {"name": "Logic Apps", "icon": "🔗", "drawio_shape": "mxgraph.azure.logic_app", "diagram_class": LogicApps, "category": "integration"},
+    "service_bus": {"name": "Service Bus", "icon": "🚌", "drawio_shape": "mxgraph.azure.service_bus", "diagram_class": ServiceBus, "category": "integration"},
+    "event_grid": {"name": "Event Grid", "icon": "⚡", "drawio_shape": "mxgraph.azure.event_grid", "diagram_class": EventGridTopics, "category": "integration"},
+    "event_hubs": {"name": "Event Hubs", "icon": "📡", "drawio_shape": "mxgraph.azure.event_hubs", "diagram_class": EventHubs, "category": "integration"},
+    "api_management": {"name": "API Management", "icon": "🔌", "drawio_shape": "mxgraph.azure.api_management", "diagram_class": APIManagement, "category": "integration"},
     
     # DevOps & Management
-    "devops": {"name": "Azure DevOps", "icon": "⚙️", "diagram_class": Devops, "category": "devops"},
-    "automation": {"name": "Azure Automation", "icon": "🤖", "diagram_class": None, "category": "devops"},
-    "policy": {"name": "Azure Policy", "icon": "📋", "diagram_class": None, "category": "governance"},
-    "blueprints": {"name": "Azure Blueprints", "icon": "📐", "diagram_class": None, "category": "governance"},
-    "resource_manager": {"name": "Azure Resource Manager", "icon": "🏗️", "diagram_class": Resourcegroups, "category": "governance"},
+    "devops": {"name": "Azure DevOps", "icon": "⚙️", "drawio_shape": "mxgraph.azure.devops", "diagram_class": Devops, "category": "devops"},
+    "automation": {"name": "Azure Automation", "icon": "🤖", "drawio_shape": "mxgraph.azure.automation", "diagram_class": None, "category": "devops"},
+    "policy": {"name": "Azure Policy", "icon": "📋", "drawio_shape": "mxgraph.azure.azure_governance", "diagram_class": None, "category": "governance"},
+    "blueprints": {"name": "Azure Blueprints", "icon": "📐", "drawio_shape": "mxgraph.azure.blueprints", "diagram_class": None, "category": "governance"},
+    "resource_manager": {"name": "Azure Resource Manager", "icon": "🏗️", "drawio_shape": "mxgraph.azure.resource_groups", "diagram_class": Resourcegroups, "category": "governance"},
     
     # Backup & Recovery
     "backup": {"name": "Azure Backup", "icon": "💾", "diagram_class": None, "category": "backup"},
@@ -823,7 +823,7 @@ def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
           <mxGeometry x="800" y="500" width="400" height="400" as="geometry" />
         </mxCell>
         
-        <mxCell id="primary-workload" value="{esc(AZURE_SERVICES_MAPPING.get(inputs.workload or 'appservices', {'name': 'App Services'})['name'])}" style="shape=mxgraph.azure.{AZURE_SERVICES_MAPPING.get(inputs.workload or 'appservices', {'icon': 'app_services'})['icon']};fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="primary-workload" value="{esc(AZURE_SERVICES_MAPPING.get(inputs.workload or 'app_services', {'name': 'App Services'})['name'])}" style="shape={AZURE_SERVICES_MAPPING.get(inputs.workload or 'app_services', {'drawio_shape': 'mxgraph.azure.app_service'})['drawio_shape']};fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="900" y="600" width="120" height="80" as="geometry" />
         </mxCell>
         
