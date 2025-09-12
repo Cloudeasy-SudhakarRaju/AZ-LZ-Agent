@@ -1,5 +1,6 @@
 import * as React from "react";
-import { ChakraProvider, Box, Heading, VStack, HStack, Button, Select, Text, SimpleGrid, Card, Badge, Container, Icon, defaultSystem } from "@chakra-ui/react";
+import { Box, Heading, VStack, HStack, Button, Text, SimpleGrid, Card, Badge, Container } from "@chakra-ui/react";
+import { Field } from "@chakra-ui/react";
 import { FiCloud, FiSettings, FiMonitor, FiDownload } from "react-icons/fi";
 import Mermaid from "./components/Mermaid";
 
@@ -105,14 +106,12 @@ function App() {
   };
 
   return (
-    <ChakraProvider value={defaultSystem}>
-      <Box bg="gray.50" minH="100vh" p="8">
+    <Box bg="gray.50" minH="100vh" p="8">
         <Container maxW="7xl">
           <VStack gap="6" align="stretch">
             {/* Header */}
             <Box textAlign="center">
               <Heading size="2xl" color="blue.600" mb="2">
-                <Icon color="blue.600" mr="3" />
                 🏢 Azure Landing Zone Agent
               </Heading>
               <Text fontSize="lg" color="gray.600">
@@ -154,33 +153,34 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Primary Business Objective</Text>
-                          <Select
-                            placeholder="Select your primary objective"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.business_objective || ""}
-                            onChange={(e) => handleChange("business_objective", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("business_objective", e.target.value)}
+                            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%' }}
                           >
+                            <option value="">Select your primary objective</option>
                             <option value="cost">Cost Optimization</option>
                             <option value="agility">Business Agility</option>
                             <option value="innovation">Innovation & Growth</option>
                             <option value="scalability">Scalability & Performance</option>
                             <option value="security">Security & Compliance</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Industry Vertical</Text>
-                          <Select
-                            placeholder="Select your industry"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.industry || ""}
-                            onChange={(e) => handleChange("industry", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("industry", e.target.value)}
                           >
+                            <option value="">Select your industry</option>
                             <option value="financial">Financial Services</option>
                             <option value="healthcare">Healthcare</option>
                             <option value="retail">Retail & E-commerce</option>
                             <option value="manufacturing">Manufacturing</option>
                             <option value="government">Government</option>
                             <option value="technology">Technology</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -191,29 +191,29 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Organization Size</Text>
-                          <Select
-                            placeholder="Select organization type"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.org_structure || ""}
-                            onChange={(e) => handleChange("org_structure", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("org_structure", e.target.value)}
                           >
                             <option value="enterprise">Large Enterprise (10,000+ employees)</option>
                             <option value="medium">Medium Enterprise (1,000-10,000 employees)</option>
                             <option value="small">Small Business (100-1,000 employees)</option>
                             <option value="startup">Startup (&lt; 100 employees)</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Governance Model</Text>
-                          <Select
-                            placeholder="Select governance approach"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.governance || ""}
-                            onChange={(e) => handleChange("governance", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("governance", e.target.value)}
                           >
                             <option value="centralized">Centralized (Central IT controls all)</option>
                             <option value="federated">Federated (Shared responsibility)</option>
                             <option value="decentralized">Decentralized (Business unit autonomy)</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -224,28 +224,28 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Network Topology</Text>
-                          <Select
-                            placeholder="Select network architecture"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.network_model || ""}
-                            onChange={(e) => handleChange("network_model", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("network_model", e.target.value)}
                           >
                             <option value="hub-spoke">Hub-Spoke (Traditional)</option>
                             <option value="vwan">Virtual WAN (Modern)</option>
                             <option value="mesh">Mesh Network</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Connectivity</Text>
-                          <Select
-                            placeholder="Select connectivity type"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.connectivity || ""}
-                            onChange={(e) => handleChange("connectivity", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("connectivity", e.target.value)}
                           >
                             <option value="expressroute">ExpressRoute (Private)</option>
                             <option value="vpn">Site-to-Site VPN</option>
                             <option value="internet">Internet Only</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -256,28 +256,28 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Security Posture</Text>
-                          <Select
-                            placeholder="Select security approach"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.security_posture || ""}
-                            onChange={(e) => handleChange("security_posture", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("security_posture", e.target.value)}
                           >
                             <option value="zero-trust">Zero Trust Architecture</option>
                             <option value="defense-in-depth">Defense in Depth</option>
                             <option value="compliance-first">Compliance First</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Identity Management</Text>
-                          <Select
-                            placeholder="Select identity solution"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.identity || ""}
-                            onChange={(e) => handleChange("identity", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("identity", e.target.value)}
                           >
                             <option value="azure-ad">Azure Active Directory</option>
                             <option value="azure-ad-b2c">Azure AD B2C</option>
                             <option value="hybrid">Hybrid (On-premises + Cloud)</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -288,10 +288,10 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Primary Workload</Text>
-                          <Select
-                            placeholder="Select workload type"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.workload || ""}
-                            onChange={(e) => handleChange("workload", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("workload", e.target.value)}
                           >
                             <option value="aks">Azure Kubernetes Service (AKS)</option>
                             <option value="appservices">Azure App Services</option>
@@ -299,21 +299,21 @@ function App() {
                             <option value="sap">SAP on Azure</option>
                             <option value="ai">AI/ML Workloads</option>
                             <option value="data">Data & Analytics</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Monitoring Strategy</Text>
-                          <Select
-                            placeholder="Select monitoring approach"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.monitoring || ""}
-                            onChange={(e) => handleChange("monitoring", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("monitoring", e.target.value)}
                           >
                             <option value="azure-monitor">Azure Monitor Suite</option>
                             <option value="log-analytics">Log Analytics focused</option>
                             <option value="application-insights">Application Insights</option>
                             <option value="third-party">Third-party (Datadog, etc.)</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -324,29 +324,29 @@ function App() {
                       <SimpleGrid columns={2} gap="4">
                         <Box>
                           <Text mb="2" fontWeight="medium">Infrastructure as Code</Text>
-                          <Select
-                            placeholder="Select IaC preference"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.iac || ""}
-                            onChange={(e) => handleChange("iac", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("iac", e.target.value)}
                           >
                             <option value="bicep">Bicep (Recommended)</option>
                             <option value="arm">ARM Templates</option>
                             <option value="terraform">Terraform</option>
                             <option value="pulumi">Pulumi</option>
-                          </Select>
+                          </select>
                         </Box>
                         
                         <Box>
                           <Text mb="2" fontWeight="medium">Cost Priority</Text>
-                          <Select
-                            placeholder="Select cost approach"
+                          <select style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
                             value={formData.cost_priority || ""}
-                            onChange={(e) => handleChange("cost_priority", e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange("cost_priority", e.target.value)}
                           >
                             <option value="cost-first">Cost Optimization First</option>
                             <option value="performance-first">Performance First</option>
                             <option value="balanced">Balanced Approach</option>
-                          </Select>
+                          </select>
                         </Box>
                       </SimpleGrid>
                     </Box>
@@ -491,7 +491,6 @@ function App() {
           </VStack>
         </Container>
       </Box>
-    </ChakraProvider>
   );
 }
 
