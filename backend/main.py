@@ -643,6 +643,18 @@ def generate_drawio_endpoint(inputs: CustomerInputs):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating Draw.io XML: {str(e)}")
 
+@app.post("/generate-drawio-inline")
+def generate_drawio_inline_endpoint(inputs: CustomerInputs):
+    """Generate Draw.io XML for inline viewing"""
+    try:
+        xml = generate_enhanced_drawio_xml(inputs)
+        return Response(
+            content=xml, 
+            media_type="application/xml"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating Draw.io XML: {str(e)}")
+
 @app.get("/templates")
 def get_templates():
     """Get available Azure Landing Zone templates"""

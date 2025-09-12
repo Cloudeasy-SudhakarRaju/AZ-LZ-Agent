@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChakraProvider, Box, Heading, VStack, HStack, Button, Select, Text, SimpleGrid, Card, Badge, Container, Icon, defaultSystem } from "@chakra-ui/react";
 import { FiCloud, FiSettings, FiMonitor, FiDownload } from "react-icons/fi";
 import Mermaid from "./components/Mermaid";
+import DrawioViewer from "./components/DrawioViewer";
 
 interface FormData {
   business_objective?: string;
@@ -395,7 +396,7 @@ function App() {
                       {/* Tab Navigation */}
                       <Box>
                         <HStack mb="4" borderBottom="1px solid" borderColor="gray.200">
-                          {["Diagram", "TSD", "HLD", "LLD"].map((tab, index) => (
+                          {["Mermaid", "Draw.io", "TSD", "HLD", "LLD"].map((tab, index) => (
                             <Button
                               key={tab}
                               variant={activeTab === index ? "solid" : "ghost"}
@@ -411,7 +412,7 @@ function App() {
                         {/* Tab Content */}
                         {activeTab === 0 && (
                           <Box>
-                            <Heading size="md" mb="4">🏗️ Azure Landing Zone Architecture Diagram</Heading>
+                            <Heading size="md" mb="4">🏗️ Mermaid Diagram</Heading>
                             <Box 
                               border="1px solid" 
                               borderColor="gray.200" 
@@ -427,6 +428,23 @@ function App() {
                         )}
 
                         {activeTab === 1 && (
+                          <Box>
+                            <Heading size="md" mb="4">🎨 Azure Icons Diagram (Draw.io)</Heading>
+                            <Box 
+                              border="1px solid" 
+                              borderColor="gray.200" 
+                              borderRadius="md" 
+                              p="4" 
+                              bg="white"
+                              maxH="600px"
+                              overflowY="auto"
+                            >
+                              <DrawioViewer xmlData={results.drawio} />
+                            </Box>
+                          </Box>
+                        )}
+
+                        {activeTab === 2 && (
                           <Box>
                             <Heading size="md" mb="4">📘 Technical Specification Document (TSD)</Heading>
                             <Box 
@@ -445,7 +463,7 @@ function App() {
                           </Box>
                         )}
 
-                        {activeTab === 2 && (
+                        {activeTab === 3 && (
                           <Box>
                             <Heading size="md" mb="4">📗 High Level Design (HLD)</Heading>
                             <Box 
@@ -464,7 +482,7 @@ function App() {
                           </Box>
                         )}
 
-                        {activeTab === 3 && (
+                        {activeTab === 4 && (
                           <Box>
                             <Heading size="md" mb="4">📙 Low Level Design (LLD)</Heading>
                             <Box 

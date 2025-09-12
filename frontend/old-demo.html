@@ -4,7 +4,20 @@
     <meta charset="UTF-8" />
     <title>Azure Landing Zone Agent — Demo</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Fallback: if mermaid fails to load, we'll show the raw syntax -->
+    <script>
+        // Check if mermaid loaded, if not provide a fallback
+        window.mermaidLoaded = false;
+        window.addEventListener('load', function() {
+            if (typeof mermaid === 'undefined') {
+                console.warn('Mermaid library failed to load, will show raw syntax instead');
+            } else {
+                window.mermaidLoaded = true;
+                mermaid.initialize({ startOnLoad: false, theme: "default" });
+            }
+        });
+    </script>
+    <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
 
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
@@ -89,10 +102,24 @@
                 document.getElementById("mermaidSyntax").textContent = data.mermaid || "";
                 const diagramDiv = document.getElementById("diagram");
                 diagramDiv.innerHTML = "";
-                const uniqueId = "graph-" + Date.now();
-                mermaid.render(uniqueId, data.mermaid.trim(), (svgCode) => {
-                    diagramDiv.innerHTML = svgCode;
-                });
+                
+                if (window.mermaidLoaded && typeof mermaid !== 'undefined') {
+                    const uniqueId = "graph-" + Date.now();
+                    mermaid.render(uniqueId, data.mermaid.trim(), (svgCode) => {
+                        diagramDiv.innerHTML = svgCode;
+                    });
+                } else {
+                    // Fallback: show the raw mermaid syntax in a readable format
+                    diagramDiv.innerHTML = `
+                        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; padding: 15px; font-family: 'Courier New', monospace; white-space: pre-wrap; line-height: 1.4;">
+                            <strong>Mermaid Diagram (Raw Syntax):</strong><br><br>
+                            ${data.mermaid.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                            <br><br>
+                            <em style="color: #6c757d;">Note: Mermaid rendering is not available. The diagram structure is shown above.</em>
+                        </div>
+                    `;
+                }
+                
                 document.getElementById("tsd").textContent = data.tsd || "";
                 document.getElementById("hld").textContent = data.hld || "";
                 document.getElementById("lld").textContent = data.lld || "";
@@ -105,7 +132,7 @@
         async function generateDrawio() {
             const payload = collectInputs();
             try {
-                const res = await fetch("http://127.0.0.1:8001/generate-drawio", {
+                const res = await fetch("http://127.0.0.1:8001/generate-drawio-inline", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -113,9 +140,13 @@
                 const xml = await res.text();
                 const diagramContainer = document.getElementById('diagramContainer');
                 diagramContainer.innerHTML = ''; // Clear previous diagram
-                const viewer = new mxGraphViewer(diagramContainer);
-                viewer.fit();
-                viewer.setDiagram(xml);
+                
+                // Parse the XML string to get the document element
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xml, "application/xml");
+                
+                // Create GraphViewer with container, xmlNode, and config
+                const viewer = new GraphViewer(diagramContainer, xmlDoc.documentElement, {});
             } catch (err) {
                 alert("❌ Error (Draw.io): " + err);
                 console.error(err);
