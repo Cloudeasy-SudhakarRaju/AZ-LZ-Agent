@@ -19,19 +19,22 @@ const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
   useEffect(() => {
     if (!chart || !ref.current) return;
 
-    try {
-      mermaid.render(id, chart, (svgCode) => {
+    const renderDiagram = async () => {
+      try {
+        const { svg } = await mermaid.render(id, chart);
         if (ref.current) {
-          ref.current.innerHTML = svgCode;
+          ref.current.innerHTML = svg;
         }
-      });
-    } catch (err) {
-      console.error("Mermaid render error:", err);
-      if (ref.current) {
-        ref.current.innerHTML =
-          "<p style='color:red'>❌ Failed to render diagram</p>";
+      } catch (err) {
+        console.error("Mermaid render error:", err);
+        if (ref.current) {
+          ref.current.innerHTML =
+            "<p style='color:red'>❌ Failed to render diagram</p>";
+        }
       }
-    }
+    };
+
+    renderDiagram();
   }, [chart, id]);
 
   return (
