@@ -102,6 +102,9 @@ function App() {
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [urlAnalysis, setUrlAnalysis] = React.useState<string>("");
   const [fileUploadResults, setFileUploadResults] = React.useState<any[]>([]);
+  const [showConfirmationDialog, setShowConfirmationDialog] = React.useState(false);
+  const [suggestedServices, setSuggestedServices] = React.useState<any[]>([]);
+  const [pendingRequest, setPendingRequest] = React.useState<any>(null);
   const [showFeedbackQuestions, setShowFeedbackQuestions] = React.useState(false);
   const [feedbackAnswers, setFeedbackAnswers] = React.useState<Record<string, string>>({});
   const [aiSuggestedServices, setAiSuggestedServices] = React.useState<any[]>([]);
@@ -275,47 +278,109 @@ function App() {
       
       const data = await res.json();
       
+      // Check if AI wants to suggest additional services
+      if (data.success && data.architecture_template?.needs_confirmation && data.architecture_template?.suggested_additions?.length > 0) {
+        // Store the response and show confirmation dialog
+        setPendingRequest(data);
+        setSuggestedServices(data.architecture_template.suggested_additions);
+        setShowConfirmationDialog(true);
+        setLoading(false);
+        return;
+      }
+      
       if (data.success) {
-        // Transform the interactive data to match the interface
-        const transformedData = {
-          success: true,
-          mermaid: data.mermaid,
-          drawio_xml: data.drawio_xml,
-          svg_diagram: data.svg_diagram,
-          svg_diagram_path: data.svg_diagram_path,
-          tsd: data.tsd,
-          hld: data.hld,
-          lld: data.lld,
-          architecture_template: data.architecture_template,
-          metadata: data.metadata,
-          azure_stencils: data.azure_stencils,
-          feedback_questions: data.feedback_questions,
-          ai_analysis: data.ai_analysis
-        };
-        
-        setResults(transformedData);
-        
-        // Show feedback questions if available
-        if (data.feedback_questions && data.feedback_questions.length > 0) {
-          setShowFeedbackQuestions(true);
-        }
-        
-        let alertMessage = `Interactive Architecture Generated Successfully! Using ${data.azure_stencils.unique_used} unique Azure stencils.`;
-        
-        if (data.ai_analysis && data.ai_analysis.services_used.length > 0) {
-          alertMessage += `\n\nAI Analysis: Selected ${data.ai_analysis.services_used.length} services based on your requirements.`;
-        }
-        
-        alert(alertMessage);
+        processSuccessfulResponse(data);
       } else {
         throw new Error("Failed to generate architecture");
       }
     } catch (err) {
       console.error(err);
-      alert("Error: Failed to generate architecture. Please try again.");
+      toast({
+        title: "Generation Failed",
+        description: "Error: Failed to generate architecture. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const processSuccessfulResponse = (data: any) => {
+    // Transform the interactive data to match the interface
+    const transformedData = {
+      success: true,
+      mermaid: data.mermaid,
+      drawio_xml: data.drawio_xml,
+      svg_diagram: data.svg_diagram,
+      svg_diagram_path: data.svg_diagram_path,
+      tsd: data.tsd,
+      hld: data.hld,
+      lld: data.lld,
+      architecture_template: data.architecture_template,
+      metadata: data.metadata,
+      azure_stencils: data.azure_stencils,
+      feedback_questions: data.feedback_questions,
+      ai_analysis: data.ai_analysis
+    };
+    
+    setResults(transformedData);
+    
+    // Show feedback questions if available
+    if (data.feedback_questions && data.feedback_questions.length > 0) {
+      setShowFeedbackQuestions(true);
+    }
+    
+    let alertMessage = `Architecture Generated Successfully! Using ${data.azure_stencils?.unique_used || 0} unique Azure stencils.`;
+    
+    if (data.ai_analysis && data.ai_analysis.services_used.length > 0) {
+      alertMessage += `\n\nAI Analysis: Selected ${data.ai_analysis.services_used.length} services based on your requirements.`;
+    }
+    
+    toast({
+      title: "Success!",
+      description: alertMessage,
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  const handleConfirmAddServices = async () => {
+    if (!pendingRequest) return;
+    
+    // Add suggested services to form data and regenerate
+    const updatedFormData = { ...formData };
+    
+    // Add suggested services to appropriate categories
+    suggestedServices.forEach(service => {
+      // For now, add to compute services (could be improved to map correctly)
+      if (!updatedFormData.compute_services) {
+        updatedFormData.compute_services = [];
+      }
+      if (!updatedFormData.compute_services.includes(service)) {
+        updatedFormData.compute_services.push(service);
+      }
+    });
+    
+    setFormData(updatedFormData);
+    setShowConfirmationDialog(false);
+    
+    // Process the pending response with additional services
+    processSuccessfulResponse(pendingRequest);
+    setPendingRequest(null);
+    setSuggestedServices([]);
+  };
+
+  const handleSkipAddServices = () => {
+    if (!pendingRequest) return;
+    
+    // Process the response without additional services
+    processSuccessfulResponse(pendingRequest);
+    setShowConfirmationDialog(false);
+    setPendingRequest(null);
+    setSuggestedServices([]);
   };
 
   const validateAIServiceSelection = async () => {
@@ -1043,6 +1108,45 @@ function App() {
                               onClick={() => setShowFeedbackQuestions(false)}
                             >
                               Skip for Now
+                            </Button>
+                          </HStack>
+                        </Box>
+                      )}
+
+                      {/* AI Service Confirmation Dialog */}
+                      {showConfirmationDialog && (
+                        <Box p="4" bg="orange.50" borderRadius="md" borderLeft="4px solid" borderColor="orange.500">
+                          <Heading size="sm" color="orange.800" mb="3">
+                            🤖 AI Architectural Recommendations
+                          </Heading>
+                          <Text fontSize="sm" color="orange.700" mb="3">
+                            Based on Azure best practices, we recommend adding these services to your architecture:
+                          </Text>
+                          <VStack align="start" spacing="2" mb="4">
+                            {suggestedServices.map((service, index) => (
+                              <Text key={index} fontSize="sm" color="orange.600">
+                                • {service.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </Text>
+                            ))}
+                          </VStack>
+                          <Text fontSize="xs" color="orange.600" mb="4">
+                            These services enhance security, monitoring, and reliability but are not required for your basic architecture.
+                          </Text>
+                          <HStack spacing="3">
+                            <Button
+                              size="sm"
+                              colorScheme="orange"
+                              onClick={handleConfirmAddServices}
+                            >
+                              Add Recommended Services
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              colorScheme="orange"
+                              onClick={handleSkipAddServices}
+                            >
+                              Keep Only Selected Services
                             </Button>
                           </HStack>
                         </Box>
