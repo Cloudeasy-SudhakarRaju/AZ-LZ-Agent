@@ -503,10 +503,10 @@ def analyze_free_text_requirements(free_text: str) -> dict:
         if not gemini_model or not free_text:
             return {"services": [], "reasoning": "No analysis available"}
             
-        prompt = f"""
+        prompt = """
         Analyze the following user requirement and identify ONLY the specific Azure services that are explicitly mentioned:
         
-        User Requirement: "{free_text}"
+        User Requirement: "{}"
         
         CRITICAL RULES:
         1. ONLY include services that are EXPLICITLY mentioned by name in the user requirement
@@ -522,15 +522,15 @@ def analyze_free_text_requirements(free_text: str) -> dict:
         4. "suggested_additions" - array of services you would recommend (only if needs_confirmation is true)
         
         Example for "I want only one VNet and one VM":
-        {
+        {{
           "services": ["virtual_machines", "virtual_networks"],
           "reasoning": "Following user's explicit requirement for only one VNet and one VM",
           "needs_confirmation": true,
           "suggested_additions": ["azure_monitor", "key_vault"]
-        }
+        }}
         
         Return only valid JSON format.
-        """
+        """.format(free_text)
         
         result = gemini_model.generate_content(prompt)
         response_text = result.text.strip()
@@ -688,58 +688,33 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                     if inputs.security_services and "sentinel" in inputs.security_services:
                         sentinel = Sentinel("Sentinel")
                 
-                # Management Groups and Subscriptions Structure
-                with Cluster("Management & Governance", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
-                    root_mg = Subscriptions("Root Management Group")
-                    if template['template']['name'] == "Enterprise Scale Landing Zone":
-                        platform_mg = Subscriptions("Platform MG")
-                        workloads_mg = Subscriptions("Landing Zones MG")
-                        root_mg >> [platform_mg, workloads_mg]
-                    else:
-                        platform_mg = Subscriptions("Platform MG")
-                        workloads_mg = Subscriptions("Workloads MG")
-                        root_mg >> [platform_mg, workloads_mg]
+                # Only create management groups if governance services are explicitly selected
+                created_resources = []
                 
-                # Networking Architecture
-                with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
-                    # Hub VNet
-                    hub_vnet = VirtualNetworks("Hub VNet\n(Shared Services)")
-                    
-                    # Network services based on selections
-                    network_services = []
-                    if inputs.network_services:
+                # Create basic subscription structure (always needed for resources)
+                with Cluster("Azure Subscription", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
+                    subscription = Subscriptions("Azure Subscription")
+                    created_resources.append(subscription)
+                
+                # Create network services only if explicitly selected
+                if inputs.network_services:
+                    with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
+                        network_resources = []
                         for service in inputs.network_services:
                             if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                                 diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                                 service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                                network_services.append(diagram_class(service_name))
-                    
-                    # Default network services if none specified
-                    if not network_services:
-                        firewall = Firewall("Azure Firewall")
-                        vpn_gw = VirtualNetworkGateways("VPN Gateway")
-                        network_services = [firewall, vpn_gw]
-                    
-                    # Spoke VNets
-                    prod_vnet = VirtualNetworks("Production VNet")
-                    dev_vnet = VirtualNetworks("Development VNet")
-                    
-                    # Connect hub to spokes
-                    hub_vnet >> [prod_vnet, dev_vnet]
-                    
-                    # Connect platform subscription to hub
-                    platform_mg >> hub_vnet
-                    
-                    # Connect network services to hub
-                    for ns in network_services:
-                        hub_vnet >> ns
+                                network_resource = diagram_class(service_name)
+                                network_resources.append(network_resource)
+                                created_resources.append(network_resource)
+                        
+                        # Connect all network resources if multiple exist
+                        if len(network_resources) > 1:
+                            for i in range(len(network_resources) - 1):
+                                network_resources[i] >> network_resources[i + 1]
                 
-                # Add other service clusters based on input...
-                _add_service_clusters(inputs, prod_vnet, workloads_mg)
-                
-                # Core security connections
-                aad >> key_vault
-                platform_mg >> [aad, key_vault]
+                # Create other service clusters only if explicitly selected
+                _add_selected_service_clusters(inputs, created_resources)
                 
                 logger.info("Diagram structure created successfully")
         
@@ -1010,6 +985,116 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
         # Don't fail the entire diagram generation for service cluster issues
 
 
+def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: list):
+    """Add only explicitly selected services without defaults or hardcoded assumptions"""
+    try:
+        all_created_resources = existing_resources.copy()
+        
+        # Compute Services - only if explicitly selected
+        if inputs.compute_services:
+            with Cluster("Compute Services", graph_attr={"bgcolor": "#fff8dc", "style": "rounded"}):
+                for service in inputs.compute_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Storage Services - only if explicitly selected  
+        if inputs.storage_services:
+            with Cluster("Storage Services", graph_attr={"bgcolor": "#f5f5dc", "style": "rounded"}):
+                for service in inputs.storage_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Database Services - only if explicitly selected
+        if inputs.database_services:
+            with Cluster("Database Services", graph_attr={"bgcolor": "#e6f3ff", "style": "rounded"}):
+                for service in inputs.database_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Security Services - only if explicitly selected
+        if inputs.security_services:
+            with Cluster("Security Services", graph_attr={"bgcolor": "#ffe6e6", "style": "rounded"}):
+                for service in inputs.security_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Monitoring Services - only if explicitly selected
+        if inputs.monitoring_services:
+            with Cluster("Monitoring Services", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
+                for service in inputs.monitoring_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # AI/ML Services - only if explicitly selected
+        if inputs.ai_services:
+            with Cluster("AI & Machine Learning", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
+                for service in inputs.ai_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Analytics Services - only if explicitly selected
+        if inputs.analytics_services:
+            with Cluster("Analytics Services", graph_attr={"bgcolor": "#fff8f0", "style": "rounded"}):
+                for service in inputs.analytics_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Integration Services - only if explicitly selected
+        if inputs.integration_services:
+            with Cluster("Integration Services", graph_attr={"bgcolor": "#f8f8ff", "style": "rounded"}):
+                for service in inputs.integration_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # DevOps Services - only if explicitly selected
+        if inputs.devops_services:
+            with Cluster("DevOps Services", graph_attr={"bgcolor": "#f5f5f5", "style": "rounded"}):
+                for service in inputs.devops_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+        
+        # Backup Services - only if explicitly selected
+        if inputs.backup_services:
+            with Cluster("Backup & Recovery", graph_attr={"bgcolor": "#fff0f5", "style": "rounded"}):
+                for service in inputs.backup_services:
+                    if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                        diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                        service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                        resource = diagram_class(service_name)
+                        all_created_resources.append(resource)
+                        
+    except Exception as e:
+        logger.warning(f"Error adding selected service clusters: {str(e)}")
+        # Don't fail the entire diagram generation for service cluster issues
+
+
 def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
     """Generate architecture template based on inputs with AI enhancement for free text"""
     
@@ -1043,20 +1128,9 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
         needs_confirmation = ai_analysis.get("needs_confirmation", False)
         suggested_additions = ai_analysis.get("suggested_additions", [])
         
-        # Only add AI-suggested services if user has very few selected services
-        if total_selected_services <= 2 and ai_services:
-            # Map AI services to appropriate categories
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING:
-                    category = AZURE_SERVICES_MAPPING[service]["category"]
-                    category_field = f"{category}_services"
-                    
-                    # Add to appropriate service list
-                    if hasattr(inputs, category_field):
-                        current_services = getattr(inputs, category_field) or []
-                        if service not in current_services:
-                            current_services.append(service)
-                            setattr(inputs, category_field, current_services)
+        # AI suggestions should be provided for user confirmation, not automatically added
+        # Store the AI suggestions in the template for frontend to handle
+        logger.info(f"AI analysis completed: {len(ai_services)} services identified, needs_confirmation: {needs_confirmation}")
     
     # Use minimal template by default - no complex management groups unless specifically requested
     minimal_template = {
@@ -1323,38 +1397,19 @@ def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
             sub_x = 750
             sub_y += 100
     
-    # Network Architecture Section
-    current_y += 300
-    xml_parts.append(f"""
+    # Network Architecture Section - Only if network services are explicitly selected
+    if inputs.network_services:
+        current_y += 300
+        xml_parts.append(f"""
         <!-- Network Architecture -->
-        <mxCell id="network" value="Network Architecture - {esc(inputs.network_model or 'Hub-Spoke')}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+        <mxCell id="network" value="Network Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
           <mxGeometry x="100" y="{current_y}" width="800" height="{section_height}" as="geometry" />
         </mxCell>""")
-    
-    # Hub VNet (always present)
-    hub_x = 200
-    hub_y = current_y + 80
-    xml_parts.append(f"""
-        <mxCell id="hub-vnet" value="Hub VNet\\nShared Services" style="shape=mxgraph.azure.virtual_network;fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="{hub_x}" y="{hub_y}" width="120" height="80" as="geometry" />
-        </mxCell>""")
-    
-    # Spoke VNets
-    spoke_x = 400
-    spoke_y = hub_y - 50
-    xml_parts.append(f"""
-        <mxCell id="spoke1-vnet" value="Production VNet" style="shape=mxgraph.azure.virtual_network;fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="{spoke_x}" y="{spoke_y}" width="120" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="spoke2-vnet" value="Development VNet" style="shape=mxgraph.azure.virtual_network;fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="{spoke_x}" y="{spoke_y + 120}" width="120" height="80" as="geometry" />
-        </mxCell>""")
-    
-    # Add selected network services
-    if inputs.network_services:
-        net_x = 600
-        net_y = hub_y
-        for i, service in enumerate(inputs.network_services[:4]):  # Max 4 network services
+        
+        # Add only explicitly selected network services
+        net_x = 200
+        net_y = current_y + 80
+        for i, service in enumerate(inputs.network_services):
             if service in AZURE_SERVICES_MAPPING:
                 service_info = AZURE_SERVICES_MAPPING[service]
                 shape = service_info.get('drawio_shape', 'generic_service')
@@ -1362,7 +1417,10 @@ def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
         <mxCell id="net-service-{i}" value="{esc(service_info['name'])}" style="shape=mxgraph.azure.{shape};fillColor=#0078d4;strokeColor=#005a9e;fontColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="{net_x}" y="{net_y}" width="{service_width}" height="{service_height}" as="geometry" />
         </mxCell>""")
-                net_y += 100
+                net_x += 120
+                if net_x > 600:  # Wrap to next row
+                    net_x = 200
+                    net_y += 100
     
     # Compute Services Section
     if inputs.compute_services or inputs.workload:
