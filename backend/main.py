@@ -1322,7 +1322,7 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         "    class RESOURCEGROUP resourceGroup;"
     ])
     
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
     """Generate enhanced Draw.io XML with comprehensive Azure stencils based on user selections"""
