@@ -504,22 +504,30 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             return {"services": [], "reasoning": "No analysis available"}
             
         prompt = f"""
-        Analyze the following user requirement and identify ONLY the specific Azure services that are explicitly needed or implied:
+        Analyze the following user requirement and identify ONLY the specific Azure services that are explicitly mentioned:
         
         User Requirement: "{free_text}"
         
+        CRITICAL RULES:
+        1. ONLY include services that are EXPLICITLY mentioned by name in the user requirement
+        2. Do NOT add ANY architectural recommendations, enterprise patterns, or "best practices" 
+        3. Do NOT include management groups, subscriptions, security services, or monitoring unless explicitly requested
+        4. If user says "only X and Y", then include ONLY X and Y - nothing else
+        5. Be extremely conservative - when in doubt, exclude the service
+        
         Based on this requirement, provide a JSON response with:
-        1. "services" - array of specific Azure service keys that are actually needed (use keys like: app_services, sql_database, monitor, virtual_network, etc.)
-        2. "reasoning" - brief explanation of why these services were selected
-        3. "architecture_pattern" - suggested pattern (simple, standard, complex)
+        1. "services" - array of ONLY explicitly mentioned Azure service keys (use keys like: virtual_machines, virtual_networks, etc.)
+        2. "reasoning" - brief explanation stating you followed user's explicit requirements only
+        3. "needs_confirmation" - boolean indicating if you want to suggest additional services
+        4. "suggested_additions" - array of services you would recommend (only if needs_confirmation is true)
         
-        Be very conservative - only include services that are directly mentioned or absolutely required for the stated use case.
-        For example:
-        - "web application hosting" -> app_services, virtual_network
-        - "database backend" -> sql_database or mysql/postgresql depending on context
-        - "basic monitoring" -> monitor, log_analytics
-        
-        Do NOT include full enterprise landing zone services unless specifically requested.
+        Example for "I want only one VNet and one VM":
+        {
+          "services": ["virtual_machines", "virtual_networks"],
+          "reasoning": "Following user's explicit requirement for only one VNet and one VM",
+          "needs_confirmation": true,
+          "suggested_additions": ["azure_monitor", "key_vault"]
+        }
         
         Return only valid JSON format.
         """
@@ -787,7 +795,7 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
         raise
 
 def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
-    """Generate a simple SVG diagram as fallback when Python Diagrams fails"""
+    """Generate a minimal SVG diagram based only on selected services"""
     
     template = generate_architecture_template(inputs)
     template_name = template['template']['name']
@@ -802,14 +810,12 @@ def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
             .title {{ font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; fill: #0078d4; }}
             .group-title {{ font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #323130; }}
             .service {{ font-family: Arial, sans-serif; font-size: 12px; fill: #605e5c; }}
-            .mgmt-group {{ fill: #e1f5fe; stroke: #0078d4; stroke-width: 2; }}
-            .subscription {{ fill: #f3e5f5; stroke: #6b69d6; stroke-width: 2; }}
+            .subscription {{ fill: #e1f5fe; stroke: #0078d4; stroke-width: 2; }}
+            .resource-group {{ fill: #f3e5f5; stroke: #6b69d6; stroke-width: 2; }}
             .service-box {{ fill: #fff3e0; stroke: #d83b01; stroke-width: 1; cursor: pointer; }}
             .service-box:hover {{ fill: #ffebdd; }}
             .network-box {{ fill: #e8f5e8; stroke: #107c10; stroke-width: 1; cursor: pointer; }}
             .network-box:hover {{ fill: #f3fdf3; }}
-            .security-box {{ fill: #ffebee; stroke: #d13438; stroke-width: 1; cursor: pointer; }}
-            .security-box:hover {{ fill: #fdf3f4; }}
         </style>
     </defs>
     
@@ -817,79 +823,78 @@ def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
     <rect width="100%" height="100%" fill="#f8f9fa"/>
     
     <!-- Title -->
-    <text x="400" y="30" class="title" text-anchor="middle">Azure Landing Zone - {template_name}</text>
+    <text x="400" y="30" class="title" text-anchor="middle">Azure Architecture - {template_name}</text>
     
-    <!-- Azure Tenant Container -->
-    <rect x="50" y="60" width="700" height="520" fill="none" stroke="#0078d4" stroke-width="3" stroke-dasharray="5,5"/>
-    <text x="60" y="80" class="group-title">Azure Tenant</text>
+    <!-- Azure Subscription -->
+    <rect x="100" y="80" width="600" height="450" class="subscription" rx="5"/>
+    <text x="110" y="100" class="group-title">Azure Subscription</text>
     
-    <!-- Management Groups -->
-    <rect x="70" y="100" width="200" height="150" class="mgmt-group" rx="5"/>
-    <text x="80" y="120" class="group-title">Management Groups</text>
-    
-    <!-- Management Group Items -->
-    <rect x="80" y="130" width="80" height="30" class="service-box" rx="3"/>
-    <text x="120" y="149" class="service" text-anchor="middle">Root MG</text>
-    
-    <rect x="170" y="130" width="80" height="30" class="service-box" rx="3"/>
-    <text x="210" y="149" class="service" text-anchor="middle">Platform</text>
-    
-    <rect x="80" y="170" width="80" height="30" class="service-box" rx="3"/>
-    <text x="120" y="189" class="service" text-anchor="middle">Landing Zones</text>
-    
-    <rect x="170" y="170" width="80" height="30" class="service-box" rx="3"/>
-    <text x="210" y="189" class="service" text-anchor="middle">Sandbox</text>
-    
-    <!-- Subscriptions -->
-    <rect x="290" y="100" width="200" height="150" class="subscription" rx="5"/>
-    <text x="300" y="120" class="group-title">Subscriptions</text>
-    
-    <!-- Subscription Items -->
-    <rect x="300" y="130" width="80" height="30" class="service-box" rx="3"/>
-    <text x="340" y="149" class="service" text-anchor="middle">Connectivity</text>
-    
-    <rect x="390" y="130" width="80" height="30" class="service-box" rx="3"/>
-    <text x="430" y="149" class="service" text-anchor="middle">Identity</text>
-    
-    <rect x="300" y="170" width="80" height="30" class="service-box" rx="3"/>
-    <text x="340" y="189" class="service" text-anchor="middle">Production</text>
-    
-    <rect x="390" y="170" width="80" height="30" class="service-box" rx="3"/>
-    <text x="430" y="189" class="service" text-anchor="middle">Development</text>
-    
-    <!-- Network Architecture -->
-    <rect x="520" y="100" width="200" height="150" class="network-box" rx="5"/>
-    <text x="530" y="120" class="group-title">Network Architecture</text>
-    
-    <rect x="530" y="130" width="80" height="30" class="network-box" rx="3"/>
-    <text x="570" y="149" class="service" text-anchor="middle">Hub VNet</text>
-    
-    <rect x="620" y="130" width="80" height="30" class="network-box" rx="3"/>
-    <text x="660" y="149" class="service" text-anchor="middle">Spoke VNet</text>'''
+    <!-- Resource Group -->
+    <rect x="120" y="120" width="560" height="380" class="resource-group" rx="5"/>
+    <text x="130" y="140" class="group-title">Resource Group</text>'''
     
     # Add selected services
-    y_offset = 280
+    y_offset = 170
+    x_start = 150
+    services_added = []
+    
     if inputs.compute_services:
         svg_content += f'''
     <!-- Compute Services -->
-    <rect x="70" y="{y_offset}" width="300" height="80" class="service-box" rx="5"/>
-    <text x="80" y="{y_offset + 20}" class="group-title">Compute Services</text>'''
+    <rect x="{x_start}" y="{y_offset}" width="200" height="100" class="service-box" rx="5"/>
+    <text x="{x_start + 10}" y="{y_offset + 20}" class="group-title">Compute</text>'''
         
-        x_pos = 80
-        for i, service in enumerate(inputs.compute_services[:4]):  # Max 4 services
-            service_name = service.replace('_', ' ').title()
+        for i, service in enumerate(inputs.compute_services[:2]):  # Max 2 services
+            service_info = AZURE_SERVICES_MAPPING.get(service, {"name": service, "icon": "🖥️"})
             svg_content += f'''
-    <rect x="{x_pos}" y="{y_offset + 30}" width="60" height="25" class="service-box" rx="3"/>
-    <text x="{x_pos + 30}" y="{y_offset + 47}" class="service" text-anchor="middle" font-size="10">{service_name[:8]}</text>'''
-            x_pos += 70
+    <rect x="{x_start + 10}" y="{y_offset + 30 + (i * 30)}" width="180" height="25" class="service-box" rx="3"/>
+    <text x="{x_start + 20}" y="{y_offset + 47 + (i * 30)}" class="service" font-size="11">{service_info["icon"]} {service_info["name"][:15]}</text>'''
+        services_added.append("compute")
     
     if inputs.network_services:
+        x_pos = x_start + 220 if "compute" in services_added else x_start
         svg_content += f'''
     <!-- Network Services -->
-    <rect x="390" y="{y_offset}" width="300" height="80" class="network-box" rx="5"/>
-    <text x="400" y="{y_offset + 20}" class="group-title">Network Services</text>'''
+    <rect x="{x_pos}" y="{y_offset}" width="200" height="100" class="network-box" rx="5"/>
+    <text x="{x_pos + 10}" y="{y_offset + 20}" class="group-title">Network</text>'''
         
-        x_pos = 400
+        for i, service in enumerate(inputs.network_services[:2]):  # Max 2 services
+            service_info = AZURE_SERVICES_MAPPING.get(service, {"name": service, "icon": "🌐"})
+            svg_content += f'''
+    <rect x="{x_pos + 10}" y="{y_offset + 30 + (i * 30)}" width="180" height="25" class="network-box" rx="3"/>
+    <text x="{x_pos + 20}" y="{y_offset + 47 + (i * 30)}" class="service" font-size="11">{service_info["icon"]} {service_info["name"][:15]}</text>'''
+        services_added.append("network")
+    
+    # Add other service types if needed
+    if inputs.storage_services:
+        x_pos = x_start + (220 * len(services_added))
+        if x_pos < 500:  # Only if there's space
+            svg_content += f'''
+    <!-- Storage Services -->
+    <rect x="{x_pos}" y="{y_offset}" width="200" height="100" class="service-box" rx="5"/>
+    <text x="{x_pos + 10}" y="{y_offset + 20}" class="group-title">Storage</text>'''
+            
+            for i, service in enumerate(inputs.storage_services[:2]):
+                service_info = AZURE_SERVICES_MAPPING.get(service, {"name": service, "icon": "💾"})
+                svg_content += f'''
+    <rect x="{x_pos + 10}" y="{y_offset + 30 + (i * 30)}" width="180" height="25" class="service-box" rx="3"/>
+    <text x="{x_pos + 20}" y="{y_offset + 47 + (i * 30)}" class="service" font-size="11">{service_info["icon"]} {service_info["name"][:15]}</text>'''
+    
+    # If no services selected, show message
+    if not any([inputs.compute_services, inputs.network_services, inputs.storage_services,
+                inputs.database_services, inputs.security_services, inputs.monitoring_services]):
+        svg_content += f'''
+    <!-- No Services Message -->
+    <rect x="{x_start}" y="{y_offset}" width="400" height="80" fill="#f8f8f8" stroke="#ddd" stroke-width="1" rx="5"/>
+    <text x="{x_start + 200}" y="{y_offset + 35}" class="group-title" text-anchor="middle">No Services Selected</text>
+    <text x="{x_start + 200}" y="{y_offset + 55}" class="service" text-anchor="middle">Please select Azure services to generate architecture</text>'''
+    
+    svg_content += '''
+    <!-- Footer -->
+    <text x="400" y="570" class="service" text-anchor="middle" fill="#8a8886">Generated by Azure Landing Zone Agent - Minimal Mode</text>
+</svg>'''
+    
+    return svg_content
         for i, service in enumerate(inputs.network_services[:4]):  # Max 4 services
             service_name = service.replace('_', ' ').title()
             svg_content += f'''
@@ -1052,8 +1057,10 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
     # First, check if we should use AI analysis for service selection
     ai_services = []
     ai_reasoning = ""
+    needs_confirmation = False
+    suggested_additions = []
     
-    # If user provided free text but didn't select many services, use AI to determine services
+    # Count explicitly selected services
     total_selected_services = sum([
         len(inputs.compute_services or []),
         len(inputs.network_services or []),
@@ -1068,14 +1075,17 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
         len(inputs.backup_services or [])
     ])
     
-    if inputs.free_text_input and total_selected_services <= 1:  # Very few services selected
+    # Only use AI if user provided free text
+    if inputs.free_text_input:
         logger.info("Using AI analysis for service selection based on free text input")
         ai_analysis = analyze_free_text_requirements(inputs.free_text_input)
         ai_services = ai_analysis.get("services", [])
         ai_reasoning = ai_analysis.get("reasoning", "")
+        needs_confirmation = ai_analysis.get("needs_confirmation", False)
+        suggested_additions = ai_analysis.get("suggested_additions", [])
         
-        # Override service selections with AI recommendations
-        if ai_services:
+        # Only add AI-suggested services if user has very few selected services
+        if total_selected_services <= 2 and ai_services:
             # Map AI services to appropriate categories
             for service in ai_services:
                 if service in AZURE_SERVICES_MAPPING:
@@ -1089,290 +1099,176 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
                             current_services.append(service)
                             setattr(inputs, category_field, current_services)
     
-    # Determine organization size and template
-    if inputs.org_structure and "enterprise" in inputs.org_structure.lower():
-        template = AZURE_TEMPLATES["enterprise"]
-    elif inputs.org_structure and any(x in inputs.org_structure.lower() for x in ["small", "medium", "sme"]):
-        template = AZURE_TEMPLATES["small_medium"]
-    else:
-        template = AZURE_TEMPLATES["startup"]
+    # Use minimal template by default - no complex management groups unless specifically requested
+    minimal_template = {
+        "name": "Minimal Azure Architecture",
+        "management_groups": ["Root"],  # Only root, no complex hierarchy
+        "subscriptions": ["Production"],  # Only one subscription
+        "core_services": []  # No automatic core services
+    }
     
-    # Build architecture components
+    # Build architecture components with minimal defaults
     components = {
-        "template": template,
-        "identity": inputs.identity or "Azure AD",
-        "network_model": inputs.network_model or "hub-spoke",
-        "workload": inputs.workload or "app-services",
-        "security": inputs.security_posture or "zero-trust",
-        "monitoring": inputs.monitoring or "azure-monitor",
-        "governance": inputs.governance or "azure-policy",
+        "template": minimal_template,
+        "identity": inputs.identity or None,
+        "network_model": inputs.network_model or "simple",
+        "workload": inputs.workload or None,
+        "security": inputs.security_posture or None,
+        "monitoring": inputs.monitoring or None,
+        "governance": inputs.governance or None,
         "ai_services": ai_services,
-        "ai_reasoning": ai_reasoning
+        "ai_reasoning": ai_reasoning,
+        "needs_confirmation": needs_confirmation,
+        "suggested_additions": suggested_additions
     }
     
     return components
 
 def generate_professional_mermaid(inputs: CustomerInputs) -> str:
-    """Generate professional Mermaid diagram for Azure Landing Zone"""
+    """Generate minimal Mermaid diagram for Azure Landing Zone based only on selected services"""
     
     template = generate_architecture_template(inputs)
-    network_model = inputs.network_model or "hub-spoke"
     
     lines = [
         "graph TB",
-        "    subgraph \"Azure Tenant\"",
-        "        subgraph \"Management Groups\"",
-        "            ROOT[\"🏢 Root Management Group\"]"
+        "    subgraph \"Azure Architecture\"",
     ]
     
-    # Add management group hierarchy
-    if template["template"]["name"] == "Enterprise Scale Landing Zone":
+    # Check if we have any services selected
+    has_compute = inputs.compute_services and len(inputs.compute_services) > 0
+    has_network = inputs.network_services and len(inputs.network_services) > 0
+    has_storage = inputs.storage_services and len(inputs.storage_services) > 0
+    has_database = inputs.database_services and len(inputs.database_services) > 0
+    has_security = inputs.security_services and len(inputs.security_services) > 0
+    has_monitoring = inputs.monitoring_services and len(inputs.monitoring_services) > 0
+    
+    # Only add minimal structure if we have services
+    if has_compute or has_network or has_storage or has_database or has_security or has_monitoring:
         lines.extend([
-            "            PLATFORM[\"🏗️ Platform\"]",
-            "            LANDINGZONES[\"🚀 Landing Zones\"]", 
-            "            SANDBOX[\"🧪 Sandbox\"]",
-            "            DECOM[\"🗑️ Decommissioned\"]",
-            "            ROOT --> PLATFORM",
-            "            ROOT --> LANDINGZONES",
-            "            ROOT --> SANDBOX", 
-            "            ROOT --> DECOM"
+            "        SUBSCRIPTION[\"📦 Azure Subscription\"]"
         ])
+        
+        # Add Resource Group only if we have resources
+        lines.extend([
+            "        RESOURCEGROUP[\"📁 Resource Group\"]",
+            "        SUBSCRIPTION --> RESOURCEGROUP"
+        ])
+        
+        service_count = 0
+        
+        # Add compute services if selected
+        if has_compute:
+            lines.extend([
+                "        subgraph \"Compute Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.compute_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"COMPUTE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+        
+        # Add network services if selected
+        if has_network:
+            lines.extend([
+                "        subgraph \"Network Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.network_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"NETWORK{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+        
+        # Add storage services if selected
+        if has_storage:
+            lines.extend([
+                "        subgraph \"Storage Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.storage_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"STORAGE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+        
+        # Add database services if selected
+        if has_database:
+            lines.extend([
+                "        subgraph \"Database Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.database_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"DATABASE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+        
+        # Add security services if selected
+        if has_security:
+            lines.extend([
+                "        subgraph \"Security Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.security_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"SECURITY{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+        
+        # Add monitoring services if selected
+        if has_monitoring:
+            lines.extend([
+                "        subgraph \"Monitoring Services\""
+            ])
+            
+            service_connections = []
+            for service in inputs.monitoring_services:
+                if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"MONITORING{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            lines.extend(service_connections)
+            lines.append("        end")
+    
     else:
+        # If no services selected, show minimal placeholder
         lines.extend([
-            "            PLATFORM[\"🏗️ Platform\"]",
-            "            WORKLOADS[\"💼 Workloads\"]",
-            "            ROOT --> PLATFORM",
-            "            ROOT --> WORKLOADS"
-        ])
-    
-    lines.append("        end")
-    
-    # Add subscription structure
-    lines.extend([
-        "        subgraph \"Subscriptions\"",
-        "            CONN[\"🌐 Connectivity\"]",
-        "            IDENTITY[\"🔐 Identity\"]",
-        "            MGMT[\"📊 Management\"]",
-        "            PROD[\"🏭 Production\"]",
-        "            DEV[\"👩‍💻 Development\"]"
-    ])
-    
-    if template["template"]["name"] == "Enterprise Scale Landing Zone":
-        lines.extend([
-            "            PLATFORM --> CONN",
-            "            PLATFORM --> IDENTITY", 
-            "            PLATFORM --> MGMT",
-            "            LANDINGZONES --> PROD",
-            "            LANDINGZONES --> DEV"
-        ])
-    else:
-        lines.extend([
-            "            PLATFORM --> CONN",
-            "            PLATFORM --> IDENTITY",
-            "            WORKLOADS --> PROD",
-            "            WORKLOADS --> DEV"
-        ])
-    
-    lines.append("        end")
-    
-    # Add networking services based on selections
-    if inputs.network_services:
-        lines.extend([
-            "        subgraph \"Networking Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.network_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            CONN --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add compute services based on selections
-    if inputs.compute_services:
-        lines.extend([
-            "        subgraph \"Compute Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.compute_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add storage services based on selections
-    if inputs.storage_services:
-        lines.extend([
-            "        subgraph \"Storage Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.storage_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add database services based on selections
-    if inputs.database_services:
-        lines.extend([
-            "        subgraph \"Database Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.database_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add security services based on selections
-    if inputs.security_services:
-        lines.extend([
-            "        subgraph \"Security & Identity\""
-        ])
-        
-        service_connections = []
-        for service in inputs.security_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            IDENTITY --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add monitoring services based on selections
-    if inputs.monitoring_services:
-        lines.extend([
-            "        subgraph \"Monitoring & Management\""
-        ])
-        
-        service_connections = []
-        for service in inputs.monitoring_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add AI/ML services based on selections  
-    if inputs.ai_services:
-        lines.extend([
-            "        subgraph \"AI & Machine Learning\""
-        ])
-        
-        service_connections = []
-        for service in inputs.ai_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add analytics services based on selections
-    if inputs.analytics_services:
-        lines.extend([
-            "        subgraph \"Data & Analytics\""
-        ])
-        
-        service_connections = []
-        for service in inputs.analytics_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add integration services based on selections
-    if inputs.integration_services:
-        lines.extend([
-            "        subgraph \"Integration Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.integration_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add DevOps services based on selections
-    if inputs.devops_services:
-        lines.extend([
-            "        subgraph \"DevOps & Governance\""
-        ])
-        
-        service_connections = []
-        for service in inputs.devops_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add backup services based on selections
-    if inputs.backup_services:
-        lines.extend([
-            "        subgraph \"Backup & Recovery\""
-        ])
-        
-        service_connections = []
-        for service in inputs.backup_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Fallback for legacy workload field
-    if not any([inputs.compute_services, inputs.network_services, inputs.storage_services, 
-               inputs.database_services, inputs.security_services, inputs.monitoring_services,
-               inputs.ai_services, inputs.analytics_services, inputs.integration_services,
-               inputs.devops_services, inputs.backup_services]) and inputs.workload:
-        workload_name = AZURE_SERVICES_MAPPING.get(inputs.workload, {"name": inputs.workload, "icon": "⚙️"})["name"]
-        lines.extend([
-            "        subgraph \"Workloads\"",
-            f"            WORKLOAD[\"{workload_name}\"]",
-            "            PROD --> WORKLOAD",
-            "        end"
+            "        PLACEHOLDER[\"📝 No Services Selected\"]",
+            "        PLACEHOLDER2[\"ℹ️ Please select Azure services to generate architecture\"]"
         ])
     
     lines.append("    end")
@@ -1380,25 +1276,20 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
     # Add styling
     lines.extend([
         "",
-        "    classDef mgmtGroup fill:#e1f5fe,stroke:#01579b,stroke-width:2px;",
-        "    classDef subscription fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;", 
+        "    classDef subscription fill:#e1f5fe,stroke:#01579b,stroke-width:2px;",
+        "    classDef resourceGroup fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;",
         "    classDef compute fill:#fff3e0,stroke:#e65100,stroke-width:2px;",
         "    classDef network fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px;",
         "    classDef storage fill:#fce4ec,stroke:#880e4f,stroke-width:2px;",
         "    classDef database fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px;",
         "    classDef security fill:#ffebee,stroke:#b71c1c,stroke-width:2px;",
         "    classDef monitoring fill:#f1f8e9,stroke:#33691e,stroke-width:2px;",
-        "    classDef ai fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;",
-        "    classDef analytics fill:#e8eaf6,stroke:#1a237e,stroke-width:2px;",
-        "    classDef integration fill:#fff8e1,stroke:#f57f17,stroke-width:2px;",
-        "    classDef devops fill:#fafafa,stroke:#424242,stroke-width:2px;",
-        "    classDef backup fill:#e0f2f1,stroke:#00695c,stroke-width:2px;",
         "",
-        "    class ROOT,PLATFORM,LANDINGZONES,SANDBOX,DECOM,WORKLOADS mgmtGroup;",
-        "    class CONN,IDENTITY,MGMT,PROD,DEV subscription;"
+        "    class SUBSCRIPTION subscription;",
+        "    class RESOURCEGROUP resourceGroup;"
     ])
     
-    return "\n".join(lines)
+    return "\\n".join(lines)
 
 def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
     """Generate enhanced Draw.io XML with comprehensive Azure stencils based on user selections"""
