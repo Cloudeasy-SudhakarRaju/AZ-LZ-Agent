@@ -882,32 +882,6 @@ function App() {
                         </HStack>
                       </Box>
 
-                      {/* AI Suggested Services */}
-                      {aiSuggestedServices.length > 0 && (
-                        <Box mb="6" p="4" bg="blue.50" borderRadius="md" border="1px solid" borderColor="blue.200">
-                          <Text fontWeight="bold" color="blue.800" mb="3">
-                            🤖 AI Suggested Services Based on Your Requirements
-                          </Text>
-                          <VStack align="stretch" spacing="2">
-                            {aiSuggestedServices.map((service, index) => (
-                              <Alert key={index} status="info" variant="left-accent">
-                                <AlertIcon />
-                                <Box>
-                                  <AlertTitle>{service.name}</AlertTitle>
-                                  <AlertDescription fontSize="sm">
-                                    {service.reasoning}
-                                  </AlertDescription>
-                                </Box>
-                              </Alert>
-                            ))}
-                          </VStack>
-                          <Text fontSize="sm" color="blue.600" mt="3">
-                            These services will be automatically included when you generate the architecture.
-                            You can still manually select additional services above if needed.
-                          </Text>
-                        </Box>
-                      )}
-
                       {/* URL Input and Analysis */}
                       <Box mb="6">
                         <Text mb="2" fontWeight="medium">URL Analysis</Text>
