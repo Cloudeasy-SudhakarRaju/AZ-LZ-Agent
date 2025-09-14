@@ -94,7 +94,13 @@ interface Results {
 }
 
 function App() {
-  const [formData, setFormData] = React.useState<FormData>({});
+  const [formData, setFormData] = React.useState<FormData>({
+    // Add some essential default services for better user experience
+    compute_services: ["virtual_machines"],
+    network_services: ["virtual_network"],
+    storage_services: ["storage_accounts"],
+    security_services: ["key_vault", "active_directory"]
+  });
   const [results, setResults] = React.useState<Results | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState(0);
