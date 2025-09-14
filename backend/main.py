@@ -498,35 +498,55 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
         return f"Error generating AI recommendations: {str(e)}"
 
 def analyze_free_text_requirements(free_text: str) -> dict:
-    """Analyze free text input to extract specific service requirements using AI"""
+    """Analyze free text input to extract comprehensive service requirements using AI"""
     try:
         if not gemini_model or not free_text:
             return {"services": [], "reasoning": "No analysis available"}
             
         prompt = """
-        Analyze the following user requirement and identify ONLY the specific Azure services that are explicitly mentioned:
+        You are an Azure Solutions Architect analyzing user requirements for an enterprise-ready Azure Landing Zone architecture.
         
         User Requirement: "{}"
         
-        CRITICAL RULES:
-        1. ONLY include services that are EXPLICITLY mentioned by name in the user requirement
-        2. Do NOT add ANY architectural recommendations, enterprise patterns, or "best practices" 
-        3. Do NOT include management groups, subscriptions, security services, or monitoring unless explicitly requested
-        4. If user says "only X and Y", then include ONLY X and Y - nothing else
-        5. Be extremely conservative - when in doubt, exclude the service
+        ANALYSIS INSTRUCTIONS:
+        1. Analyze the requirement comprehensively to understand the business objective and technical needs
+        2. Identify explicitly mentioned Azure services AND infer necessary supporting services for a production-ready solution
+        3. Consider enterprise architecture patterns, security, monitoring, backup, and governance requirements
+        4. Think about connectivity, data flow, and service dependencies for a complete solution
+        5. Recommend services based on Azure Well-Architected Framework principles
+
+        For example:
+        - If user mentions "web application", consider: App Services, Application Gateway, Virtual Networks, Key Vault, Azure Monitor, etc.
+        - If user mentions "database", consider: SQL Database, backup services, monitoring, security services
+        - If user mentions "microservices", consider: AKS, Service Bus, API Management, Container Registry, etc.
+        - Always include foundational services: Virtual Networks, Key Vault, Azure Monitor for enterprise solutions
+
+        Available Azure service keys to choose from:
+        Compute: virtual_machines, aks, app_services, functions, container_instances, service_fabric, batch
+        Network: virtual_network, vpn_gateway, expressroute, load_balancer, application_gateway, firewall, waf, cdn, traffic_manager
+        Storage: storage_accounts, blob_storage, data_lake_storage, file_storage, disk_storage
+        Database: sql_database, cosmos_db, mysql, postgresql, redis, synapse_dedicated_pools
+        Security: key_vault, security_center, sentinel, azure_ad_b2c, azure_firewall, ddos_protection
+        Monitoring: azure_monitor, log_analytics, application_insights, azure_advisor
+        Analytics: synapse_analytics, data_factory, databricks, stream_analytics, event_hubs, power_bi
+        Integration: logic_apps, service_bus, event_grid, api_management, application_gateway
+        DevOps: devops, pipelines, container_registry, azure_artifacts
+        Backup: backup_vault, site_recovery, azure_backup
+
+        Provide a JSON response with:
+        1. "services" - array of recommended Azure service keys for a complete, enterprise-ready solution
+        2. "reasoning" - detailed explanation of your architectural decisions and why each service is needed
+        3. "architecture_pattern" - describe the overall architecture pattern (e.g., "3-tier web application with microservices")
+        4. "connectivity_requirements" - describe how services should be connected
+        5. "security_considerations" - key security requirements and implementations
         
-        Based on this requirement, provide a JSON response with:
-        1. "services" - array of ONLY explicitly mentioned Azure service keys (use keys like: virtual_machines, virtual_networks, etc.)
-        2. "reasoning" - brief explanation stating you followed user's explicit requirements only
-        3. "needs_confirmation" - boolean indicating if you want to suggest additional services
-        4. "suggested_additions" - array of services you would recommend (only if needs_confirmation is true)
-        
-        Example for "I want only one VNet and one VM":
+        Example for "I need a scalable web application with database":
         {{
-          "services": ["virtual_machines", "virtual_networks"],
-          "reasoning": "Following user's explicit requirement for only one VNet and one VM",
-          "needs_confirmation": true,
-          "suggested_additions": ["azure_monitor", "key_vault"]
+          "services": ["app_services", "virtual_network", "application_gateway", "sql_database", "key_vault", "azure_monitor", "log_analytics", "application_insights", "backup_vault", "storage_accounts"],
+          "reasoning": "Designed a complete 3-tier web application architecture with App Services for hosting, Application Gateway for load balancing and SSL termination, SQL Database for data persistence, Virtual Network for secure networking, Key Vault for secrets management, comprehensive monitoring with Azure Monitor and Application Insights, backup services for data protection, and storage accounts for static assets.",
+          "architecture_pattern": "3-tier web application with high availability and security",
+          "connectivity_requirements": "Application Gateway -> App Services -> SQL Database, with Virtual Network providing secure communication",
+          "security_considerations": "Key Vault for secrets, Application Gateway for web application firewall, Virtual Network for network isolation"
         }}
         
         Return only valid JSON format.
@@ -545,17 +565,36 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             json_str = json_match.group()
             try:
                 analysis = json.loads(json_str)
+                # Ensure backward compatibility by adding missing fields
+                if "architecture_pattern" not in analysis:
+                    analysis["architecture_pattern"] = "Custom architecture"
+                if "connectivity_requirements" not in analysis:
+                    analysis["connectivity_requirements"] = "Standard Azure networking"
+                if "security_considerations" not in analysis:
+                    analysis["security_considerations"] = "Standard security practices"
                 return analysis
             except json.JSONDecodeError:
                 pass
         
         # Fallback parsing if JSON parsing fails
         logger.warning(f"Failed to parse AI response as JSON: {response_text}")
-        return {"services": [], "reasoning": "Could not parse AI analysis"}
+        return {
+            "services": [], 
+            "reasoning": "Could not parse AI analysis",
+            "architecture_pattern": "Unknown",
+            "connectivity_requirements": "Not specified",
+            "security_considerations": "Not specified"
+        }
         
     except Exception as e:
         logger.error(f"Error analyzing free text requirements: {e}")
-        return {"services": [], "reasoning": f"Analysis error: {str(e)}"}
+        return {
+            "services": [], 
+            "reasoning": f"Analysis error: {str(e)}",
+            "architecture_pattern": "Error",
+            "connectivity_requirements": "Error",
+            "security_considerations": "Error"
+        }
 
 def validate_customer_inputs(inputs: CustomerInputs) -> None:
     """Validate customer inputs to prevent potential errors"""
@@ -697,6 +736,7 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                     created_resources.append(subscription)
                 
                 # Create network services only if explicitly selected
+                network_resources_by_type = {}
                 if inputs.network_services:
                     with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
                         network_resources = []
@@ -707,16 +747,25 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                                 network_resource = diagram_class(service_name)
                                 network_resources.append(network_resource)
                                 created_resources.append(network_resource)
+                                
+                                # Track network resources by type
+                                if service not in network_resources_by_type:
+                                    network_resources_by_type[service] = []
+                                network_resources_by_type[service].append(network_resource)
                         
-                        # Connect all network resources if multiple exist
-                        if len(network_resources) > 1:
-                            for i in range(len(network_resources) - 1):
-                                network_resources[i] >> network_resources[i + 1]
+                        # Intelligent network connections based on Azure patterns
+                        _add_intelligent_network_connections(network_resources, network_resources_by_type)
                 
-                # Create other service clusters only if explicitly selected
-                _add_selected_service_clusters(inputs, created_resources)
+                # Create other service clusters and get resource tracking
+                all_resources, resources_by_type = _add_selected_service_clusters(inputs, created_resources)
                 
-                logger.info("Diagram structure created successfully")
+                # Merge network resources into the overall tracking
+                resources_by_type.update(network_resources_by_type)
+                
+                # Add intelligent connections between all services
+                _add_intelligent_service_connections(inputs, resources_by_type, template)
+                
+                logger.info("Diagram structure and intelligent connections created successfully")
         
         except Exception as e:
             logger.error(f"Error during diagram creation: {str(e)}")
@@ -985,10 +1034,156 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
         # Don't fail the entire diagram generation for service cluster issues
 
 
+def _add_intelligent_network_connections(network_resources: list, network_resources_by_type: dict):
+    """Add intelligent connections between network services based on Azure patterns"""
+    try:
+        # Hub-spoke pattern: VNet as hub, connect others to it
+        vnets = network_resources_by_type.get("virtual_network", [])
+        if len(vnets) > 1:
+            hub_vnet = vnets[0]  # First VNet as hub
+            for spoke_vnet in vnets[1:]:
+                hub_vnet >> Edge(style="dashed", color="blue", label="VNet Peering") >> spoke_vnet
+        
+        # Application Gateway -> Load Balancer pattern
+        app_gateways = network_resources_by_type.get("application_gateway", [])
+        load_balancers = network_resources_by_type.get("load_balancer", [])
+        for ag in app_gateways:
+            for lb in load_balancers:
+                ag >> Edge(color="green", label="HTTP/HTTPS") >> lb
+        
+        # Firewall -> Application Gateway pattern (secure traffic flow)
+        firewalls = network_resources_by_type.get("firewall", [])
+        for fw in firewalls:
+            for ag in app_gateways:
+                fw >> Edge(color="red", label="Filtered Traffic") >> ag
+        
+        # VPN/ExpressRoute -> VNet pattern
+        vpn_gateways = network_resources_by_type.get("vpn_gateway", [])
+        expressroutes = network_resources_by_type.get("expressroute", [])
+        
+        for vpn in vpn_gateways:
+            for vnet in vnets:
+                vpn >> Edge(color="orange", label="Site-to-Site") >> vnet
+        
+        for er in expressroutes:
+            for vnet in vnets:
+                er >> Edge(color="purple", label="Private Connection") >> vnet
+                
+        logger.debug("Intelligent network connections added")
+        
+    except Exception as e:
+        logger.warning(f"Error adding intelligent network connections: {e}")
+
+
+def _add_intelligent_service_connections(inputs: CustomerInputs, all_resources: dict, template: dict):
+    """Add intelligent connections between services based on Azure architecture patterns"""
+    try:
+        logger.info("Adding intelligent service connections based on architecture patterns")
+        
+        # Get AI analysis for connectivity guidance
+        connectivity_guidance = ""
+        if hasattr(template, 'get') and template.get("connectivity_requirements"):
+            connectivity_guidance = template["connectivity_requirements"]
+        
+        # Define connection patterns based on Azure best practices
+        connection_patterns = {
+            # Web application patterns
+            "web_tier": {
+                "sources": ["application_gateway", "load_balancer", "traffic_manager"],
+                "targets": ["app_services", "virtual_machines", "aks"]
+            },
+            # Data tier patterns  
+            "data_flow": {
+                "sources": ["app_services", "virtual_machines", "aks", "functions"],
+                "targets": ["sql_database", "cosmos_db", "mysql", "postgresql", "storage_accounts", "blob_storage"]
+            },
+            # Network patterns
+            "network_flow": {
+                "sources": ["vpn_gateway", "expressroute"],
+                "targets": ["virtual_network", "firewall", "application_gateway"]
+            },
+            # Security patterns
+            "security_flow": {
+                "sources": ["key_vault"],
+                "targets": ["app_services", "virtual_machines", "aks", "functions"]
+            },
+            # Monitoring patterns
+            "monitoring_flow": {
+                "sources": ["azure_monitor", "log_analytics", "application_insights"],
+                "targets": ["app_services", "virtual_machines", "aks", "sql_database", "cosmos_db"]
+            },
+            # Integration patterns
+            "integration_flow": {
+                "sources": ["api_management"],
+                "targets": ["app_services", "functions", "logic_apps", "service_bus"]
+            },
+            # DevOps patterns
+            "devops_flow": {
+                "sources": ["devops", "pipelines", "container_registry"],
+                "targets": ["aks", "app_services", "virtual_machines"]
+            }
+        }
+        
+        # Apply connection patterns
+        for pattern_name, pattern in connection_patterns.items():
+            for source_type in pattern["sources"]:
+                for target_type in pattern["targets"]:
+                    # Find matching resources
+                    source_resources = all_resources.get(source_type, [])
+                    target_resources = all_resources.get(target_type, [])
+                    
+                    # Create connections between matching resources
+                    for source in source_resources:
+                        for target in target_resources:
+                            if source != target:  # Don't connect to self
+                                try:
+                                    # Create connection with appropriate style
+                                    connection_style = _get_connection_style(pattern_name)
+                                    source >> Edge(**connection_style) >> target
+                                    logger.debug(f"Connected {source_type} -> {target_type} ({pattern_name})")
+                                except Exception as conn_error:
+                                    logger.warning(f"Failed to connect {source_type} -> {target_type}: {conn_error}")
+        
+        # Add hub-spoke network connections if virtual networks exist
+        vnets = all_resources.get("virtual_network", [])
+        if len(vnets) > 1:
+            # Connect first VNet (hub) to all others (spokes)
+            hub = vnets[0]
+            for spoke in vnets[1:]:
+                try:
+                    hub >> Edge(style="dashed", color="blue", label="Peering") >> spoke
+                    logger.debug("Added hub-spoke VNet peering connection")
+                except Exception as e:
+                    logger.warning(f"Failed to add VNet peering: {e}")
+                    
+        logger.info("Intelligent service connections added successfully")
+        
+    except Exception as e:
+        logger.warning(f"Error adding intelligent service connections: {str(e)}")
+        # Don't fail diagram generation if connections fail
+
+
+def _get_connection_style(pattern_name: str) -> dict:
+    """Get connection style based on pattern type"""
+    styles = {
+        "web_tier": {"color": "green", "style": "bold", "label": "HTTP/HTTPS"},
+        "data_flow": {"color": "blue", "style": "solid", "label": "Data"},
+        "network_flow": {"color": "orange", "style": "bold", "label": "Network"},
+        "security_flow": {"color": "red", "style": "dashed", "label": "Secrets"},
+        "monitoring_flow": {"color": "purple", "style": "dotted", "label": "Metrics"},
+        "integration_flow": {"color": "teal", "style": "solid", "label": "API"},
+        "devops_flow": {"color": "gray", "style": "dashed", "label": "Deploy"}
+    }
+    return styles.get(pattern_name, {"color": "black", "style": "solid"})
+
+
 def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: list):
     """Add only explicitly selected services without defaults or hardcoded assumptions"""
     try:
         all_created_resources = existing_resources.copy()
+        
+        # Track resources by type for intelligent connections
+        resources_by_type = {}
         
         # Compute Services - only if explicitly selected
         if inputs.compute_services:
@@ -999,6 +1194,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Storage Services - only if explicitly selected  
         if inputs.storage_services:
@@ -1009,6 +1209,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Database Services - only if explicitly selected
         if inputs.database_services:
@@ -1019,6 +1224,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Security Services - only if explicitly selected
         if inputs.security_services:
@@ -1029,6 +1239,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Monitoring Services - only if explicitly selected
         if inputs.monitoring_services:
@@ -1039,6 +1254,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # AI/ML Services - only if explicitly selected
         if inputs.ai_services:
@@ -1049,6 +1269,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Analytics Services - only if explicitly selected
         if inputs.analytics_services:
@@ -1059,6 +1284,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Integration Services - only if explicitly selected
         if inputs.integration_services:
@@ -1069,6 +1299,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # DevOps Services - only if explicitly selected
         if inputs.devops_services:
@@ -1079,6 +1314,11 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
+                        
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
         
         # Backup Services - only if explicitly selected
         if inputs.backup_services:
@@ -1090,9 +1330,18 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                         resource = diagram_class(service_name)
                         all_created_resources.append(resource)
                         
+                        # Track by service type
+                        if service not in resources_by_type:
+                            resources_by_type[service] = []
+                        resources_by_type[service].append(resource)
+        
+        # Return both the list and the type mapping for intelligent connections
+        return all_created_resources, resources_by_type
+                        
     except Exception as e:
         logger.warning(f"Error adding selected service clusters: {str(e)}")
         # Don't fail the entire diagram generation for service cluster issues
+        return existing_resources, {}
 
 
 def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
@@ -1119,18 +1368,24 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
         len(inputs.backup_services or [])
     ])
     
+    # Enhanced AI analysis fields
+    architecture_pattern = ""
+    connectivity_requirements = ""
+    security_considerations = ""
+    
     # Only use AI if user provided free text
     if inputs.free_text_input:
-        logger.info("Using AI analysis for service selection based on free text input")
+        logger.info("Using comprehensive AI analysis for architecture design based on free text input")
         ai_analysis = analyze_free_text_requirements(inputs.free_text_input)
         ai_services = ai_analysis.get("services", [])
         ai_reasoning = ai_analysis.get("reasoning", "")
+        architecture_pattern = ai_analysis.get("architecture_pattern", "")
+        connectivity_requirements = ai_analysis.get("connectivity_requirements", "")
+        security_considerations = ai_analysis.get("security_considerations", "")
         needs_confirmation = ai_analysis.get("needs_confirmation", False)
         suggested_additions = ai_analysis.get("suggested_additions", [])
         
-        # AI suggestions should be provided for user confirmation, not automatically added
-        # Store the AI suggestions in the template for frontend to handle
-        logger.info(f"AI analysis completed: {len(ai_services)} services identified, needs_confirmation: {needs_confirmation}")
+        logger.info(f"AI analysis completed: {len(ai_services)} services identified for {architecture_pattern} pattern")
     
     # Use minimal template by default - no complex management groups unless specifically requested
     minimal_template = {
@@ -1140,7 +1395,7 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
         "core_services": []  # No automatic core services
     }
     
-    # Build architecture components with minimal defaults
+    # Build architecture components with enhanced AI insights
     components = {
         "template": minimal_template,
         "identity": inputs.identity or None,
@@ -1151,6 +1406,9 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
         "governance": inputs.governance or None,
         "ai_services": ai_services,
         "ai_reasoning": ai_reasoning,
+        "architecture_pattern": architecture_pattern,
+        "connectivity_requirements": connectivity_requirements,
+        "security_considerations": security_considerations,
         "needs_confirmation": needs_confirmation,
         "suggested_additions": suggested_additions
     }
@@ -1649,7 +1907,7 @@ def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
 
 
 def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str]:
-    """Generate professional TSD, HLD, and LLD documentation with AI enhancement"""
+    """Generate professional TSD, HLD, and LLD documentation with comprehensive AI enhancement"""
     
     template = generate_architecture_template(inputs)
     timestamp = datetime.now().strftime("%Y-%m-%d")
@@ -1659,6 +1917,12 @@ def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str
     doc_analysis = ""
     ai_recommendations = ""
     
+    # Get AI analysis results
+    architecture_pattern = template.get("architecture_pattern", "Custom Architecture")
+    connectivity_requirements = template.get("connectivity_requirements", "Standard Azure networking")
+    security_considerations = template.get("security_considerations", "Standard security practices")
+    ai_reasoning = template.get("ai_reasoning", "Standard architectural decisions applied")
+    
     try:
         if inputs.url_input:
             url_analysis = analyze_url_content(inputs.url_input)
@@ -1666,196 +1930,338 @@ def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str
         if inputs.uploaded_files_info:
             doc_analysis = "Document analysis results incorporated from uploaded files."
             
-        # Generate AI-enhanced recommendations
+        # Generate comprehensive AI-enhanced recommendations
         ai_recommendations = generate_ai_enhanced_recommendations(inputs, url_analysis, doc_analysis)
     except Exception as e:
         logger.warning(f"AI enhancement failed: {e}")
         ai_recommendations = "AI enhancement not available - using standard recommendations."
     
-    # Technical Specification Document (TSD)
+    # Technical Specification Document (TSD) - Enhanced
     tsd = f"""# Technical Specification Document (TSD)
 ## Azure Landing Zone Architecture - Enterprise Edition
 
-**Document Version:** 2.0 (AI-Enhanced)
+**Document Version:** 3.0 (AI-Enhanced with Intelligent Connectivity)
 **Date:** {timestamp}
-**Business Objective:** {inputs.business_objective or 'Not specified'}
+**Business Objective:** {inputs.business_objective or 'Enterprise cloud transformation with optimal connectivity'}
 
 ### Executive Summary
-This document outlines the technical specifications for implementing an Azure Landing Zone architecture based on comprehensive customer requirements analysis, including AI-powered insights and recommendations.
+This document outlines the technical specifications for implementing an enterprise-ready Azure Landing Zone architecture based on comprehensive AI-powered analysis of customer requirements, including intelligent service connectivity and architectural patterns.
+
+### AI-Powered Architecture Analysis
+**Architecture Pattern Identified:** {architecture_pattern}
+
+**Architectural Reasoning:**
+{ai_reasoning}
+
+**Connectivity Requirements:**
+{connectivity_requirements}
+
+**Security Considerations:**
+{security_considerations}
 
 ### Business Requirements Analysis
-- **Primary Objective:** {inputs.business_objective or 'Cost optimization and operational efficiency'}
-- **Industry:** {inputs.industry or 'General'}
-- **Regulatory Requirements:** {inputs.regulatory or 'Standard compliance'}
-- **Organization Structure:** {inputs.org_structure or 'Enterprise'}
-- **Governance Model:** {inputs.governance or 'Centralized with delegated permissions'}
+- **Primary Objective:** {inputs.business_objective or 'Cost optimization and operational efficiency with enterprise-grade reliability'}
+- **Industry:** {inputs.industry or 'Multi-industry applicable'}
+- **Regulatory Requirements:** {inputs.regulatory or 'Standard compliance with data protection'}
+- **Organization Structure:** {inputs.org_structure or 'Enterprise with distributed teams'}
+- **Governance Model:** {inputs.governance or 'Centralized with delegated permissions and policy enforcement'}
 
 ### Architecture Template Selection
 **Selected Template:** {template['template']['name']}
-**Justification:** Based on organizational size, complexity, and regulatory requirements.
+**Justification:** Based on organizational size, complexity, regulatory requirements, and AI analysis of requirements.
+
+### Service Architecture & Connectivity
+#### Selected Azure Services
+**Compute Services:** {', '.join(inputs.compute_services) if inputs.compute_services else 'None explicitly selected'}
+**Network Services:** {', '.join(inputs.network_services) if inputs.network_services else 'None explicitly selected'}
+**Database Services:** {', '.join(inputs.database_services) if inputs.database_services else 'None explicitly selected'}
+**Security Services:** {', '.join(inputs.security_services) if inputs.security_services else 'Standard security baseline'}
+**Analytics Services:** {', '.join(inputs.analytics_services) if inputs.analytics_services else 'None explicitly selected'}
+**Integration Services:** {', '.join(inputs.integration_services) if inputs.integration_services else 'None explicitly selected'}
+
+#### Service Connectivity Patterns
+The architecture implements intelligent connectivity patterns based on Azure best practices:
+
+1. **Web Tier Connectivity:** Application Gateway → App Services/VMs with load balancing
+2. **Data Tier Security:** Secure connections from compute services to databases with Key Vault integration
+3. **Network Security:** Firewall protection with hub-spoke VNet topology
+4. **Monitoring Integration:** Comprehensive telemetry from all services to Azure Monitor
+5. **DevOps Pipeline:** Automated deployment connectivity from DevOps services to target resources
 
 ### Core Architecture Components
-- **Identity & Access Management:** {inputs.identity or 'Azure Active Directory with hybrid integration'}
-- **Network Architecture:** {inputs.network_model or 'Hub-Spoke with Azure Virtual WAN'}
-- **Security Framework:** {inputs.security_posture or 'Zero Trust with defense in depth'}
-- **Connectivity Strategy:** {inputs.connectivity or 'Hybrid cloud with ExpressRoute'}
-- **Primary Workloads:** {inputs.workload or 'Multi-tier applications with microservices'}
-- **Monitoring & Observability:** {inputs.monitoring or 'Azure Monitor with Log Analytics'}
+- **Identity & Access Management:** {inputs.identity or 'Azure Active Directory with enterprise integration and conditional access'}
+- **Network Architecture:** {inputs.network_model or 'Hub-Spoke with intelligent routing and security zones'}
+- **Security Framework:** {inputs.security_posture or 'Zero Trust with comprehensive defense in depth'}
+- **Connectivity Strategy:** {inputs.connectivity or 'Hybrid cloud with ExpressRoute and intelligent traffic routing'}
+- **Primary Workloads:** {inputs.workload or 'Multi-tier applications with microservices and AI integration'}
+- **Monitoring & Observability:** {inputs.monitoring or 'Azure Monitor with AI-powered insights and automated alerting'}
 
 ### Enhanced Requirements Analysis
-{f"**Additional Context:** {inputs.free_text_input}" if inputs.free_text_input else "**Additional Context:** Standard requirements captured through structured inputs."}
+{f"**Customer Requirements:** {inputs.free_text_input[:1000]}..." if inputs.free_text_input else "**Customer Requirements:** Requirements captured through structured inputs with AI analysis."}
 
-{f"**URL Analysis Insights:** {url_analysis[:500]}..." if url_analysis else ""}
+{f"**URL Analysis Insights:** {url_analysis[:500]}..." if url_analysis else "**URL Analysis:** No external URL provided for analysis."}
 
-{f"**Document Analysis:** Document analysis completed on uploaded files." if inputs.uploaded_files_info else ""}
+{f"**Document Analysis:** Comprehensive analysis completed on {len(inputs.uploaded_files_info)} uploaded files." if inputs.uploaded_files_info else "**Document Analysis:** No documents uploaded for analysis."}
 
 ### AI-Powered Architecture Recommendations
-{ai_recommendations[:2000] if ai_recommendations else "Standard architecture recommendations applied."}
+{ai_recommendations[:2000] if ai_recommendations else "Enterprise-standard architecture patterns applied with intelligent service connectivity."}
 
 ### Compliance & Governance Framework
-- **Governance Model:** {inputs.governance or 'Centralized with delegated permissions'}
-- **Policy Framework:** Azure Policy for compliance enforcement
-- **Security Framework:** {inputs.security_posture or 'Zero Trust'} security model
+- **Governance Model:** {inputs.governance or 'Centralized governance with policy-driven automation'}
+- **Policy Framework:** Azure Policy for automated compliance enforcement
+- **Security Framework:** {inputs.security_posture or 'Zero Trust'} security model with continuous monitoring
+- **Cost Management:** Azure Cost Management integration with budget alerts and optimization recommendations
+
+### Implementation Roadmap
+1. **Phase 1:** Core infrastructure setup (networking, security, identity)
+2. **Phase 2:** Service deployment with intelligent connectivity
+3. **Phase 3:** Monitoring and governance implementation
+4. **Phase 4:** Optimization and scaling based on telemetry
 """
 
-    # High Level Design (HLD)
+    # High Level Design (HLD) - Enhanced
     hld = f"""# High Level Design (HLD)
-## Azure Landing Zone Implementation
+## Azure Landing Zone Implementation with Intelligent Connectivity
 
-**Document Version:** 1.0
+**Document Version:** 2.0 (AI-Enhanced)
 **Date:** {timestamp}
+**Architecture Pattern:** {architecture_pattern}
 
 ### Architecture Overview
-The proposed Azure Landing Zone follows the {template['template']['name']} pattern.
+The proposed Azure Landing Zone follows the {template['template']['name']} pattern with intelligent service connectivity and enterprise-grade security.
 
-### Management Group Structure
-"""
+### AI-Driven Service Selection
+The following services were selected based on comprehensive analysis:
+- **AI Reasoning:** {ai_reasoning[:500]}...
+- **Connectivity Pattern:** {connectivity_requirements[:300]}...
+- **Security Model:** {security_considerations[:300]}...
+
+### Management Group Structure"""
     
     for mg in template['template']['management_groups']:
-        hld += f"- **{mg}:** Management group for {mg.lower()} resources\n"
+        hld += f"- **{mg}:** Management group for {mg.lower()} resources with policy enforcement\n"
     
     hld += f"""
-### Subscription Strategy
-"""
+### Subscription Strategy"""
     
     for sub in template['template']['subscriptions']:
-        hld += f"- **{sub}:** Dedicated subscription for {sub.lower()} workloads\n"
+        hld += f"- **{sub}:** Dedicated subscription for {sub.lower()} workloads with cost management\n"
     
     hld += f"""
-### Network Architecture
-**Topology:** {inputs.network_model or 'Hub-Spoke'}
-- **Hub VNet:** Central connectivity and shared services
-- **Spoke VNets:** Workload-specific virtual networks
-- **Connectivity:** {inputs.connectivity or 'ExpressRoute and VPN Gateway'}
+### Network Architecture with Intelligent Connectivity
+**Topology:** {inputs.network_model or 'Hub-Spoke with intelligent routing'}
+- **Hub VNet:** Central connectivity hub with shared services and security controls
+- **Spoke VNets:** Workload-specific virtual networks with micro-segmentation
+- **Connectivity:** {inputs.connectivity or 'Hybrid connectivity with ExpressRoute and VPN Gateway'}
+- **Traffic Flow:** Intelligent traffic routing with Application Gateway and Load Balancers
+- **Security Zones:** Network segmentation with Azure Firewall and NSGs
+
+### Service Connectivity Architecture
+#### Web Tier Connectivity
+- Application Gateway provides SSL termination and web application firewall
+- Load balancers distribute traffic to compute services
+- CDN integration for global content delivery
+
+#### Data Tier Security
+- Secure connections from compute services to databases
+- Private endpoints for secure database access
+- Key Vault integration for connection string management
+
+#### Monitoring & Observability
+- Azure Monitor collects telemetry from all services
+- Application Insights provides application performance monitoring
+- Log Analytics workspace for centralized logging
 
 ### Security Architecture
-**Security Model:** {inputs.security_posture or 'Zero Trust'}
-- **Identity:** {inputs.identity or 'Azure Active Directory'} with conditional access
-- **Network Security:** Network Security Groups and Azure Firewall
-- **Data Protection:** {inputs.key_vault or 'Azure Key Vault'} for secrets management
-- **Threat Protection:** {inputs.threat_protection or 'Azure Security Center and Sentinel'}
+**Security Model:** {inputs.security_posture or 'Zero Trust with comprehensive defense'}
+- **Identity:** {inputs.identity or 'Azure Active Directory'} with conditional access and PIM
+- **Network Security:** Network Security Groups, Azure Firewall, and DDoS protection
+- **Data Protection:** {inputs.key_vault or 'Azure Key Vault'} for secrets, keys, and certificates
+- **Threat Protection:** {inputs.threat_protection or 'Azure Security Center, Sentinel, and Defender for Cloud'}
+- **Compliance:** Continuous compliance monitoring with Azure Policy
 
 ### Workload Architecture
-**Primary Workload:** {inputs.workload or 'Application Services'}
-- **Compute:** {AZURE_SERVICES_MAPPING.get(inputs.workload or 'appservices', {'name': 'Azure App Services'})['name']}
-- **Architecture Style:** {inputs.architecture_style or 'Microservices'}
-- **Scalability:** {inputs.scalability or 'Auto-scaling enabled'}
+**Primary Workload:** {inputs.workload or 'Multi-tier web applications'}
+- **Compute Strategy:** {', '.join(inputs.compute_services) if inputs.compute_services else 'Azure App Services with auto-scaling'}
+- **Architecture Style:** {inputs.architecture_style or 'Microservices with API gateway pattern'}
+- **Scalability:** {inputs.scalability or 'Auto-scaling enabled with performance monitoring'}
+- **High Availability:** Multi-zone deployment with disaster recovery
+
+### Integration & DevOps
+- **CI/CD Pipeline:** Azure DevOps with automated testing and deployment
+- **API Management:** Centralized API gateway for service integration
+- **Event-Driven Architecture:** Service Bus and Event Grid for decoupled communication
+- **Container Strategy:** Azure Kubernetes Service for containerized workloads
 """
 
-    # Low Level Design (LLD)
+    # Low Level Design (LLD) - Enhanced
     lld = f"""# Low Level Design (LLD)
-## Azure Landing Zone Technical Implementation
+## Azure Landing Zone Technical Implementation with Service Connectivity
 
-**Document Version:** 1.0
+**Document Version:** 2.0 (AI-Enhanced)
 **Date:** {timestamp}
+**Architecture Pattern:** {architecture_pattern}
+
+### Service Connectivity Matrix
+#### Implemented Connection Patterns:
+1. **Web Tier Flow:** Application Gateway → Load Balancer → Compute Services
+2. **Data Flow:** Compute Services → Database Services (via private endpoints)
+3. **Security Flow:** All services → Key Vault (for secrets and certificates)
+4. **Monitoring Flow:** All services → Azure Monitor → Log Analytics
+5. **Integration Flow:** API Management → Logic Apps → Service Bus
+6. **Network Flow:** VPN/ExpressRoute → Hub VNet → Spoke VNets
 
 ### Resource Configuration
 
-#### Management Groups
-"""
+#### Management Groups"""
     
     for i, mg in enumerate(template['template']['management_groups']):
         lld += f"""
 **{mg} Management Group:**
 - Management Group ID: mg-{mg.lower().replace(' ', '-')}
 - Parent: {template['template']['management_groups'][i-1] if i > 0 else 'Tenant Root'}
-- Applied Policies: Azure Policy assignments for {mg.lower()}
+- Applied Policies: Comprehensive Azure Policy assignments for {mg.lower()}
+- RBAC: Role-based access control with least privilege principles
 """
 
     lld += f"""
-#### Subscriptions
-"""
+#### Subscriptions with Cost Management"""
     
     for sub in template['template']['subscriptions']:
         lld += f"""
 **{sub} Subscription:**
-- Subscription Name: sub-{sub.lower().replace(' ', '-')}
-- Resource Groups: Multiple RGs based on workload segregation
-- RBAC: Custom roles and assignments
-- Budget: Cost management and alerting configured
+- Subscription ID: sub-{sub.lower().replace(' ', '-')}
+- Management Group: Appropriate management group assignment
+- Cost Center: {sub} department cost allocation
+- Budget Alerts: Automated budget monitoring and alerts
+- Resource Tagging: Mandatory tagging policy for cost tracking
 """
 
-    lld += f"""
-#### Network Configuration
+    # Add detailed service configurations
+    if inputs.network_services:
+        lld += f"""
+#### Network Services Configuration
+"""
+        for service in inputs.network_services:
+            if service in AZURE_SERVICES_MAPPING:
+                service_info = AZURE_SERVICES_MAPPING[service]
+                lld += f"""
+**{service_info['name']}:**
+- Resource Type: {service}
+- High Availability: Multi-zone deployment where applicable
+- Security: Network Security Groups and traffic filtering
+- Monitoring: Azure Monitor integration with custom metrics
+- Connectivity: Intelligent routing with health probes
+"""
 
-**Hub Virtual Network:**
-- VNet Name: vnet-hub-{inputs.network_model or 'spoke'}-001
+    # Continue with existing network configuration but enhanced
+    lld += f"""
+#### Network Configuration with Intelligent Connectivity
+
+**Hub Virtual Network (Enhanced):**
+- VNet Name: vnet-hub-{inputs.network_model or 'intelligent'}-001
 - Address Space: 10.0.0.0/16
 - Subnets:
   - GatewaySubnet: 10.0.0.0/24 (VPN/ExpressRoute Gateway)
-  - AzureFirewallSubnet: 10.0.1.0/24 (Azure Firewall)
-  - SharedServicesSubnet: 10.0.2.0/24 (Domain Controllers, etc.)
+  - AzureFirewallSubnet: 10.0.1.0/24 (Azure Firewall with threat intelligence)
+  - SharedServicesSubnet: 10.0.2.0/24 (Domain Controllers, monitoring)
+  - ApplicationGatewaySubnet: 10.0.3.0/24 (Application Gateway for web traffic)
 
-**Spoke Virtual Networks:**
+**Spoke Virtual Networks with Connectivity:**
 - Production Spoke: vnet-prod-{inputs.workload or 'app'}-001 (10.1.0.0/16)
+  - Web Tier: 10.1.1.0/24 (Application services)
+  - App Tier: 10.1.2.0/24 (Business logic)
+  - Data Tier: 10.1.3.0/24 (Database services with private endpoints)
 - Development Spoke: vnet-dev-{inputs.workload or 'app'}-001 (10.2.0.0/16)
+  - Similar segmentation with development-specific configurations
 
-#### Security Configuration
+**Intelligent Traffic Routing:**
+- User-Defined Routes for optimal traffic flow
+- Azure Firewall rules for security filtering
+- Application Gateway routing rules for web applications
+- Load balancer configurations for high availability
+"""
 
-**Azure Active Directory:**
-- Tenant: {inputs.org_structure or 'enterprise'}.onmicrosoft.com
-- Custom Domains: Configured as required
-- Conditional Access: {inputs.security_posture or 'Zero Trust'} policies
-- PIM: Privileged Identity Management for admin roles
+    if inputs.compute_services:
+        lld += f"""
+#### Compute Services Configuration
+"""
+        for service in inputs.compute_services:
+            if service in AZURE_SERVICES_MAPPING:
+                service_info = AZURE_SERVICES_MAPPING[service]
+                lld += f"""
+**{service_info['name']}:**
+- Resource Type: {service}
+- Auto-scaling: Enabled with performance-based triggers
+- Security: Managed identity and Key Vault integration
+- Monitoring: Application Insights and Azure Monitor
+- Connectivity: Load balancer integration with health checks
+- Backup: Automated backup configuration
+"""
+
+    if inputs.database_services:
+        lld += f"""
+#### Database Services Configuration
+"""
+        for service in inputs.database_services:
+            if service in AZURE_SERVICES_MAPPING:
+                service_info = AZURE_SERVICES_MAPPING[service]
+                lld += f"""
+**{service_info['name']}:**
+- Resource Type: {service}
+- High Availability: Geo-replication and automatic failover
+- Security: Private endpoints and encryption at rest/in transit
+- Backup: Point-in-time restore and geo-redundant backup
+- Connectivity: Secure connection strings via Key Vault
+- Performance: Query performance insights and optimization
+"""
+
+    lld += f"""
+#### Security Implementation Details
+**Identity and Access Management:**
+- Azure Active Directory with conditional access policies
+- Privileged Identity Management (PIM) for administrative access
+- Multi-factor authentication enforcement
+- Service principals with managed identities
 
 **Network Security:**
-- Azure Firewall: Central security appliance
-- NSGs: Network Security Groups on all subnets
-- UDRs: User Defined Routes for traffic steering
+- Azure Firewall with threat intelligence
+- Network Security Groups with micro-segmentation
+- DDoS protection standard
+- Private endpoints for PaaS services
 
-**Key Management:**
-- Key Vault: {inputs.key_vault or 'Azure Key Vault'} for certificates and secrets
-- Managed Identities: For secure service-to-service authentication
+**Data Protection:**
+- Azure Key Vault for secrets, keys, and certificates
+- Transparent Data Encryption (TDE) for databases
+- Azure Information Protection for data classification
+- Customer-managed keys where required
 
-#### Workload Configuration
+#### Monitoring and Alerting Configuration
+**Azure Monitor Setup:**
+- Central Log Analytics workspace
+- Custom dashboards for business metrics
+- Automated alert rules for critical events
+- Integration with ServiceNow/Teams for incident management
 
-**Primary Workload: {inputs.workload or 'Application Services'}**
-- Service: {AZURE_SERVICES_MAPPING.get(inputs.workload or 'appservices', {'name': 'Azure App Services'})['name']}
-- SKU: Production-grade tier
-- Scaling: {inputs.scalability or 'Auto-scaling based on CPU/memory'}
-- Monitoring: {inputs.monitoring or 'Azure Monitor'} with custom dashboards
+**Application Performance Monitoring:**
+- Application Insights for web applications
+- Custom telemetry and business events
+- Performance baselines and anomaly detection
+- End-to-end transaction tracing
 
 #### Operations Configuration
 
-**Monitoring and Alerting:**
-- Log Analytics Workspace: Central logging for all resources
-- Azure Monitor: Metrics and alerting
-- Application Insights: Application performance monitoring
-
 **Backup and Recovery:**
-- Azure Backup: {inputs.backup or 'Daily backups with 30-day retention'}
-- Site Recovery: Disaster recovery as needed
+- Azure Backup: {inputs.backup or 'Daily backups with geo-redundant storage'}
+- Site Recovery: Cross-region disaster recovery
+- Database backups: Automated with point-in-time restore
+- Recovery testing: Quarterly disaster recovery drills
 
 **Cost Management:**
-- Budget Alerts: Monthly budget monitoring
-- Cost Optimization: {inputs.cost_priority or 'Regular cost reviews and optimization'}
-
-#### Infrastructure as Code
-
-**IaC Tool:** {inputs.iac or 'Bicep/ARM Templates'}
-- Template Structure: Modular templates for each component
-- Deployment: CI/CD pipeline using Azure DevOps
-- Version Control: Git repository with proper branching strategy
+- Budget alerts and spending limits
+- Resource tagging for cost allocation
+- Azure Advisor recommendations
+- Regular cost optimization reviews
 """
 
     return {
