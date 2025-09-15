@@ -2081,7 +2081,7 @@ def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
 
 
 def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str]:
-    """Generate professional TSD, HLD, and LLD documentation with comprehensive AI enhancement"""
+    """Generate comprehensive enterprise-grade TSD, HLD, and LLD documentation (10+ pages)"""
     
     template = generate_architecture_template(inputs)
     timestamp = datetime.now().strftime("%Y-%m-%d")
@@ -2091,11 +2091,15 @@ def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str
     doc_analysis = ""
     ai_recommendations = ""
     
-    # Get AI analysis results
+    # Get comprehensive AI analysis results
     architecture_pattern = template.get("architecture_pattern", "Custom Architecture")
     connectivity_requirements = template.get("connectivity_requirements", "Standard Azure networking")
     security_considerations = template.get("security_considerations", "Standard security practices")
     ai_reasoning = template.get("ai_reasoning", "Standard architectural decisions applied")
+    scalability_design = template.get("scalability_design", "Standard scalability patterns")
+    operational_excellence = template.get("operational_excellence", "Standard monitoring and operations")
+    cost_optimization = template.get("cost_optimization", "Standard cost optimization")
+    ai_services = template.get("ai_services", [])
     
     try:
         if inputs.url_input:
@@ -2110,44 +2114,475 @@ def generate_professional_documentation(inputs: CustomerInputs) -> Dict[str, str
         logger.warning(f"AI enhancement failed: {e}")
         ai_recommendations = "AI enhancement not available - using standard recommendations."
     
-    # Technical Specification Document (TSD) - Enhanced
+    # Count total services
+    all_selected_services = []
+    all_selected_services.extend(inputs.compute_services or [])
+    all_selected_services.extend(inputs.network_services or [])
+    all_selected_services.extend(inputs.storage_services or [])
+    all_selected_services.extend(inputs.database_services or [])
+    all_selected_services.extend(inputs.security_services or [])
+    all_selected_services.extend(inputs.monitoring_services or [])
+    all_selected_services.extend(inputs.ai_services or [])
+    all_selected_services.extend(inputs.analytics_services or [])
+    all_selected_services.extend(inputs.integration_services or [])
+    all_selected_services.extend(inputs.devops_services or [])
+    all_selected_services.extend(inputs.backup_services or [])
+    all_selected_services.extend(ai_services)
+    
+    # Remove duplicates and get service details
+    unique_services = list(set(all_selected_services))
+    
+    # Technical Specification Document (TSD) - Enterprise Edition (10+ Pages)
     tsd = f"""# Technical Specification Document (TSD)
 ## Azure Landing Zone Architecture - Enterprise Edition
 
-**Document Version:** 3.0 (AI-Enhanced with Intelligent Connectivity)
+**Document Version:** 4.0 (AI-Enhanced Enterprise Architecture)
 **Date:** {timestamp}
-**Business Objective:** {inputs.business_objective or 'Enterprise cloud transformation with optimal connectivity'}
+**Classification:** Internal Use Only
+**Document Owner:** Azure Solutions Architecture Team
+**Review Cycle:** Quarterly
 
-### Executive Summary
-This document outlines the technical specifications for implementing an enterprise-ready Azure Landing Zone architecture based on comprehensive AI-powered analysis of customer requirements, including intelligent service connectivity and architectural patterns.
+---
 
-### AI-Powered Architecture Analysis
-**Architecture Pattern Identified:** {architecture_pattern}
+## Table of Contents
 
-**Architectural Reasoning:**
+1. [Executive Summary](#executive-summary)
+2. [Business Requirements Analysis](#business-requirements-analysis)
+3. [AI-Powered Architecture Analysis](#ai-powered-architecture-analysis)
+4. [Architecture Framework & Patterns](#architecture-framework--patterns)
+5. [Service Architecture & Connectivity](#service-architecture--connectivity)
+6. [Security Architecture](#security-architecture)
+7. [Network Architecture & Connectivity](#network-architecture--connectivity)
+8. [Data Architecture & Management](#data-architecture--management)
+9. [Scalability & Performance Design](#scalability--performance-design)
+10. [Operational Excellence Framework](#operational-excellence-framework)
+11. [Cost Optimization Strategy](#cost-optimization-strategy)
+12. [Compliance & Governance](#compliance--governance)
+13. [Risk Assessment & Mitigation](#risk-assessment--mitigation)
+14. [Implementation Roadmap](#implementation-roadmap)
+15. [Appendices](#appendices)
+
+---
+
+## 1. Executive Summary
+
+### 1.1 Document Purpose
+This Technical Specification Document (TSD) provides comprehensive technical specifications for implementing an enterprise-ready Azure Landing Zone architecture. The design is based on advanced AI-powered analysis of business requirements, Azure Well-Architected Framework principles, and industry best practices.
+
+### 1.2 Business Context
+**Primary Business Objective:** {inputs.business_objective or 'Enterprise digital transformation with cloud-native architecture'}
+
+The proposed architecture addresses critical business needs including:
+- Scalable and resilient cloud infrastructure
+- Enterprise-grade security and compliance
+- Operational efficiency and automation
+- Cost optimization and resource management
+- Future-proof technology stack
+
+### 1.3 Architecture Overview
+**Selected Architecture Pattern:** {architecture_pattern}
+
+The solution encompasses {len(unique_services)} carefully selected Azure services that form an integrated, enterprise-ready platform designed for:
+- High availability (99.9% uptime SLA)
+- Horizontal and vertical scalability
+- Security-first design principles
+- Operational excellence and monitoring
+- Cost-effective resource utilization
+
+### 1.4 Key Success Metrics
+- **Availability:** 99.9% uptime target
+- **Performance:** Sub-second response times for critical operations
+- **Security:** Zero successful security breaches
+- **Cost:** 15-20% reduction in operational costs compared to on-premises
+- **Compliance:** 100% adherence to regulatory requirements
+
+---
+
+## 2. Business Requirements Analysis
+
+### 2.1 Functional Requirements
+**Primary Business Objective:** {inputs.business_objective or 'Cost optimization and operational efficiency with enterprise-grade reliability'}
+
+**Industry Context:** {inputs.industry or 'Multi-industry applicable with focus on scalability and security'}
+
+**Regulatory Framework:** {inputs.regulatory or 'Standard compliance including data protection, privacy regulations, and industry-specific requirements'}
+
+### 2.2 Non-Functional Requirements
+
+#### 2.2.1 Performance Requirements
+- Response time: < 1 second for 95% of user requests
+- Throughput: Support for 10,000+ concurrent users
+- Data processing: Real-time analytics with < 100ms latency
+
+#### 2.2.2 Availability Requirements
+- System uptime: 99.9% (8.77 hours downtime per year)
+- Recovery time objective (RTO): < 4 hours
+- Recovery point objective (RPO): < 1 hour
+
+#### 2.2.3 Scalability Requirements
+- Horizontal scaling: Support for 10x traffic spikes
+- Geographic distribution: Multi-region deployment capability
+- Resource elasticity: Auto-scaling based on demand
+
+#### 2.2.4 Security Requirements
+- Data encryption: At rest and in transit
+- Identity management: Role-based access control (RBAC)
+- Network security: Zero-trust architecture
+- Compliance: GDPR, SOC 2, ISO 27001 readiness
+
+### 2.3 Organizational Context
+**Organization Structure:** {inputs.org_structure or 'Enterprise with distributed teams and centralized governance'}
+
+**Governance Model:** {inputs.governance or 'Centralized governance with delegated operational permissions'}
+
+**Operational Model:** {inputs.ops_model or 'DevOps with automated CI/CD pipelines and infrastructure as code'}
+
+---
+
+## 3. AI-Powered Architecture Analysis
+
+### 3.1 Intelligent Architecture Design
+The architecture design leverages advanced AI analysis to ensure optimal service selection and configuration based on specific business requirements.
+
+**AI Architecture Reasoning:**
 {ai_reasoning}
 
-**Connectivity Requirements:**
-{connectivity_requirements}
+### 3.2 Service Selection Rationale
+The AI analysis identified {len(unique_services)} critical Azure services based on:
 
-**Security Considerations:**
-{security_considerations}
+1. **Functional Requirements Mapping:** Direct correlation between business needs and technical capabilities
+2. **Integration Patterns:** Optimal service combinations for seamless connectivity
+3. **Performance Optimization:** Services selected for maximum efficiency and scalability
+4. **Cost-Benefit Analysis:** Balanced approach between functionality and cost
+5. **Future-Proofing:** Architecture designed for evolution and expansion
 
-### Business Requirements Analysis
-- **Primary Objective:** {inputs.business_objective or 'Cost optimization and operational efficiency with enterprise-grade reliability'}
-- **Industry:** {inputs.industry or 'Multi-industry applicable'}
-- **Regulatory Requirements:** {inputs.regulatory or 'Standard compliance with data protection'}
-- **Organization Structure:** {inputs.org_structure or 'Enterprise with distributed teams'}
-- **Governance Model:** {inputs.governance or 'Centralized with delegated permissions and policy enforcement'}
+### 3.3 Architecture Pattern Analysis
+**Identified Pattern:** {architecture_pattern}
 
-### Architecture Template Selection
-**Selected Template:** {template['template']['name']}
-**Justification:** Based on organizational size, complexity, regulatory requirements, and AI analysis of requirements.
+This pattern was selected because:
+- Aligns with business scalability requirements
+- Provides optimal separation of concerns
+- Enables independent service scaling
+- Supports microservices architecture principles
+- Facilitates DevOps and continuous deployment
 
-### Service Architecture & Connectivity
-#### Selected Azure Services
-**Compute Services:** {', '.join(inputs.compute_services) if inputs.compute_services else 'None explicitly selected'}
-**Network Services:** {', '.join(inputs.network_services) if inputs.network_services else 'None explicitly selected'}
+### 3.4 AI-Enhanced Recommendations
+{ai_recommendations if ai_recommendations else "Standard enterprise recommendations applied with focus on security, scalability, and operational excellence."}
+
+---
+
+## 4. Architecture Framework & Patterns
+
+### 4.1 Azure Well-Architected Framework Alignment
+
+#### 4.1.1 Reliability
+- Multi-region deployment strategy
+- Automated failover mechanisms
+- Health monitoring and alerting
+- Disaster recovery planning
+
+#### 4.1.2 Security
+- Zero-trust network architecture
+- Identity and access management
+- Data encryption and key management
+- Security monitoring and threat detection
+
+#### 4.1.3 Cost Optimization
+- Resource right-sizing
+- Reserved capacity planning
+- Automated cost monitoring
+- Continuous optimization
+
+#### 4.1.4 Operational Excellence
+- Infrastructure as Code (IaC)
+- Automated deployment pipelines
+- Comprehensive monitoring and logging
+- Performance optimization
+
+#### 4.1.5 Performance Efficiency
+- Auto-scaling configurations
+- Caching strategies
+- Content delivery optimization
+- Database performance tuning
+
+### 4.2 Connectivity Architecture
+**Connectivity Requirements:** {connectivity_requirements}
+
+The connectivity architecture implements:
+- Hub-and-spoke network topology
+- Private endpoint connectivity
+- API gateway patterns
+- Service mesh for microservices
+- Load balancing and traffic management
+
+---
+
+## 5. Service Architecture & Connectivity
+
+### 5.1 Selected Azure Services Portfolio
+
+#### 5.1.1 Compute Services
+**Selected:** {', '.join(inputs.compute_services) if inputs.compute_services else 'None explicitly selected (AI may recommend based on requirements)'}
+
+**AI-Recommended Compute:** {', '.join([s for s in ai_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'compute']) if ai_services else 'None recommended'}
+
+#### 5.1.2 Network Services
+**Selected:** {', '.join(inputs.network_services) if inputs.network_services else 'None explicitly selected (AI may recommend based on requirements)'}
+
+**AI-Recommended Network:** {', '.join([s for s in ai_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'network']) if ai_services else 'None recommended'}
+
+#### 5.1.3 Storage Services
+**Selected:** {', '.join(inputs.storage_services) if inputs.storage_services else 'None explicitly selected (AI may recommend based on requirements)'}
+
+**AI-Recommended Storage:** {', '.join([s for s in ai_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'storage']) if ai_services else 'None recommended'}
+
+#### 5.1.4 Database Services
+**Selected:** {', '.join(inputs.database_services) if inputs.database_services else 'None explicitly selected (AI may recommend based on requirements)'}
+
+**AI-Recommended Database:** {', '.join([s for s in ai_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'database']) if ai_services else 'None recommended'}
+
+#### 5.1.5 Security Services
+**Selected:** {', '.join(inputs.security_services) if inputs.security_services else 'None explicitly selected (AI may recommend based on requirements)'}
+
+**AI-Recommended Security:** {', '.join([s for s in ai_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'security']) if ai_services else 'None recommended'}
+
+### 5.2 Service Integration Patterns
+
+#### 5.2.1 API Management Strategy
+- Centralized API gateway for external access
+- Rate limiting and throttling policies
+- API versioning and lifecycle management
+- Security token validation and transformation
+
+#### 5.2.2 Data Flow Architecture
+- Event-driven messaging patterns
+- Asynchronous processing pipelines
+- Real-time streaming analytics
+- Batch processing workflows
+
+#### 5.2.3 Microservices Communication
+- Service-to-service authentication
+- Circuit breaker patterns
+- Retry and timeout policies
+- Distributed tracing and monitoring
+
+---
+
+## 6. Security Architecture
+
+### 6.1 Security Framework
+**Security Considerations:** {security_considerations}
+
+### 6.2 Zero Trust Architecture
+- Identity-based access controls
+- Least privilege principle
+- Continuous verification
+- Network micro-segmentation
+
+### 6.3 Data Protection Strategy
+- Encryption at rest using customer-managed keys
+- Encryption in transit with TLS 1.3
+- Data classification and labeling
+- Data loss prevention (DLP) policies
+
+### 6.4 Identity and Access Management
+- Azure Active Directory integration
+- Multi-factor authentication (MFA)
+- Privileged identity management (PIM)
+- Conditional access policies
+
+### 6.5 Network Security
+- Network security groups (NSGs)
+- Azure Firewall with threat intelligence
+- Web application firewall (WAF)
+- DDoS protection standard
+
+---
+
+## 7. Network Architecture & Connectivity
+
+### 7.1 Network Topology
+- Hub-and-spoke architecture
+- Virtual network peering
+- ExpressRoute connectivity (if applicable)
+- VPN gateway for hybrid scenarios
+
+### 7.2 Connectivity Matrix
+```
+Service Tier 1 (Web) → Service Tier 2 (Application) → Service Tier 3 (Data)
+     ↓                          ↓                           ↓
+Load Balancer           →  App Services            →   Database Services
+Application Gateway     →  Container Services      →   Storage Services
+CDN                     →  Function Apps           →   Cache Services
+```
+
+### 7.3 Private Connectivity
+- Private endpoints for PaaS services
+- Service endpoints where applicable
+- Private DNS zones for name resolution
+- Network policies for pod-to-pod communication
+
+---
+
+## 8. Data Architecture & Management
+
+### 8.1 Data Strategy
+- Data lifecycle management
+- Backup and archival policies
+- Data governance framework
+- Analytics and reporting strategy
+
+### 8.2 Database Design
+- Horizontal and vertical partitioning
+- Read replicas for performance
+- Cross-region replication
+- Automated backup strategies
+
+---
+
+## 9. Scalability & Performance Design
+
+### 9.1 Scalability Strategy
+**Scalability Design:** {scalability_design}
+
+### 9.2 Performance Optimization
+- Caching strategies (Redis, CDN)
+- Database performance tuning
+- Application performance monitoring
+- Resource optimization
+
+### 9.3 Auto-scaling Configuration
+- Horizontal pod autoscaling
+- Virtual machine scale sets
+- Application Gateway autoscaling
+- Database auto-scaling policies
+
+---
+
+## 10. Operational Excellence Framework
+
+### 10.1 Operations Strategy
+**Operational Excellence:** {operational_excellence}
+
+### 10.2 Monitoring and Observability
+- Comprehensive logging strategy
+- Application performance monitoring
+- Infrastructure monitoring
+- Security monitoring and alerting
+
+### 10.3 DevOps Integration
+- Infrastructure as Code (IaC)
+- CI/CD pipeline automation
+- Automated testing strategies
+- Configuration management
+
+---
+
+## 11. Cost Optimization Strategy
+
+### 11.1 Cost Management
+**Cost Optimization:** {cost_optimization}
+
+### 11.2 Resource Optimization
+- Right-sizing recommendations
+- Reserved capacity planning
+- Spot instance utilization
+- Resource scheduling automation
+
+### 11.3 Financial Operations (FinOps)
+- Cost allocation and chargeback
+- Budget monitoring and alerting
+- Cost optimization automation
+- Regular cost review processes
+
+---
+
+## 12. Compliance & Governance
+
+### 12.1 Governance Framework
+- Azure Policy implementation
+- Role-based access control (RBAC)
+- Resource tagging strategy
+- Compliance monitoring
+
+### 12.2 Regulatory Compliance
+- GDPR compliance measures
+- Industry-specific regulations
+- Data residency requirements
+- Audit and reporting capabilities
+
+---
+
+## 13. Risk Assessment & Mitigation
+
+### 13.1 Risk Analysis
+- Technical risks and mitigation strategies
+- Security risks and controls
+- Operational risks and procedures
+- Business continuity planning
+
+### 13.2 Disaster Recovery
+- Recovery time objectives (RTO)
+- Recovery point objectives (RPO)
+- Backup and restore procedures
+- Business continuity testing
+
+---
+
+## 14. Implementation Roadmap
+
+### 14.1 Phase 1: Foundation (Weeks 1-4)
+- Core infrastructure deployment
+- Network and security setup
+- Identity and access management
+- Basic monitoring implementation
+
+### 14.2 Phase 2: Application Services (Weeks 5-8)
+- Application tier deployment
+- Database setup and configuration
+- API gateway implementation
+- Performance optimization
+
+### 14.3 Phase 3: Advanced Features (Weeks 9-12)
+- Advanced monitoring and alerting
+- Disaster recovery testing
+- Performance tuning
+- Security hardening
+
+### 14.4 Phase 4: Production Readiness (Weeks 13-16)
+- Production deployment
+- Load testing and optimization
+- Documentation completion
+- Knowledge transfer
+
+---
+
+## 15. Appendices
+
+### Appendix A: Service Configuration Details
+[Detailed configuration parameters for each Azure service]
+
+### Appendix B: Network Diagrams
+[Comprehensive network topology diagrams]
+
+### Appendix C: Security Policies
+[Detailed security policy configurations]
+
+### Appendix D: Monitoring Configurations
+[Monitoring and alerting configuration details]
+
+### Appendix E: Cost Estimates
+[Detailed cost breakdown and projections]
+
+---
+
+**Document Control:**
+- Version: 4.0
+- Last Modified: {timestamp}
+- Next Review: {datetime.now().strftime("%Y-%m-%d")} + 3 months
+- Approved By: Azure Solutions Architecture Team
+
+"""
 **Database Services:** {', '.join(inputs.database_services) if inputs.database_services else 'None explicitly selected'}
 **Security Services:** {', '.join(inputs.security_services) if inputs.security_services else 'Standard security baseline'}
 **Analytics Services:** {', '.join(inputs.analytics_services) if inputs.analytics_services else 'None explicitly selected'}
@@ -2193,76 +2628,430 @@ The architecture implements intelligent connectivity patterns based on Azure bes
 4. **Phase 4:** Optimization and scaling based on telemetry
 """
 
-    # High Level Design (HLD) - Enhanced
+    # High Level Design (HLD) - Enterprise Edition (Comprehensive)
     hld = f"""# High Level Design (HLD)
-## Azure Landing Zone Implementation with Intelligent Connectivity
+## Azure Landing Zone Implementation - Enterprise Architecture
 
-**Document Version:** 2.0 (AI-Enhanced)
+**Document Version:** 4.0 (AI-Enhanced Enterprise Architecture)
 **Date:** {timestamp}
 **Architecture Pattern:** {architecture_pattern}
+**Classification:** Internal Use Only
 
-### Architecture Overview
-The proposed Azure Landing Zone follows the {template['template']['name']} pattern with intelligent service connectivity and enterprise-grade security.
+---
 
-### AI-Driven Service Selection
-The following services were selected based on comprehensive analysis:
-- **AI Reasoning:** {ai_reasoning[:500]}...
-- **Connectivity Pattern:** {connectivity_requirements[:300]}...
-- **Security Model:** {security_considerations[:300]}...
+## Table of Contents
 
-### Management Group Structure"""
+1. [Architecture Overview](#architecture-overview)
+2. [AI-Driven Architecture Decisions](#ai-driven-architecture-decisions)
+3. [Enterprise Framework Alignment](#enterprise-framework-alignment)
+4. [Management and Governance Structure](#management-and-governance-structure)
+5. [Network Architecture Design](#network-architecture-design)
+6. [Service Connectivity Patterns](#service-connectivity-patterns)
+7. [Security Architecture Framework](#security-architecture-framework)
+8. [Data Architecture and Flow](#data-architecture-and-flow)
+9. [Application Architecture Patterns](#application-architecture-patterns)
+10. [Scalability and Performance Design](#scalability-and-performance-design)
+11. [Operational Architecture](#operational-architecture)
+12. [Disaster Recovery and Business Continuity](#disaster-recovery-and-business-continuity)
+
+---
+
+## 1. Architecture Overview
+
+### 1.1 Executive Architecture Summary
+The proposed Azure Landing Zone implements a **{template['template']['name']}** pattern with enterprise-grade security, scalability, and operational excellence. The architecture leverages AI-driven service selection to ensure optimal resource allocation and connectivity patterns.
+
+### 1.2 Architecture Principles
+- **Cloud-Native First:** Leveraging Azure PaaS services for maximum efficiency
+- **Security by Design:** Implementing Zero Trust architecture principles
+- **Scalability and Elasticity:** Auto-scaling capabilities across all tiers
+- **Operational Excellence:** Comprehensive monitoring and automation
+- **Cost Optimization:** Resource right-sizing and intelligent cost management
+
+### 1.3 Key Success Metrics
+- **Availability Target:** 99.9% uptime (43.8 minutes downtime/month)
+- **Performance Target:** <2 second response time for 95% of requests
+- **Security Target:** Zero successful security breaches
+- **Scalability Target:** 10x traffic spike handling capability
+- **Cost Target:** 20% reduction in operational costs
+
+---
+
+## 2. AI-Driven Architecture Decisions
+
+### 2.1 AI Analysis Summary
+**Architecture Pattern Selected:** {architecture_pattern}
+
+**AI Reasoning (Detailed):**
+{ai_reasoning if ai_reasoning != "Standard architectural decisions applied" else "Enterprise architecture decisions based on industry best practices, Azure Well-Architected Framework principles, and scalability requirements. The selected pattern provides optimal separation of concerns, enables microservices architecture, and supports DevOps practices."}
+
+### 2.2 Service Selection Intelligence
+**Total Services Selected:** {len(unique_services)}
+
+The AI analysis identified the following service categories as critical:
+- **Compute Services:** {len([s for s in unique_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'compute'])} services
+- **Network Services:** {len([s for s in unique_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'network'])} services
+- **Security Services:** {len([s for s in unique_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'security'])} services
+- **Data Services:** {len([s for s in unique_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'database'])} services
+- **Monitoring Services:** {len([s for s in unique_services if s in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[s]['category'] == 'monitoring'])} services
+
+### 2.3 Connectivity Intelligence
+**Connectivity Requirements:** {connectivity_requirements}
+
+**Key Connectivity Patterns:**
+- Application Gateway → Compute Services (Load Distribution)
+- Compute Services → Database Services (Secure Data Access)
+- All Services → Key Vault (Secrets Management)
+- All Services → Azure Monitor (Telemetry Collection)
+- VNet Peering → Hub-Spoke Communication
+
+---
+
+## 3. Enterprise Framework Alignment
+
+### 3.1 Azure Well-Architected Framework
+The architecture fully aligns with the five pillars of the Azure Well-Architected Framework:
+
+#### 3.1.1 Reliability
+- **Multi-Region Strategy:** {("Active-Active" if len(unique_services) > 5 else "Active-Passive")} deployment
+- **Fault Tolerance:** Automated failover and recovery mechanisms
+- **Backup Strategy:** Automated backups with point-in-time recovery
+- **Health Monitoring:** Continuous health checks and alerting
+
+#### 3.1.2 Security
+- **Zero Trust Model:** Never trust, always verify principle
+- **Defense in Depth:** Multiple layers of security controls
+- **Identity Management:** Role-based access control (RBAC)
+- **Data Protection:** Encryption at rest and in transit
+
+#### 3.1.3 Cost Optimization
+- **Resource Optimization:** Right-sizing and auto-scaling
+- **Reserved Capacity:** Strategic use of reserved instances
+- **Cost Monitoring:** Real-time cost tracking and alerting
+- **FinOps Integration:** Financial operations practices
+
+#### 3.1.4 Operational Excellence
+- **Infrastructure as Code:** Automated deployments and configuration
+- **CI/CD Integration:** Continuous integration and deployment
+- **Monitoring and Alerting:** Proactive monitoring and incident response
+- **Documentation:** Comprehensive technical documentation
+
+#### 3.1.5 Performance Efficiency
+- **Auto-Scaling:** Dynamic resource allocation based on demand
+- **Caching Strategy:** Multi-tier caching for optimal performance
+- **CDN Integration:** Global content delivery network
+- **Performance Monitoring:** Real-time performance analytics
+
+---
+
+## 4. Management and Governance Structure
+
+### 4.1 Management Group Hierarchy"""
     
-    for mg in template['template']['management_groups']:
-        hld += f"- **{mg}:** Management group for {mg.lower()} resources with policy enforcement\n"
+    for i, mg in enumerate(template['template']['management_groups']):
+        hld += f"""
+**Level {i+1}: {mg} Management Group**
+- Purpose: {mg} resource management and policy enforcement
+- Scope: {"Enterprise-wide governance" if mg == "Root" else f"{mg} specific policies and controls"}
+- Policies: {"Root level policies for organization-wide compliance" if mg == "Root" else f"Specialized policies for {mg} workloads"}"""
     
     hld += f"""
-### Subscription Strategy"""
+
+### 4.2 Subscription Strategy"""
     
     for sub in template['template']['subscriptions']:
-        hld += f"- **{sub}:** Dedicated subscription for {sub.lower()} workloads with cost management\n"
+        hld += f"""
+**{sub} Subscription:**
+- Purpose: Dedicated environment for {sub.lower()} workloads
+- Billing: Separate cost center with chargeback capabilities
+- Resource Limits: Subscription-level quotas and limits
+- Governance: Subscription-specific policies and RBAC"""
     
     hld += f"""
-### Network Architecture with Intelligent Connectivity
-**Topology:** {inputs.network_model or 'Hub-Spoke with intelligent routing'}
-- **Hub VNet:** Central connectivity hub with shared services and security controls
-- **Spoke VNets:** Workload-specific virtual networks with micro-segmentation
-- **Connectivity:** {inputs.connectivity or 'Hybrid connectivity with ExpressRoute and VPN Gateway'}
-- **Traffic Flow:** Intelligent traffic routing with Application Gateway and Load Balancers
-- **Security Zones:** Network segmentation with Azure Firewall and NSGs
 
-### Service Connectivity Architecture
-#### Web Tier Connectivity
-- Application Gateway provides SSL termination and web application firewall
-- Load balancers distribute traffic to compute services
-- CDN integration for global content delivery
+### 4.3 Resource Organization
+- **Naming Convention:** Standardized naming following Azure best practices
+- **Tagging Strategy:** Cost center, environment, application, and owner tags
+- **Resource Groups:** Logical grouping by application lifecycle
+- **Access Control:** Role-based access control (RBAC) at appropriate scopes
 
-#### Data Tier Security
-- Secure connections from compute services to databases
+---
+
+## 5. Network Architecture Design
+
+### 5.1 Network Topology
+**Network Model:** {inputs.network_model or 'Hub-Spoke with intelligent routing and security'}
+
+#### 5.1.1 Hub VNet Design
+- **Address Space:** 10.0.0.0/16 (65,536 addresses)
+- **Subnets:**
+  - Gateway Subnet: 10.0.1.0/27 (32 addresses)
+  - Azure Firewall Subnet: 10.0.2.0/26 (64 addresses)
+  - Shared Services Subnet: 10.0.3.0/24 (256 addresses)
+  - Management Subnet: 10.0.4.0/24 (256 addresses)
+
+#### 5.1.2 Spoke VNet Design
+- **Production Spoke:** 10.1.0.0/16
+- **Development Spoke:** 10.2.0.0/16
+- **Testing Spoke:** 10.3.0.0/16
+
+### 5.2 Connectivity Architecture
+**Connectivity Type:** {inputs.connectivity or 'Hybrid connectivity with ExpressRoute and VPN Gateway backup'}
+
+- **ExpressRoute:** Primary connectivity for predictable performance
+- **VPN Gateway:** Backup connectivity and site-to-site connections
+- **Private Endpoints:** Secure PaaS service connectivity
+- **Service Endpoints:** Additional PaaS connectivity option
+
+### 5.3 Traffic Flow Design
+```
+Internet → Application Gateway → Internal Load Balancer → Compute Services
+                    ↓
+                Azure Firewall → Hub VNet → Spoke VNets
+                    ↓
+            Private Endpoints → Database Services
+```
+
+### 5.4 DNS Strategy
+- **Private DNS Zones:** Internal name resolution
+- **Azure DNS:** External domain management
+- **Conditional Forwarding:** Hybrid DNS resolution
+- **DNS Security:** DNS filtering and protection
+
+---
+
+## 6. Service Connectivity Patterns
+
+### 6.1 Web Tier Connectivity
+**Pattern:** Front Door → Application Gateway → Web Services
+
+#### 6.1.1 External Connectivity
+- Azure Front Door for global load balancing
+- Application Gateway for regional load balancing
+- SSL/TLS termination at Application Gateway
+- Web Application Firewall (WAF) protection
+
+#### 6.1.2 Internal Load Balancing
+- Internal Load Balancer for backend services
+- Health probes and automatic failover
+- Session affinity where required
+- Cross-zone load distribution
+
+### 6.2 Application Tier Connectivity
+**Pattern:** API Gateway → Application Services → Integration Services
+
+#### 6.2.1 API Management
+- Centralized API gateway for external access
+- Rate limiting and throttling policies
+- API versioning and lifecycle management
+- Developer portal and documentation
+
+#### 6.2.2 Service-to-Service Communication
+- Private connectivity between services
+- Service discovery and registration
+- Circuit breaker patterns
+- Retry and timeout policies
+
+### 6.3 Data Tier Connectivity
+**Pattern:** Application Services → Private Endpoints → Database Services
+
+#### 6.3.1 Database Connectivity
 - Private endpoints for secure database access
-- Key Vault integration for connection string management
+- Connection pooling and management
+- Read/write split for performance optimization
+- Backup and disaster recovery connectivity
 
-#### Monitoring & Observability
-- Azure Monitor collects telemetry from all services
-- Application Insights provides application performance monitoring
-- Log Analytics workspace for centralized logging
+#### 6.3.2 Data Integration
+- Event-driven data synchronization
+- ETL/ELT pipelines for data movement
+- Real-time streaming analytics
+- Batch processing workflows
 
-### Security Architecture
-**Security Model:** {inputs.security_posture or 'Zero Trust with comprehensive defense'}
-- **Identity:** {inputs.identity or 'Azure Active Directory'} with conditional access and PIM
-- **Network Security:** Network Security Groups, Azure Firewall, and DDoS protection
-- **Data Protection:** {inputs.key_vault or 'Azure Key Vault'} for secrets, keys, and certificates
-- **Threat Protection:** {inputs.threat_protection or 'Azure Security Center, Sentinel, and Defender for Cloud'}
-- **Compliance:** Continuous compliance monitoring with Azure Policy
+---
 
-### Workload Architecture
-**Primary Workload:** {inputs.workload or 'Multi-tier web applications'}
-- **Compute Strategy:** {', '.join(inputs.compute_services) if inputs.compute_services else 'Azure App Services with auto-scaling'}
-- **Architecture Style:** {inputs.architecture_style or 'Microservices with API gateway pattern'}
-- **Scalability:** {inputs.scalability or 'Auto-scaling enabled with performance monitoring'}
-- **High Availability:** Multi-zone deployment with disaster recovery
+## 7. Security Architecture Framework
 
-### Integration & DevOps
+### 7.1 Security Model
+**Security Posture:** {inputs.security_posture or 'Zero Trust with comprehensive defense-in-depth strategy'}
+
+### 7.2 Identity and Access Management
+**Identity Provider:** {inputs.identity or 'Azure Active Directory with hybrid integration'}
+
+#### 7.2.1 Authentication
+- Multi-factor authentication (MFA) mandatory
+- Conditional access policies
+- Privileged Identity Management (PIM)
+- Identity protection and risk detection
+
+#### 7.2.2 Authorization
+- Role-based access control (RBAC)
+- Attribute-based access control (ABAC)
+- Just-in-time (JIT) access
+- Least privilege principle
+
+### 7.3 Network Security
+- **Azure Firewall:** Centralized network security
+- **Network Security Groups:** Subnet-level protection
+- **Application Security Groups:** Application-level protection
+- **DDoS Protection:** Distributed denial of service protection
+
+### 7.4 Data Protection
+**Key Management:** {inputs.key_vault or 'Azure Key Vault with customer-managed keys'}
+
+- Data encryption at rest and in transit
+- Key rotation and lifecycle management
+- Data classification and labeling
+- Data loss prevention (DLP)
+
+### 7.5 Threat Protection
+**Threat Detection:** {inputs.threat_protection or 'Azure Security Center, Sentinel, and Defender for Cloud'}
+
+- Security Information and Event Management (SIEM)
+- Security Orchestration, Automation, and Response (SOAR)
+- Threat intelligence integration
+- Incident response procedures
+
+---
+
+## 8. Data Architecture and Flow
+
+### 8.1 Data Strategy
+- **Data Lake Architecture:** Centralized data storage and analytics
+- **Data Mesh Principles:** Distributed data ownership and governance
+- **Real-time Analytics:** Stream processing and event-driven architecture
+- **Batch Processing:** Scheduled data processing and ETL workflows
+
+### 8.2 Data Flow Patterns
+```
+Source Systems → Event Hubs → Stream Analytics → Data Lake
+                      ↓
+                 Real-time Dashboards
+                      ↓
+                 Machine Learning Models
+```
+
+### 8.3 Data Governance
+- Data catalog and lineage tracking
+- Data quality monitoring and validation
+- Privacy and compliance controls
+- Master data management
+
+---
+
+## 9. Application Architecture Patterns
+
+### 9.1 Application Model
+**Primary Workload:** {inputs.workload or 'Cloud-native microservices applications'}
+**Architecture Style:** {inputs.architecture_style or 'Microservices with event-driven communication'}
+
+### 9.2 Compute Strategy
+**Selected Compute Services:** {', '.join(inputs.compute_services) if inputs.compute_services else 'Azure App Services with container support'}
+
+#### 9.2.1 Container Strategy
+- Container registry for image management
+- Kubernetes orchestration for microservices
+- Service mesh for advanced networking
+- GitOps for declarative deployments
+
+#### 9.2.2 Serverless Integration
+- Function Apps for event processing
+- Logic Apps for workflow automation
+- Event Grid for event routing
+- Service Bus for reliable messaging
+
+### 9.3 Integration Patterns
+- API-first design approach
+- Event-driven architecture
+- Choreography vs. orchestration patterns
+- Asynchronous communication patterns
+
+---
+
+## 10. Scalability and Performance Design
+
+### 10.1 Scalability Strategy
+**Scalability Design:** {scalability_design}
+
+#### 10.1.1 Horizontal Scaling
+- Kubernetes Horizontal Pod Autoscaler (HPA)
+- Virtual Machine Scale Sets (VMSS)
+- Application Gateway auto-scaling
+- Database read replicas
+
+#### 10.1.2 Vertical Scaling
+- Dynamic resource allocation
+- Compute optimization based on workload
+- Memory and CPU scaling policies
+- Storage performance scaling
+
+### 10.2 Performance Optimization
+- **Caching Strategy:** Multi-tier caching with Redis and CDN
+- **Database Optimization:** Query optimization and indexing
+- **Content Delivery:** Global CDN for static content
+- **Load Testing:** Regular performance testing and optimization
+
+### 10.3 Capacity Planning
+- Resource utilization monitoring
+- Growth projection and planning
+- Cost-performance optimization
+- Proactive scaling policies
+
+---
+
+## 11. Operational Architecture
+
+### 11.1 Operations Strategy
+**Operational Excellence:** {operational_excellence}
+
+### 11.2 DevOps Integration
 - **CI/CD Pipeline:** Azure DevOps with automated testing and deployment
+- **Infrastructure as Code:** ARM templates, Bicep, or Terraform
+- **Configuration Management:** Automated configuration and drift detection
+- **Release Management:** Blue-green and canary deployment strategies
+
+### 11.3 Monitoring and Observability
+- **Application Performance Monitoring:** Application Insights
+- **Infrastructure Monitoring:** Azure Monitor and Log Analytics
+- **Security Monitoring:** Azure Sentinel and Security Center
+- **Business Metrics:** Custom dashboards and KPI tracking
+
+### 11.4 Maintenance and Support
+- Automated patching and updates
+- Backup verification and testing
+- Performance tuning and optimization
+- Capacity planning and forecasting
+
+---
+
+## 12. Disaster Recovery and Business Continuity
+
+### 12.1 Business Continuity Strategy
+- **Recovery Time Objective (RTO):** 4 hours maximum
+- **Recovery Point Objective (RPO):** 1 hour maximum
+- **Business Impact Analysis:** Critical vs. non-critical systems
+- **Disaster Recovery Testing:** Quarterly DR tests and validation
+
+### 12.2 Backup and Recovery
+- Automated backup schedules
+- Cross-region backup replication
+- Point-in-time recovery capabilities
+- Backup verification and testing
+
+### 12.3 High Availability Design
+- Multi-zone deployment strategy
+- Automated failover mechanisms
+- Load balancing and traffic distribution
+- Health monitoring and alerting
+
+---
+
+**Document Control:**
+- Version: 4.0
+- Last Modified: {timestamp}
+- Next Review: Quarterly
+- Approved By: Enterprise Architecture Review Board
+
+"""
 - **API Management:** Centralized API gateway for service integration
 - **Event-Driven Architecture:** Service Bus and Event Grid for decoupled communication
 - **Container Strategy:** Azure Kubernetes Service for containerized workloads
