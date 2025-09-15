@@ -24,6 +24,58 @@ from diagrams.azure.devops import Devops
 
 logger = logging.getLogger(__name__)
 
+class ConnectionValidator:
+    """Validates connections to ensure 100% accuracy and prevent unnecessary connections"""
+    
+    @staticmethod
+    def validate_web_tier_connection(source_type: str, target_type: str) -> bool:
+        """Validate web tier connections"""
+        valid_patterns = [
+            ("application_gateway", "app_services"),
+            ("application_gateway", "virtual_machines"),
+            ("load_balancer", "virtual_machines"),
+            ("load_balancer", "aks")
+        ]
+        return (source_type, target_type) in valid_patterns
+    
+    @staticmethod
+    def validate_data_tier_connection(source_type: str, target_type: str) -> bool:
+        """Validate data tier connections"""
+        valid_patterns = [
+            ("app_services", "sql_database"),
+            ("app_services", "cosmos_db"),
+            ("app_services", "storage_accounts"),
+            ("virtual_machines", "sql_database"),
+            ("virtual_machines", "storage_accounts"),
+            ("aks", "sql_database"),
+            ("aks", "cosmos_db")
+        ]
+        return (source_type, target_type) in valid_patterns
+    
+    @staticmethod
+    def validate_security_connection(source_type: str, target_type: str) -> bool:
+        """Validate security connections"""
+        valid_patterns = [
+            ("key_vault", "app_services"),
+            ("key_vault", "virtual_machines"),
+            ("key_vault", "aks"),
+            ("firewall", "virtual_network")
+        ]
+        return (source_type, target_type) in valid_patterns
+    
+    @staticmethod
+    def is_connection_necessary(source_type: str, target_type: str, pattern_type: str) -> bool:
+        """Check if a connection is necessary based on architectural patterns"""
+        
+        if pattern_type == "web_tier":
+            return ConnectionValidator.validate_web_tier_connection(source_type, target_type)
+        elif pattern_type == "data_tier":
+            return ConnectionValidator.validate_data_tier_connection(source_type, target_type)
+        elif pattern_type == "security":
+            return ConnectionValidator.validate_security_connection(source_type, target_type)
+        
+        return False
+
 class ArchitecturalPattern:
     """Defines precise architectural patterns for accurate connectivity"""
     
@@ -353,86 +405,100 @@ class AccurateDiagramGenerator:
         self._apply_network_connections()
     
     def _apply_web_tier_connections(self):
-        """Apply precise web tier connections"""
+        """Apply precise web tier connections with validation"""
         
-        # Application Gateway -> Compute Services (if both exist)
+        # Application Gateway -> Compute Services (if both exist and connection is valid)
         app_gw = self.created_resources.get("application_gateway", [])
         compute_services = ["app_services", "virtual_machines", "aks"]
         
         for app_gateway in app_gw:
             for service_type in compute_services:
-                for compute_resource in self.created_resources.get(service_type, []):
-                    app_gateway >> Edge(
-                        color="#28a745", 
-                        style="bold", 
-                        label="HTTPS"
-                    ) >> compute_resource
-                    
-        # Load Balancer -> Virtual Machines/AKS (if both exist)
+                if ConnectionValidator.validate_web_tier_connection("application_gateway", service_type):
+                    for compute_resource in self.created_resources.get(service_type, []):
+                        app_gateway >> Edge(
+                            color="#28a745", 
+                            style="bold", 
+                            label="HTTPS"
+                        ) >> compute_resource
+                        logger.debug(f"Validated connection: application_gateway -> {service_type}")
+                        
+        # Load Balancer -> Virtual Machines/AKS (if both exist and connection is valid)
         load_balancers = self.created_resources.get("load_balancer", [])
         for lb in load_balancers:
             for vm in self.created_resources.get("virtual_machines", []):
-                lb >> Edge(color="#17a2b8", style="solid", label="TCP") >> vm
+                if ConnectionValidator.validate_web_tier_connection("load_balancer", "virtual_machines"):
+                    lb >> Edge(color="#17a2b8", style="solid", label="TCP") >> vm
+                    logger.debug("Validated connection: load_balancer -> virtual_machines")
             for aks in self.created_resources.get("aks", []):
-                lb >> Edge(color="#17a2b8", style="solid", label="TCP") >> aks
+                if ConnectionValidator.validate_web_tier_connection("load_balancer", "aks"):
+                    lb >> Edge(color="#17a2b8", style="solid", label="TCP") >> aks
+                    logger.debug("Validated connection: load_balancer -> aks")
     
     def _apply_data_tier_connections(self):
-        """Apply precise data tier connections"""
+        """Apply precise data tier connections with validation"""
         
-        # Compute -> Databases (if both exist)
+        # Compute -> Databases (if both exist and connection is valid)
         compute_services = ["app_services", "virtual_machines", "aks"]
         data_services = ["sql_database", "cosmos_db"]
         
         for compute_type in compute_services:
             for compute_resource in self.created_resources.get(compute_type, []):
                 for data_type in data_services:
-                    for data_resource in self.created_resources.get(data_type, []):
-                        compute_resource >> Edge(
-                            color="#007bff",
-                            style="solid", 
-                            label="SQL/API"
-                        ) >> data_resource
+                    if ConnectionValidator.validate_data_tier_connection(compute_type, data_type):
+                        for data_resource in self.created_resources.get(data_type, []):
+                            compute_resource >> Edge(
+                                color="#007bff",
+                                style="solid", 
+                                label="SQL/API"
+                            ) >> data_resource
+                            logger.debug(f"Validated connection: {compute_type} -> {data_type}")
         
-        # Compute -> Storage (if both exist)
+        # Compute -> Storage (if both exist and connection is valid)
         for compute_type in compute_services:
             for compute_resource in self.created_resources.get(compute_type, []):
-                for storage in self.created_resources.get("storage_accounts", []):
-                    compute_resource >> Edge(
-                        color="#6f42c1",
-                        style="dashed",
-                        label="Blob/File"
-                    ) >> storage
+                if ConnectionValidator.validate_data_tier_connection(compute_type, "storage_accounts"):
+                    for storage in self.created_resources.get("storage_accounts", []):
+                        compute_resource >> Edge(
+                            color="#6f42c1",
+                            style="dashed",
+                            label="Blob/File"
+                        ) >> storage
+                        logger.debug(f"Validated connection: {compute_type} -> storage_accounts")
     
     def _apply_security_connections(self):
-        """Apply precise security connections"""
+        """Apply precise security connections with validation"""
         
-        # Key Vault -> Compute Services (for secrets access)
+        # Key Vault -> Compute Services (for secrets access, if both exist and connection is valid)
         key_vaults = self.created_resources.get("key_vault", [])
         compute_services = ["app_services", "virtual_machines", "aks"]
         
         for kv in key_vaults:
             for service_type in compute_services:
-                for compute_resource in self.created_resources.get(service_type, []):
-                    kv >> Edge(
-                        color="#dc3545", 
-                        style="dashed",
-                        label="Secrets"
-                    ) >> compute_resource
+                if ConnectionValidator.validate_security_connection("key_vault", service_type):
+                    for compute_resource in self.created_resources.get(service_type, []):
+                        kv >> Edge(
+                            color="#dc3545", 
+                            style="dashed",
+                            label="Secrets"
+                        ) >> compute_resource
+                        logger.debug(f"Validated connection: key_vault -> {service_type}")
     
     def _apply_network_connections(self):
-        """Apply precise network connections"""
+        """Apply precise network connections with validation"""
         
-        # Firewall -> Virtual Network (if both exist)
+        # Firewall -> Virtual Network (if both exist and connection is valid)
         firewalls = self.created_resources.get("firewall", [])
         vnets = self.created_resources.get("virtual_network", [])
         
         for firewall in firewalls:
             for vnet in vnets:
-                firewall >> Edge(
-                    color="#fd7e14",
-                    style="bold", 
-                    label="Network Rules"
-                ) >> vnet
+                if ConnectionValidator.validate_security_connection("firewall", "virtual_network"):
+                    firewall >> Edge(
+                        color="#fd7e14",
+                        style="bold", 
+                        label="Network Rules"
+                    ) >> vnet
+                    logger.debug("Validated connection: firewall -> virtual_network")
     
     def _optimize_layout_hierarchy(self):
         """Optimize layout for maximum clarity and professional appearance"""

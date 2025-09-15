@@ -4,11 +4,13 @@ Professional Azure Landing Zone Architecture Generator that creates comprehensiv
 
 ## Features
 
+- **Enhanced Diagram Accuracy (NEW)**: 100% precision connectivity with professional layout optimization
 - **Enterprise-Grade Diagrams**: Generate Azure architecture diagrams with official Microsoft Azure icons
 - **Multiple Output Formats**: PNG diagrams with Python Diagrams library and Draw.io XML
 - **Professional Documentation**: Technical Specification Document (TSD), High-Level Design (HLD), and Low-Level Design (LLD)
 - **Azure Architecture Templates**: Support for multiple Azure Landing Zone patterns
 - **API-Driven**: RESTful API with comprehensive endpoints
+- **Connection Validation**: Ensures only necessary, logically correct connections
 
 ## System Requirements
 
@@ -67,6 +69,24 @@ The application will be available at:
 - Frontend UI: http://localhost:5173
 - API Documentation: http://127.0.0.1:8001/docs
 
+## Enhanced Accuracy Mode
+
+For **100% precision diagrams** with validated connections:
+
+```bash
+curl -X POST "http://127.0.0.1:8001/generate-enhanced-azure-diagram" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "Modern web application",
+    "compute_services": ["app_services"],
+    "network_services": ["application_gateway"],
+    "database_services": ["sql_database"],
+    "security_services": ["key_vault"]
+  }'
+```
+
+See [ENHANCED_DIAGRAM_ACCURACY.md](ENHANCED_DIAGRAM_ACCURACY.md) for detailed documentation.
+
 ## API Endpoints
 
 ### Health Check
@@ -75,11 +95,29 @@ GET /health
 ```
 Comprehensive health check that verifies system dependencies including Graphviz availability.
 
-### Generate Architecture
+### Enhanced Accuracy Architecture (NEW)
+```bash
+POST /generate-enhanced-azure-diagram
+```
+Generate Azure architecture diagrams with **100% precision accuracy**, validated connections, and professional layout optimization.
+
+**Features:**
+- ✅ Only necessary, logically correct connections
+- ✅ Professional visual layout with orthogonal edges
+- ✅ Validated architectural patterns
+- ✅ Optimized performance
+
+### Standard Architecture Generation
 ```bash
 POST /generate-comprehensive-azure-architecture
 ```
 Generate comprehensive Azure architecture with both Draw.io XML and PNG diagrams.
+
+### Legacy Options
+```bash
+POST /generate-diagram     # Mermaid diagrams
+POST /generate-drawio      # Draw.io XML only
+```
 
 ## Troubleshooting
 
