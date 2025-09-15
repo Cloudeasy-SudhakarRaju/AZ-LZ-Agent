@@ -518,7 +518,9 @@ def analyze_free_text_requirements(free_text: str) -> dict:
 
         2. INTELLIGENT SERVICE SELECTION:
            - Select ONLY services that are truly needed for the specific requirement
+           - DO NOT include common services like virtual_machines, virtual_network, storage_accounts, or key_vault by default
            - DO NOT include random or default services unless they are justified by the requirement
+           - For minimal requirements, provide minimal service sets - avoid over-engineering
            - For each service selected, provide clear architectural reasoning
            - Consider service dependencies and integration patterns
            - Ensure services work together as a cohesive architectural solution
@@ -572,25 +574,29 @@ def analyze_free_text_requirements(free_text: str) -> dict:
         9. "needs_confirmation" - Set to true if clarification is needed from the user
         10. "suggested_additions" - Additional services or patterns to consider for enhancement
 
-        EXAMPLE FOR "I need a scalable e-commerce platform with microservices architecture":
+        EXAMPLE APPROACH - DO NOT COPY THIS LIST, analyze the actual requirement:
+        For requirement "I need a simple web application with database":
         {{
-          "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "redis", "service_bus", "api_management", "key_vault", "azure_monitor", "log_analytics", "application_insights", "storage_accounts", "cdn", "container_registry"],
-          "reasoning": "Designed a comprehensive microservices-based e-commerce platform using Azure Kubernetes Service (AKS) as the container orchestration platform for scalable microservices. Application Gateway provides SSL termination, web application firewall, and load balancing across AKS nodes. Virtual Network ensures secure communication between services with network segmentation. Cosmos DB serves as the primary database for product catalog and user data with global distribution capabilities. Redis provides high-performance caching for session management and frequently accessed data. Service Bus enables reliable asynchronous communication between microservices. API Management provides centralized API gateway functionality with rate limiting, authentication, and API versioning. Key Vault securely manages secrets, certificates, and encryption keys. Comprehensive monitoring stack with Azure Monitor, Log Analytics, and Application Insights provides observability across the entire platform. Storage Accounts handle static assets and file uploads. CDN improves global performance for static content delivery. Container Registry stores and manages container images for the microservices.",
-          "architecture_pattern": "Cloud-native microservices architecture with event-driven communication, implementing Domain-Driven Design principles with separate bounded contexts for user management, product catalog, order processing, and payment services",
-          "connectivity_requirements": "Application Gateway -> AKS Ingress -> Microservices, Service Bus for async communication, API Management for external APIs, Private endpoints for databases, VNet integration for all services",
-          "security_considerations": "Zero Trust network model with NSGs, private endpoints for data services, Key Vault integration for secrets, Application Gateway WAF for web protection, Azure AD integration for authentication, RBAC for authorization",
-          "scalability_design": "Horizontal pod autoscaling in AKS, Cosmos DB auto-scaling, Redis clustering, Application Gateway auto-scaling, CDN for global content delivery",
-          "operational_excellence": "Centralized logging with Log Analytics, distributed tracing with Application Insights, automated deployment with Container Registry and AKS, health checks and monitoring alerts",
-          "cost_optimization": "AKS spot instances for non-critical workloads, Cosmos DB reserved capacity, appropriate storage tiers, CDN for reduced bandwidth costs",
+          "services": ["app_services", "sql_database"],
+          "reasoning": "Selected App Services for hosting the web application as it provides managed hosting with automatic scaling capabilities. SQL Database chosen for relational data storage with built-in high availability and backup features. These two services form a complete solution for the stated simple web application requirement without unnecessary complexity.",
+          "architecture_pattern": "Simple two-tier web application architecture with presentation layer and data layer",
+          "connectivity_requirements": "App Service connects to SQL Database via connection string with SSL encryption",
+          "security_considerations": "SQL Database configured with firewall rules, App Service uses managed identity for database access",
+          "scalability_design": "App Service auto-scaling based on CPU/memory, SQL Database can scale compute and storage independently",
+          "operational_excellence": "Built-in monitoring for both services, automated backups for SQL Database",
+          "cost_optimization": "Use appropriate service tiers based on expected load, SQL Database DTU-based pricing for predictable workloads",
           "needs_confirmation": false,
-          "suggested_additions": ["Azure Front Door for global load balancing", "Azure DevOps for CI/CD pipeline", "Azure Backup for data protection"]
+          "suggested_additions": ["Azure Monitor for enhanced monitoring", "Application Gateway for advanced routing if needed"]
         }}
 
         CRITICAL REQUIREMENTS:
+        - ABSOLUTELY DO NOT include default or commonly used services unless explicitly required
+        - DO NOT include virtual_machines, virtual_network, storage_accounts, or key_vault unless the requirement specifically needs them
         - ONLY suggest services that are specifically needed for the stated requirement
+        - If the requirement is minimal, suggest minimal services - do not over-engineer
         - Provide detailed architectural reasoning for every service selection
         - Ensure all services work together as an integrated solution
-        - Consider enterprise-grade non-functional requirements (security, scalability, monitoring)
+        - Consider enterprise-grade non-functional requirements only when relevant to the requirement
         - Return ONLY valid JSON format with no additional text
 
         """.format(free_text)
