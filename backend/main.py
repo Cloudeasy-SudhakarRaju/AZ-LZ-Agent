@@ -2409,11 +2409,11 @@ The connectivity architecture implements:
 
 ### 7.2 Connectivity Matrix
 ```
-Service Tier 1 (Web) → Service Tier 2 (Application) → Service Tier 3 (Data)
+Service Tier 1 (Web) -> Service Tier 2 (Application) -> Service Tier 3 (Data)
      ↓                          ↓                           ↓
-Load Balancer           →  App Services            →   Database Services
-Application Gateway     →  Container Services      →   Storage Services
-CDN                     →  Function Apps           →   Cache Services
+Load Balancer           ->  App Services            ->   Database Services
+Application Gateway     ->  Container Services      ->   Storage Services
+CDN                     ->  Function Apps           ->   Cache Services
 ```
 
 ### 7.3 Private Connectivity
@@ -2582,7 +2582,6 @@ CDN                     →  Function Apps           →   Cache Services
 - Next Review: {datetime.now().strftime("%Y-%m-%d")} + 3 months
 - Approved By: Azure Solutions Architecture Team
 
-"""
 **Database Services:** {', '.join(inputs.database_services) if inputs.database_services else 'None explicitly selected'}
 **Security Services:** {', '.join(inputs.security_services) if inputs.security_services else 'Standard security baseline'}
 **Analytics Services:** {', '.join(inputs.analytics_services) if inputs.analytics_services else 'None explicitly selected'}
@@ -2591,7 +2590,7 @@ CDN                     →  Function Apps           →   Cache Services
 #### Service Connectivity Patterns
 The architecture implements intelligent connectivity patterns based on Azure best practices:
 
-1. **Web Tier Connectivity:** Application Gateway → App Services/VMs with load balancing
+1. **Web Tier Connectivity:** Application Gateway -> App Services/VMs with load balancing
 2. **Data Tier Security:** Secure connections from compute services to databases with Key Vault integration
 3. **Network Security:** Firewall protection with hub-spoke VNet topology
 4. **Monitoring Integration:** Comprehensive telemetry from all services to Azure Monitor
@@ -2699,11 +2698,11 @@ The AI analysis identified the following service categories as critical:
 **Connectivity Requirements:** {connectivity_requirements}
 
 **Key Connectivity Patterns:**
-- Application Gateway → Compute Services (Load Distribution)
-- Compute Services → Database Services (Secure Data Access)
-- All Services → Key Vault (Secrets Management)
-- All Services → Azure Monitor (Telemetry Collection)
-- VNet Peering → Hub-Spoke Communication
+- Application Gateway -> Compute Services (Load Distribution)
+- Compute Services -> Database Services (Secure Data Access)
+- All Services -> Key Vault (Secrets Management)
+- All Services -> Azure Monitor (Telemetry Collection)
+- VNet Peering -> Hub-Spoke Communication
 
 ---
 
@@ -2805,11 +2804,11 @@ The architecture fully aligns with the five pillars of the Azure Well-Architecte
 
 ### 5.3 Traffic Flow Design
 ```
-Internet → Application Gateway → Internal Load Balancer → Compute Services
+Internet -> Application Gateway -> Internal Load Balancer -> Compute Services
                     ↓
-                Azure Firewall → Hub VNet → Spoke VNets
+                Azure Firewall -> Hub VNet -> Spoke VNets
                     ↓
-            Private Endpoints → Database Services
+            Private Endpoints -> Database Services
 ```
 
 ### 5.4 DNS Strategy
@@ -2823,7 +2822,7 @@ Internet → Application Gateway → Internal Load Balancer → Compute Services
 ## 6. Service Connectivity Patterns
 
 ### 6.1 Web Tier Connectivity
-**Pattern:** Front Door → Application Gateway → Web Services
+**Pattern:** Front Door -> Application Gateway -> Web Services
 
 #### 6.1.1 External Connectivity
 - Azure Front Door for global load balancing
@@ -2838,7 +2837,7 @@ Internet → Application Gateway → Internal Load Balancer → Compute Services
 - Cross-zone load distribution
 
 ### 6.2 Application Tier Connectivity
-**Pattern:** API Gateway → Application Services → Integration Services
+**Pattern:** API Gateway -> Application Services -> Integration Services
 
 #### 6.2.1 API Management
 - Centralized API gateway for external access
@@ -2853,7 +2852,7 @@ Internet → Application Gateway → Internal Load Balancer → Compute Services
 - Retry and timeout policies
 
 ### 6.3 Data Tier Connectivity
-**Pattern:** Application Services → Private Endpoints → Database Services
+**Pattern:** Application Services -> Private Endpoints -> Database Services
 
 #### 6.3.1 Database Connectivity
 - Private endpoints for secure database access
@@ -2923,7 +2922,7 @@ Internet → Application Gateway → Internal Load Balancer → Compute Services
 
 ### 8.2 Data Flow Patterns
 ```
-Source Systems → Event Hubs → Stream Analytics → Data Lake
+Source Systems -> Event Hubs -> Stream Analytics -> Data Lake
                       ↓
                  Real-time Dashboards
                       ↓
@@ -3052,10 +3051,6 @@ Source Systems → Event Hubs → Stream Analytics → Data Lake
 - Approved By: Enterprise Architecture Review Board
 
 """
-- **API Management:** Centralized API gateway for service integration
-- **Event-Driven Architecture:** Service Bus and Event Grid for decoupled communication
-- **Container Strategy:** Azure Kubernetes Service for containerized workloads
-"""
 
     # Low Level Design (LLD) - Enhanced
     lld = f"""# Low Level Design (LLD)
@@ -3067,12 +3062,12 @@ Source Systems → Event Hubs → Stream Analytics → Data Lake
 
 ### Service Connectivity Matrix
 #### Implemented Connection Patterns:
-1. **Web Tier Flow:** Application Gateway → Load Balancer → Compute Services
-2. **Data Flow:** Compute Services → Database Services (via private endpoints)
-3. **Security Flow:** All services → Key Vault (for secrets and certificates)
-4. **Monitoring Flow:** All services → Azure Monitor → Log Analytics
-5. **Integration Flow:** API Management → Logic Apps → Service Bus
-6. **Network Flow:** VPN/ExpressRoute → Hub VNet → Spoke VNets
+1. **Web Tier Flow:** Application Gateway -> Load Balancer -> Compute Services
+2. **Data Flow:** Compute Services -> Database Services (via private endpoints)
+3. **Security Flow:** All services -> Key Vault (for secrets and certificates)
+4. **Monitoring Flow:** All services -> Azure Monitor -> Log Analytics
+5. **Integration Flow:** API Management -> Logic Apps -> Service Bus
+6. **Network Flow:** VPN/ExpressRoute -> Hub VNet -> Spoke VNets
 
 ### Resource Configuration
 
