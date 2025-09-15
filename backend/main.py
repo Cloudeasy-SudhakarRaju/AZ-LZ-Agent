@@ -504,44 +504,28 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             return {"services": [], "reasoning": "No analysis available"}
             
         prompt = """
-        You are an ENTERPRISE AZURE SOLUTIONS ARCHITECT with deep expertise in designing production-ready, scalable, and secure Azure Landing Zone architectures. You have extensive experience with Azure Well-Architected Framework, Azure CAF (Cloud Adoption Framework), and enterprise-grade architectural patterns.
+        You are an Azure Solutions Architect helping users design minimal, cost-effective Azure Landing Zone architectures. Your role is to suggest ONLY the most essential services that are explicitly mentioned or absolutely required.
 
         User Requirement: "{}"
 
-        ENTERPRISE ANALYSIS INSTRUCTIONS:
+        CRITICAL INSTRUCTION: BE EXTREMELY CONSERVATIVE WITH SERVICE SELECTION
         
-        1. COMPREHENSIVE BUSINESS ANALYSIS:
-           - Analyze the business requirement to understand the complete technical and operational context
-           - Consider enterprise-grade scalability, security, compliance, and governance needs
-           - Think about future growth, disaster recovery, and business continuity requirements
-           - Identify the appropriate Azure architectural pattern (e.g., N-tier, microservices, event-driven, etc.)
+        1. SERVICE SELECTION PRINCIPLES:
+           - Suggest ONLY services that are explicitly mentioned in the user requirement
+           - If the requirement is vague, suggest the absolute minimum viable services
+           - DO NOT add standard enterprise services unless explicitly requested
+           - DO NOT assume the user needs monitoring, backup, or security services unless stated
+           - When in doubt, provide fewer services rather than more
+           - The user will add additional services themselves if needed
 
-        2. INTELLIGENT SERVICE SELECTION:
-           - Select ONLY services that are truly needed for the specific requirement
-           - DO NOT include random or default services unless they are justified by the requirement
-           - For each service selected, provide clear architectural reasoning
-           - Consider service dependencies and integration patterns
-           - Ensure services work together as a cohesive architectural solution
+        2. ANALYSIS APPROACH:
+           - Focus only on the core workload described
+           - Avoid suggesting "nice to have" or "best practice" services
+           - Do not include infrastructure services unless they are critical to the workload
+           - Skip monitoring, logging, backup, security services unless explicitly requested
+           - Prefer simple solutions over complex enterprise patterns
 
-        3. ENTERPRISE ARCHITECTURE PATTERNS:
-           - Apply proven enterprise patterns: Hub-and-Spoke networking, Microservices, Event-driven architecture
-           - Consider cross-cutting concerns: Security, Monitoring, Logging, Backup, Disaster Recovery
-           - Design for High Availability (99.9%+), Scalability, and Performance
-           - Include appropriate governance and compliance services when needed
-
-        4. CONNECTIVITY AND INTEGRATION:
-           - Design proper service-to-service communication patterns
-           - Consider network security groups, private endpoints, and secure communication
-           - Plan for API management, service mesh, and integration patterns
-           - Design proper data flow and processing pipelines
-
-        5. SECURITY BY DESIGN:
-           - Implement Zero Trust security model where appropriate
-           - Consider identity and access management, data encryption, network security
-           - Include security monitoring and threat detection capabilities
-           - Plan for compliance requirements (GDPR, HIPAA, SOC 2, etc.)
-
-        AVAILABLE AZURE SERVICES BY CATEGORY:
+        3. MINIMAL SERVICE CATEGORIES (only suggest if explicitly needed):
         
         Compute: virtual_machines, aks, app_services, functions, container_instances, service_fabric, batch
         Network: virtual_network, vpn_gateway, expressroute, load_balancer, application_gateway, firewall, waf, cdn, traffic_manager, virtual_wan
@@ -554,43 +538,38 @@ def analyze_free_text_requirements(free_text: str) -> dict:
         DevOps: devops, pipelines, container_registry, azure_artifacts
         Backup: backup_vault, site_recovery, azure_backup
 
-        RESPONSE FORMAT - Provide a DETAILED JSON response with:
+        RESPONSE FORMAT - Return minimal JSON:
 
-        1. "services" - Array of Azure service keys that form a complete, enterprise-ready solution
-        2. "reasoning" - Comprehensive architectural explanation (minimum 200 words) covering:
-           - Why each service was selected and how it fits the architectural pattern
-           - How services integrate and communicate with each other
-           - Security, scalability, and operational considerations
-           - Alternatives considered and why they were not chosen
-           
-        3. "architecture_pattern" - Detailed description of the overall architecture pattern and design principles
-        4. "connectivity_requirements" - Specific connectivity patterns, network topology, and communication flows
-        5. "security_considerations" - Comprehensive security architecture including identity, network, data, and application security
-        6. "scalability_design" - How the architecture scales to meet demand
-        7. "operational_excellence" - Monitoring, logging, automation, and maintenance considerations
-        8. "cost_optimization" - Cost-effective design choices and optimization strategies
-        9. "needs_confirmation" - Set to true if clarification is needed from the user
-        10. "suggested_additions" - Additional services or patterns to consider for enhancement
+        1. "services" - MINIMAL array of only essential Azure service keys
+        2. "reasoning" - Brief explanation (50-100 words) of why ONLY these specific services are needed
+        3. "architecture_pattern" - Simple pattern description
+        4. "connectivity_requirements" - Basic connectivity if any
+        5. "security_considerations" - Only if security was mentioned
+        6. "scalability_design" - Only if scalability was mentioned
+        7. "operational_excellence" - Only if operations were mentioned
+        8. "cost_optimization" - Always consider cost-effectiveness
+        9. "needs_confirmation" - Set to true if requirement is unclear
+        10. "suggested_additions" - Optional services user could consider adding
 
-        EXAMPLE FOR "I need a scalable e-commerce platform with microservices architecture":
+        EXAMPLE FOR "I need a simple web application":
         {{
-          "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "redis", "service_bus", "api_management", "key_vault", "azure_monitor", "log_analytics", "application_insights", "storage_accounts", "cdn", "container_registry"],
-          "reasoning": "Designed a comprehensive microservices-based e-commerce platform using Azure Kubernetes Service (AKS) as the container orchestration platform for scalable microservices. Application Gateway provides SSL termination, web application firewall, and load balancing across AKS nodes. Virtual Network ensures secure communication between services with network segmentation. Cosmos DB serves as the primary database for product catalog and user data with global distribution capabilities. Redis provides high-performance caching for session management and frequently accessed data. Service Bus enables reliable asynchronous communication between microservices. API Management provides centralized API gateway functionality with rate limiting, authentication, and API versioning. Key Vault securely manages secrets, certificates, and encryption keys. Comprehensive monitoring stack with Azure Monitor, Log Analytics, and Application Insights provides observability across the entire platform. Storage Accounts handle static assets and file uploads. CDN improves global performance for static content delivery. Container Registry stores and manages container images for the microservices.",
-          "architecture_pattern": "Cloud-native microservices architecture with event-driven communication, implementing Domain-Driven Design principles with separate bounded contexts for user management, product catalog, order processing, and payment services",
-          "connectivity_requirements": "Application Gateway -> AKS Ingress -> Microservices, Service Bus for async communication, API Management for external APIs, Private endpoints for databases, VNet integration for all services",
-          "security_considerations": "Zero Trust network model with NSGs, private endpoints for data services, Key Vault integration for secrets, Application Gateway WAF for web protection, Azure AD integration for authentication, RBAC for authorization",
-          "scalability_design": "Horizontal pod autoscaling in AKS, Cosmos DB auto-scaling, Redis clustering, Application Gateway auto-scaling, CDN for global content delivery",
-          "operational_excellence": "Centralized logging with Log Analytics, distributed tracing with Application Insights, automated deployment with Container Registry and AKS, health checks and monitoring alerts",
-          "cost_optimization": "AKS spot instances for non-critical workloads, Cosmos DB reserved capacity, appropriate storage tiers, CDN for reduced bandwidth costs",
+          "services": ["app_services"],
+          "reasoning": "A single App Service is sufficient for hosting a simple web application. No additional services are required unless the user specifies database, storage, or other specific needs.",
+          "architecture_pattern": "Simple single-tier web application",
+          "connectivity_requirements": "Standard internet connectivity via App Service",
+          "security_considerations": "App Service provides basic security features",
+          "scalability_design": "App Service can scale automatically if needed",
+          "operational_excellence": "App Service includes basic monitoring",
+          "cost_optimization": "Single App Service minimizes costs",
           "needs_confirmation": false,
-          "suggested_additions": ["Azure Front Door for global load balancing", "Azure DevOps for CI/CD pipeline", "Azure Backup for data protection"]
+          "suggested_additions": ["storage_accounts for file storage", "sql_database for data persistence"]
         }}
 
-        CRITICAL REQUIREMENTS:
-        - ONLY suggest services that are specifically needed for the stated requirement
-        - Provide detailed architectural reasoning for every service selection
-        - Ensure all services work together as an integrated solution
-        - Consider enterprise-grade non-functional requirements (security, scalability, monitoring)
+        STRICT REQUIREMENTS:
+        - Suggest the MINIMUM number of services possible
+        - Only include services explicitly mentioned or absolutely essential
+        - Default to simpler solutions
+        - Let the user add complexity if they need it
         - Return ONLY valid JSON format with no additional text
 
         """.format(free_text)
@@ -1181,55 +1160,36 @@ def _add_intelligent_network_connections(network_resources: list, network_resour
 
 
 def _add_intelligent_service_connections(inputs: CustomerInputs, all_resources: dict, template: dict):
-    """Add intelligent connections between services based on Azure architecture patterns"""
+    """Add minimal, essential connections between services based on Azure architecture patterns"""
     try:
-        logger.info("Adding intelligent service connections based on architecture patterns")
+        logger.info("Adding essential service connections for professional architecture diagram")
         
-        # Get AI analysis for connectivity guidance
-        connectivity_guidance = ""
-        if hasattr(template, 'get') and template.get("connectivity_requirements"):
-            connectivity_guidance = template["connectivity_requirements"]
-        
-        # Define connection patterns based on Azure best practices
+        # Only create essential, logical connections to avoid diagram clutter
+        # Connection patterns are much more conservative and selective
         connection_patterns = {
-            # Web application patterns
-            "web_tier": {
-                "sources": ["application_gateway", "load_balancer", "traffic_manager"],
-                "targets": ["app_services", "virtual_machines", "aks"]
+            # Only connect load balancers/gateways to actual compute targets
+            "frontend_tier": {
+                "sources": ["application_gateway", "load_balancer"],
+                "targets": ["app_services", "aks"]  # Removed VM to reduce clutter
             },
-            # Data tier patterns  
-            "data_flow": {
-                "sources": ["app_services", "virtual_machines", "aks", "functions"],
-                "targets": ["sql_database", "cosmos_db", "mysql", "postgresql", "storage_accounts", "blob_storage"]
+            # Only connect compute to databases when both exist
+            "data_access": {
+                "sources": ["app_services", "aks"],
+                "targets": ["sql_database", "cosmos_db"]  # Reduced targets
             },
-            # Network patterns
-            "network_flow": {
-                "sources": ["vpn_gateway", "expressroute"],
-                "targets": ["virtual_network", "firewall", "application_gateway"]
-            },
-            # Security patterns
-            "security_flow": {
+            # Only essential security connections
+            "security_essentials": {
                 "sources": ["key_vault"],
-                "targets": ["app_services", "virtual_machines", "aks", "functions"]
+                "targets": ["app_services", "aks"]  # Only to main compute services
             },
-            # Monitoring patterns
-            "monitoring_flow": {
-                "sources": ["azure_monitor", "log_analytics", "application_insights"],
-                "targets": ["app_services", "virtual_machines", "aks", "sql_database", "cosmos_db"]
-            },
-            # Integration patterns
-            "integration_flow": {
-                "sources": ["api_management"],
-                "targets": ["app_services", "functions", "logic_apps", "service_bus"]
-            },
-            # DevOps patterns
-            "devops_flow": {
-                "sources": ["devops", "pipelines", "container_registry"],
-                "targets": ["aks", "app_services", "virtual_machines"]
+            # Minimal network connectivity
+            "network_essentials": {
+                "sources": ["vpn_gateway"],
+                "targets": ["virtual_network"]  # Only essential network connections
             }
         }
         
-        # Apply connection patterns
+        # Apply connection patterns with limits to avoid excessive connections
         for pattern_name, pattern in connection_patterns.items():
             for source_type in pattern["sources"]:
                 for target_type in pattern["targets"]:
@@ -1237,31 +1197,34 @@ def _add_intelligent_service_connections(inputs: CustomerInputs, all_resources: 
                     source_resources = all_resources.get(source_type, [])
                     target_resources = all_resources.get(target_type, [])
                     
-                    # Create connections between matching resources
-                    for source in source_resources:
-                        for target in target_resources:
-                            if source != target:  # Don't connect to self
-                                try:
-                                    # Create connection with appropriate style
-                                    connection_style = _get_connection_style(pattern_name)
-                                    source >> Edge(**connection_style) >> target
-                                    logger.debug(f"Connected {source_type} -> {target_type} ({pattern_name})")
-                                except Exception as conn_error:
-                                    logger.warning(f"Failed to connect {source_type} -> {target_type}: {conn_error}")
+                    # Limit connections to avoid clutter - only connect if both services exist and are minimal
+                    if len(source_resources) > 0 and len(target_resources) > 0:
+                        # Only connect first instance of each service type to avoid excessive lines
+                        source = source_resources[0]
+                        target = target_resources[0]
+                        
+                        if source != target:  # Don't connect to self
+                            try:
+                                # Create minimal connection with professional styling
+                                connection_style = _get_connection_style(pattern_name)
+                                source >> Edge(**connection_style) >> target
+                                logger.debug(f"Connected {source_type} -> {target_type} ({pattern_name})")
+                            except Exception as conn_error:
+                                logger.warning(f"Failed to connect {source_type} -> {target_type}: {conn_error}")
         
-        # Add hub-spoke network connections if virtual networks exist
+        # Only add VNet peering if there are exactly 2 VNets (hub-spoke pattern)
         vnets = all_resources.get("virtual_network", [])
-        if len(vnets) > 1:
-            # Connect first VNet (hub) to all others (spokes)
-            hub = vnets[0]
-            for spoke in vnets[1:]:
-                try:
-                    hub >> Edge(style="dashed", color="blue", label="Peering") >> spoke
-                    logger.debug("Added hub-spoke VNet peering connection")
-                except Exception as e:
-                    logger.warning(f"Failed to add VNet peering: {e}")
+        if len(vnets) == 2:
+            # Connect first VNet (hub) to second (spoke) - not all combinations
+            hub = vnets[0] 
+            spoke = vnets[1]
+            try:
+                hub >> Edge(style="dashed", color="blue", label="Peering", penwidth="1.5") >> spoke
+                logger.debug("Added hub-spoke VNet peering connection")
+            except Exception as e:
+                logger.warning(f"Failed to add VNet peering: {e}")
                     
-        logger.info("Intelligent service connections added successfully")
+        logger.info("Essential service connections added for professional diagram")
         
     except Exception as e:
         logger.warning(f"Error adding intelligent service connections: {str(e)}")
@@ -1269,17 +1232,42 @@ def _add_intelligent_service_connections(inputs: CustomerInputs, all_resources: 
 
 
 def _get_connection_style(pattern_name: str) -> dict:
-    """Get connection style based on pattern type"""
+    """Get professional connection style based on pattern type"""
     styles = {
-        "web_tier": {"color": "green", "style": "bold", "label": "HTTP/HTTPS"},
-        "data_flow": {"color": "blue", "style": "solid", "label": "Data"},
-        "network_flow": {"color": "orange", "style": "bold", "label": "Network"},
-        "security_flow": {"color": "red", "style": "dashed", "label": "Secrets"},
-        "monitoring_flow": {"color": "purple", "style": "dotted", "label": "Metrics"},
-        "integration_flow": {"color": "teal", "style": "solid", "label": "API"},
-        "devops_flow": {"color": "gray", "style": "dashed", "label": "Deploy"}
+        "frontend_tier": {
+            "color": "#2E8B57",  # Sea Green
+            "style": "solid", 
+            "label": "HTTP",
+            "penwidth": "2.0",
+            "fontsize": "10"
+        },
+        "data_access": {
+            "color": "#1E90FF",  # Dodger Blue
+            "style": "solid", 
+            "label": "SQL",
+            "penwidth": "1.8",
+            "fontsize": "10"
+        },
+        "security_essentials": {
+            "color": "#DC143C",  # Crimson
+            "style": "dashed", 
+            "label": "Secrets",
+            "penwidth": "1.5",
+            "fontsize": "9"
+        },
+        "network_essentials": {
+            "color": "#FF8C00",  # Dark Orange
+            "style": "bold", 
+            "label": "VPN",
+            "penwidth": "2.5",
+            "fontsize": "10"
+        }
     }
-    return styles.get(pattern_name, {"color": "black", "style": "solid"})
+    return styles.get(pattern_name, {
+        "color": "#708090",  # Slate Gray
+        "style": "solid", 
+        "penwidth": "1.0"
+    })
 
 
 def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: list):

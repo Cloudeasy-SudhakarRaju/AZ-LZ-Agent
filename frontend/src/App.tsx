@@ -95,11 +95,18 @@ interface Results {
 
 function App() {
   const [formData, setFormData] = React.useState<FormData>({
-    // Add some essential default services for better user experience
-    compute_services: ["virtual_machines"],
-    network_services: ["virtual_network"],
-    storage_services: ["storage_accounts"],
-    security_services: ["key_vault", "active_directory"]
+    // No default services - let user explicitly select what they need
+    compute_services: [],
+    network_services: [],
+    storage_services: [],
+    database_services: [],
+    security_services: [],
+    monitoring_services: [],
+    ai_services: [],
+    analytics_services: [],
+    integration_services: [],
+    devops_services: [],
+    backup_services: []
   });
   const [results, setResults] = React.useState<Results | null>(null);
   const [loading, setLoading] = React.useState(false);
