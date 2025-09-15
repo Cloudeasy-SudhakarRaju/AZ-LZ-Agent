@@ -504,52 +504,95 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             return {"services": [], "reasoning": "No analysis available"}
             
         prompt = """
-        You are an Azure Solutions Architect analyzing user requirements for an enterprise-ready Azure Landing Zone architecture.
-        
+        You are an ENTERPRISE AZURE SOLUTIONS ARCHITECT with deep expertise in designing production-ready, scalable, and secure Azure Landing Zone architectures. You have extensive experience with Azure Well-Architected Framework, Azure CAF (Cloud Adoption Framework), and enterprise-grade architectural patterns.
+
         User Requirement: "{}"
+
+        ENTERPRISE ANALYSIS INSTRUCTIONS:
         
-        ANALYSIS INSTRUCTIONS:
-        1. Analyze the requirement comprehensively to understand the business objective and technical needs
-        2. Identify explicitly mentioned Azure services AND infer necessary supporting services for a production-ready solution
-        3. Consider enterprise architecture patterns, security, monitoring, backup, and governance requirements
-        4. Think about connectivity, data flow, and service dependencies for a complete solution
-        5. Recommend services based on Azure Well-Architected Framework principles
+        1. COMPREHENSIVE BUSINESS ANALYSIS:
+           - Analyze the business requirement to understand the complete technical and operational context
+           - Consider enterprise-grade scalability, security, compliance, and governance needs
+           - Think about future growth, disaster recovery, and business continuity requirements
+           - Identify the appropriate Azure architectural pattern (e.g., N-tier, microservices, event-driven, etc.)
 
-        For example:
-        - If user mentions "web application", consider: App Services, Application Gateway, Virtual Networks, Key Vault, Azure Monitor, etc.
-        - If user mentions "database", consider: SQL Database, backup services, monitoring, security services
-        - If user mentions "microservices", consider: AKS, Service Bus, API Management, Container Registry, etc.
-        - Always include foundational services: Virtual Networks, Key Vault, Azure Monitor for enterprise solutions
+        2. INTELLIGENT SERVICE SELECTION:
+           - Select ONLY services that are truly needed for the specific requirement
+           - DO NOT include random or default services unless they are justified by the requirement
+           - For each service selected, provide clear architectural reasoning
+           - Consider service dependencies and integration patterns
+           - Ensure services work together as a cohesive architectural solution
 
-        Available Azure service keys to choose from:
+        3. ENTERPRISE ARCHITECTURE PATTERNS:
+           - Apply proven enterprise patterns: Hub-and-Spoke networking, Microservices, Event-driven architecture
+           - Consider cross-cutting concerns: Security, Monitoring, Logging, Backup, Disaster Recovery
+           - Design for High Availability (99.9%+), Scalability, and Performance
+           - Include appropriate governance and compliance services when needed
+
+        4. CONNECTIVITY AND INTEGRATION:
+           - Design proper service-to-service communication patterns
+           - Consider network security groups, private endpoints, and secure communication
+           - Plan for API management, service mesh, and integration patterns
+           - Design proper data flow and processing pipelines
+
+        5. SECURITY BY DESIGN:
+           - Implement Zero Trust security model where appropriate
+           - Consider identity and access management, data encryption, network security
+           - Include security monitoring and threat detection capabilities
+           - Plan for compliance requirements (GDPR, HIPAA, SOC 2, etc.)
+
+        AVAILABLE AZURE SERVICES BY CATEGORY:
+        
         Compute: virtual_machines, aks, app_services, functions, container_instances, service_fabric, batch
-        Network: virtual_network, vpn_gateway, expressroute, load_balancer, application_gateway, firewall, waf, cdn, traffic_manager
+        Network: virtual_network, vpn_gateway, expressroute, load_balancer, application_gateway, firewall, waf, cdn, traffic_manager, virtual_wan
         Storage: storage_accounts, blob_storage, data_lake_storage, file_storage, disk_storage
         Database: sql_database, cosmos_db, mysql, postgresql, redis, synapse_dedicated_pools
-        Security: key_vault, security_center, sentinel, azure_ad_b2c, azure_firewall, ddos_protection
+        Security: key_vault, security_center, sentinel, azure_ad_b2c, azure_firewall, ddos_protection, active_directory
         Monitoring: azure_monitor, log_analytics, application_insights, azure_advisor
         Analytics: synapse_analytics, data_factory, databricks, stream_analytics, event_hubs, power_bi
-        Integration: logic_apps, service_bus, event_grid, api_management, application_gateway
+        Integration: logic_apps, service_bus, event_grid, api_management
         DevOps: devops, pipelines, container_registry, azure_artifacts
         Backup: backup_vault, site_recovery, azure_backup
 
-        Provide a JSON response with:
-        1. "services" - array of recommended Azure service keys for a complete, enterprise-ready solution
-        2. "reasoning" - detailed explanation of your architectural decisions and why each service is needed
-        3. "architecture_pattern" - describe the overall architecture pattern (e.g., "3-tier web application with microservices")
-        4. "connectivity_requirements" - describe how services should be connected
-        5. "security_considerations" - key security requirements and implementations
-        
-        Example for "I need a scalable web application with database":
+        RESPONSE FORMAT - Provide a DETAILED JSON response with:
+
+        1. "services" - Array of Azure service keys that form a complete, enterprise-ready solution
+        2. "reasoning" - Comprehensive architectural explanation (minimum 200 words) covering:
+           - Why each service was selected and how it fits the architectural pattern
+           - How services integrate and communicate with each other
+           - Security, scalability, and operational considerations
+           - Alternatives considered and why they were not chosen
+           
+        3. "architecture_pattern" - Detailed description of the overall architecture pattern and design principles
+        4. "connectivity_requirements" - Specific connectivity patterns, network topology, and communication flows
+        5. "security_considerations" - Comprehensive security architecture including identity, network, data, and application security
+        6. "scalability_design" - How the architecture scales to meet demand
+        7. "operational_excellence" - Monitoring, logging, automation, and maintenance considerations
+        8. "cost_optimization" - Cost-effective design choices and optimization strategies
+        9. "needs_confirmation" - Set to true if clarification is needed from the user
+        10. "suggested_additions" - Additional services or patterns to consider for enhancement
+
+        EXAMPLE FOR "I need a scalable e-commerce platform with microservices architecture":
         {{
-          "services": ["app_services", "virtual_network", "application_gateway", "sql_database", "key_vault", "azure_monitor", "log_analytics", "application_insights", "backup_vault", "storage_accounts"],
-          "reasoning": "Designed a complete 3-tier web application architecture with App Services for hosting, Application Gateway for load balancing and SSL termination, SQL Database for data persistence, Virtual Network for secure networking, Key Vault for secrets management, comprehensive monitoring with Azure Monitor and Application Insights, backup services for data protection, and storage accounts for static assets.",
-          "architecture_pattern": "3-tier web application with high availability and security",
-          "connectivity_requirements": "Application Gateway -> App Services -> SQL Database, with Virtual Network providing secure communication",
-          "security_considerations": "Key Vault for secrets, Application Gateway for web application firewall, Virtual Network for network isolation"
+          "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "redis", "service_bus", "api_management", "key_vault", "azure_monitor", "log_analytics", "application_insights", "storage_accounts", "cdn", "container_registry"],
+          "reasoning": "Designed a comprehensive microservices-based e-commerce platform using Azure Kubernetes Service (AKS) as the container orchestration platform for scalable microservices. Application Gateway provides SSL termination, web application firewall, and load balancing across AKS nodes. Virtual Network ensures secure communication between services with network segmentation. Cosmos DB serves as the primary database for product catalog and user data with global distribution capabilities. Redis provides high-performance caching for session management and frequently accessed data. Service Bus enables reliable asynchronous communication between microservices. API Management provides centralized API gateway functionality with rate limiting, authentication, and API versioning. Key Vault securely manages secrets, certificates, and encryption keys. Comprehensive monitoring stack with Azure Monitor, Log Analytics, and Application Insights provides observability across the entire platform. Storage Accounts handle static assets and file uploads. CDN improves global performance for static content delivery. Container Registry stores and manages container images for the microservices.",
+          "architecture_pattern": "Cloud-native microservices architecture with event-driven communication, implementing Domain-Driven Design principles with separate bounded contexts for user management, product catalog, order processing, and payment services",
+          "connectivity_requirements": "Application Gateway -> AKS Ingress -> Microservices, Service Bus for async communication, API Management for external APIs, Private endpoints for databases, VNet integration for all services",
+          "security_considerations": "Zero Trust network model with NSGs, private endpoints for data services, Key Vault integration for secrets, Application Gateway WAF for web protection, Azure AD integration for authentication, RBAC for authorization",
+          "scalability_design": "Horizontal pod autoscaling in AKS, Cosmos DB auto-scaling, Redis clustering, Application Gateway auto-scaling, CDN for global content delivery",
+          "operational_excellence": "Centralized logging with Log Analytics, distributed tracing with Application Insights, automated deployment with Container Registry and AKS, health checks and monitoring alerts",
+          "cost_optimization": "AKS spot instances for non-critical workloads, Cosmos DB reserved capacity, appropriate storage tiers, CDN for reduced bandwidth costs",
+          "needs_confirmation": false,
+          "suggested_additions": ["Azure Front Door for global load balancing", "Azure DevOps for CI/CD pipeline", "Azure Backup for data protection"]
         }}
-        
-        Return only valid JSON format.
+
+        CRITICAL REQUIREMENTS:
+        - ONLY suggest services that are specifically needed for the stated requirement
+        - Provide detailed architectural reasoning for every service selection
+        - Ensure all services work together as an integrated solution
+        - Consider enterprise-grade non-functional requirements (security, scalability, monitoring)
+        - Return ONLY valid JSON format with no additional text
+
         """.format(free_text)
         
         result = gemini_model.generate_content(prompt)
@@ -572,6 +615,16 @@ def analyze_free_text_requirements(free_text: str) -> dict:
                     analysis["connectivity_requirements"] = "Standard Azure networking"
                 if "security_considerations" not in analysis:
                     analysis["security_considerations"] = "Standard security practices"
+                if "scalability_design" not in analysis:
+                    analysis["scalability_design"] = "Standard scalability patterns"
+                if "operational_excellence" not in analysis:
+                    analysis["operational_excellence"] = "Standard monitoring and operations"
+                if "cost_optimization" not in analysis:
+                    analysis["cost_optimization"] = "Standard cost optimization"
+                if "needs_confirmation" not in analysis:
+                    analysis["needs_confirmation"] = False
+                if "suggested_additions" not in analysis:
+                    analysis["suggested_additions"] = []
                 return analysis
             except json.JSONDecodeError:
                 pass
@@ -583,7 +636,12 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             "reasoning": "Could not parse AI analysis",
             "architecture_pattern": "Unknown",
             "connectivity_requirements": "Not specified",
-            "security_considerations": "Not specified"
+            "security_considerations": "Not specified",
+            "scalability_design": "Not specified",
+            "operational_excellence": "Not specified",
+            "cost_optimization": "Not specified",
+            "needs_confirmation": True,
+            "suggested_additions": []
         }
         
     except Exception as e:
@@ -593,7 +651,12 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             "reasoning": f"Analysis error: {str(e)}",
             "architecture_pattern": "Error",
             "connectivity_requirements": "Error",
-            "security_considerations": "Error"
+            "security_considerations": "Error",
+            "scalability_design": "Error",
+            "operational_excellence": "Error",
+            "cost_optimization": "Error",
+            "needs_confirmation": True,
+            "suggested_additions": []
         }
 
 def validate_customer_inputs(inputs: CustomerInputs) -> None:
@@ -718,22 +781,58 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 
                 logger.info("Creating diagram structure...")
                 
-                # Core Identity and Security Services
-                with Cluster("Identity & Security", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
-                    aad = ActiveDirectory("Azure Active Directory")
-                    key_vault = KeyVaults("Key Vault")
-                    if inputs.security_services and "security_center" in inputs.security_services:
-                        sec_center = SecurityCenter("Security Center")
-                    if inputs.security_services and "sentinel" in inputs.security_services:
-                        sentinel = Sentinel("Sentinel")
-                
                 # Only create management groups if governance services are explicitly selected
                 created_resources = []
                 
-                # Create basic subscription structure (always needed for resources)
-                with Cluster("Azure Subscription", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
-                    subscription = Subscriptions("Azure Subscription")
-                    created_resources.append(subscription)
+                # Identity and Security Services - ONLY if explicitly selected or AI recommended
+                identity_resources = []
+                if (inputs.security_services and ("active_directory" in inputs.security_services or "key_vault" in inputs.security_services)) or \
+                   (template.get("ai_services") and any(service in ["active_directory", "key_vault"] for service in template["ai_services"])):
+                    
+                    with Cluster("Identity & Security", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
+                        if (inputs.security_services and "active_directory" in inputs.security_services) or \
+                           (template.get("ai_services") and "active_directory" in template["ai_services"]):
+                            aad = ActiveDirectory("Azure Active Directory")
+                            identity_resources.append(aad)
+                            created_resources.append(aad)
+                            
+                        if (inputs.security_services and "key_vault" in inputs.security_services) or \
+                           (template.get("ai_services") and "key_vault" in template["ai_services"]):
+                            key_vault = KeyVaults("Key Vault")
+                            identity_resources.append(key_vault)
+                            created_resources.append(key_vault)
+                            
+                        if inputs.security_services and "security_center" in inputs.security_services:
+                            sec_center = SecurityCenter("Security Center")
+                            identity_resources.append(sec_center)
+                            created_resources.append(sec_center)
+                            
+                        if inputs.security_services and "sentinel" in inputs.security_services:
+                            sentinel = Sentinel("Sentinel")
+                            identity_resources.append(sentinel)
+                            created_resources.append(sentinel)
+                
+                # Azure Subscription - ONLY if we actually have services to put in it
+                subscription = None
+                total_services = sum([
+                    len(inputs.compute_services or []),
+                    len(inputs.network_services or []),
+                    len(inputs.storage_services or []),
+                    len(inputs.database_services or []),
+                    len(inputs.security_services or []),
+                    len(inputs.monitoring_services or []),
+                    len(inputs.ai_services or []),
+                    len(inputs.analytics_services or []),
+                    len(inputs.integration_services or []),
+                    len(inputs.devops_services or []),
+                    len(inputs.backup_services or []),
+                    len(template.get("ai_services", []))
+                ])
+                
+                if total_services > 0:
+                    with Cluster("Azure Subscription", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
+                        subscription = Subscriptions("Azure Subscription")
+                        created_resources.append(subscription)
                 
                 # Create network services only if explicitly selected
                 network_resources_by_type = {}
@@ -764,6 +863,12 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 
                 # Add intelligent connections between all services
                 _add_intelligent_service_connections(inputs, resources_by_type, template)
+                
+                # If no services are selected at all, create a placeholder message
+                if len(all_resources) == 0:
+                    from diagrams.generic.blank import Blank
+                    placeholder = Blank("No Services Selected\n\nPlease specify Azure services\nto generate architecture")
+                    all_resources.append(placeholder)
                 
                 logger.info("Diagram structure and intelligent connections created successfully")
         
@@ -1425,16 +1530,25 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         "    subgraph \"Azure Architecture\"",
     ]
     
-    # Check if we have any services selected
-    has_compute = inputs.compute_services and len(inputs.compute_services) > 0
-    has_network = inputs.network_services and len(inputs.network_services) > 0
-    has_storage = inputs.storage_services and len(inputs.storage_services) > 0
-    has_database = inputs.database_services and len(inputs.database_services) > 0
-    has_security = inputs.security_services and len(inputs.security_services) > 0
-    has_monitoring = inputs.monitoring_services and len(inputs.monitoring_services) > 0
+    # Check if we have any services selected (including AI suggested ones)
+    ai_services = template.get("ai_services", [])
+    total_selected_services = sum([
+        len(inputs.compute_services or []),
+        len(inputs.network_services or []),
+        len(inputs.storage_services or []),
+        len(inputs.database_services or []),
+        len(inputs.security_services or []),
+        len(inputs.monitoring_services or []),
+        len(inputs.ai_services or []),
+        len(inputs.analytics_services or []),
+        len(inputs.integration_services or []),
+        len(inputs.devops_services or []),
+        len(inputs.backup_services or []),
+        len(ai_services)
+    ])
     
-    # Only add minimal structure if we have services
-    if has_compute or has_network or has_storage or has_database or has_security or has_monitoring:
+    # Only add structure if we have services
+    if total_selected_services > 0:
         lines.extend([
             "        SUBSCRIPTION[\"📦 Azure Subscription\"]"
         ])
@@ -1448,14 +1562,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         service_count = 0
         
         # Add compute services if selected
-        if has_compute:
+        if inputs.compute_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "compute" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Compute Services\""
             ])
             
             service_connections = []
-            for service in inputs.compute_services:
+            # Add explicitly selected compute services
+            for service in (inputs.compute_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"COMPUTE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested compute services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "compute":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"COMPUTE{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
@@ -1466,14 +1590,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             lines.append("        end")
         
         # Add network services if selected
-        if has_network:
+        if inputs.network_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "network" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Network Services\""
             ])
             
             service_connections = []
-            for service in inputs.network_services:
+            # Add explicitly selected network services
+            for service in (inputs.network_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"NETWORK{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested network services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "network":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"NETWORK{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
@@ -1484,14 +1618,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             lines.append("        end")
         
         # Add storage services if selected
-        if has_storage:
+        if inputs.storage_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "storage" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Storage Services\""
             ])
             
             service_connections = []
-            for service in inputs.storage_services:
+            # Add explicitly selected storage services
+            for service in (inputs.storage_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"STORAGE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested storage services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "storage":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"STORAGE{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
@@ -1502,14 +1646,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             lines.append("        end")
         
         # Add database services if selected
-        if has_database:
+        if inputs.database_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "database" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Database Services\""
             ])
             
             service_connections = []
-            for service in inputs.database_services:
+            # Add explicitly selected database services
+            for service in (inputs.database_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"DATABASE{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested database services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "database":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"DATABASE{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
@@ -1520,14 +1674,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             lines.append("        end")
         
         # Add security services if selected
-        if has_security:
+        if inputs.security_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "security" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Security Services\""
             ])
             
             service_connections = []
-            for service in inputs.security_services:
+            # Add explicitly selected security services
+            for service in (inputs.security_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"SECURITY{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested security services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "security":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"SECURITY{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
@@ -1538,14 +1702,24 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             lines.append("        end")
         
         # Add monitoring services if selected
-        if has_monitoring:
+        if inputs.monitoring_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "monitoring" for service in ai_services)):
             lines.extend([
                 "        subgraph \"Monitoring Services\""
             ])
             
             service_connections = []
-            for service in inputs.monitoring_services:
+            # Add explicitly selected monitoring services
+            for service in (inputs.monitoring_services or []):
                 if service in AZURE_SERVICES_MAPPING:
+                    service_info = AZURE_SERVICES_MAPPING[service]
+                    service_id = f"MONITORING{service_count}"
+                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
+                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
+                    service_count += 1
+            
+            # Add AI-suggested monitoring services
+            for service in ai_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "monitoring":
                     service_info = AZURE_SERVICES_MAPPING[service]
                     service_id = f"MONITORING{service_count}"
                     lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
