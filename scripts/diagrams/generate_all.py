@@ -39,4 +39,16 @@ try:
 except Exception as e:
     print(f"Error generating data diagram: {e}")
 
+try:
+    import scripts.diagrams.enhanced_ha_webapp
+    print("Generated enhanced HA web app diagram")
+except Exception as e:
+    print(f"Error generating enhanced HA web app diagram: {e}")
+
+try:
+    import scripts.diagrams.complete_ha_webapp_standby
+    print("Generated complete HA web app with standby diagram")
+except Exception as e:
+    print(f"Error generating complete HA web app with standby diagram: {e}")
+
 print("Diagrams generated into docs/diagrams")
