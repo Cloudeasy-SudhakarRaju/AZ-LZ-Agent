@@ -161,6 +161,61 @@ cd backend
 python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload --log-level debug
 ```
 
+## CI/CD Pipeline Issues
+
+### Module Not Found Errors
+
+If CI pipeline fails with `ModuleNotFoundError: No module named 'yaml'` or similar:
+
+1. **Check dependencies**: Ensure all required packages are listed in `backend/requirements.txt`:
+   ```bash
+   # Required dependencies for the architecture agent
+   pyyaml==6.0.1       # For YAML manifest parsing
+   diagrams==0.23.4    # For diagram generation
+   graphviz==0.20.1    # For GraphViz integration
+   ```
+
+2. **Verify workflow installation**: Ensure `.github/workflows/generate-diagrams.yml` installs from requirements.txt:
+   ```yaml
+   - name: Install Python dependencies
+     run: |
+       python -m pip install --upgrade pip
+       pip install -r backend/requirements.txt
+   ```
+
+3. **Test locally**: Before pushing, verify the scripts work locally:
+   ```bash
+   pip install -r backend/requirements.txt
+   python scripts/diagrams/generate_all.py
+   python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --pattern ha-multiregion --out docs/diagrams/ha-multiregion
+   ```
+
+### Diagram Generation Failures
+
+If diagram generation fails in CI:
+
+1. **System dependencies**: Ensure Graphviz is installed in the CI environment:
+   ```yaml
+   - name: Install system dependencies (Graphviz)
+     run: |
+       sudo apt-get update
+       sudo apt-get install -y graphviz
+   ```
+
+2. **Output directory**: Ensure output directory exists:
+   ```bash
+   mkdir -p docs/diagrams
+   ```
+
+3. **Artifact paths**: Verify artifact upload paths match generated files:
+   ```yaml
+   - name: Upload diagrams as artifacts
+     uses: actions/upload-artifact@v4
+     with:
+       name: diagrams
+       path: docs/diagrams/*.png
+   ```
+
 ## Contact & Support
 
 If issues persist after following this guide:
