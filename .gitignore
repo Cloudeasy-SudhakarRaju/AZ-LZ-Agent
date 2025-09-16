@@ -80,3 +80,7 @@ azure_landing_zone_*.png
 azure_landing_zone_*.dot
 azure_landing_zone_*.svg
 tmp/
+
+# Diagram generation temporary files  
+*.dot
+*.gv

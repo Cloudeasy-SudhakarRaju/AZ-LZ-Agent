@@ -146,4 +146,19 @@ Generated files are saved in the `/tmp` directory:
 - Draw.io XML: Compatible with app.diagrams.net for editing
 - Documentation: TSD, HLD, and LLD in structured format
 
+## Domain-Specific Architecture Diagrams
+
+This repository also includes organized Azure architecture diagrams split by domain in the `docs/diagrams/` folder:
+
+- **Network**: Hub/spoke topology with ingress, core network, and identity components
+- **Security**: Identity & access, perimeter security, and SIEM/monitoring
+- **Integration**: API management, event-driven architecture, and messaging
+- **Data**: Data sources, processing pipeline, and analytics platform
+
+To regenerate domain diagrams:
+```bash
+pip install diagrams graphviz
+python scripts/diagrams/generate_all.py
+```
+
 For more details about diagram generation, see [DIAGRAM_GENERATION.md](DIAGRAM_GENERATION.md).
