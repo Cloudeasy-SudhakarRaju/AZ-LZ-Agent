@@ -6,7 +6,7 @@ import os
 from typing import Dict, Any, Optional, List
 from diagrams import Diagram, Cluster, Node
 from diagrams.azure.compute import VM, AppServices, FunctionApps
-from diagrams.azure.storage import StorageAccounts
+from diagrams.azure.storage import StorageAccounts, QueuesStorage, TableStorage
 from diagrams.azure.database import SQLDatabases, CacheForRedis
 from diagrams.azure.network import (
     VirtualNetworks, LoadBalancers, ApplicationGateway, 
@@ -34,16 +34,21 @@ class DiagramRenderer:
         self.service_classes = {
             "vm": VM,
             "web_app": AppServices,
+            "app_services": AppServices,
             "function_app": FunctionApps,
             "storage_account": StorageAccounts,
+            "queue_storage": QueuesStorage,
+            "table_storage": TableStorage,
             "sql_database": SQLDatabases,
             "redis": CacheForRedis,
+            "cache_for_redis": CacheForRedis,
             "vnet": VirtualNetworks,
             "load_balancer": LoadBalancers,
             "application_gateway": ApplicationGateway,
             "public_ip": PublicIpAddresses,
             "nsg": NetworkSecurityGroups,
             "entra_id": ActiveDirectory,
+            "active_directory": ActiveDirectory,
             "key_vault": KeyVaults,
             "log_analytics": LogAnalyticsWorkspaces,
             "application_insights": ApplicationInsights,
@@ -69,14 +74,27 @@ class DiagramRenderer:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # Create custom graph attributes for Image1-style layout
+        # Create custom graph attributes for improved swimlane layout
         custom_graph_attr = GRAPH_ATTR.copy()
         custom_graph_attr.update({
-            "rankdir": "LR",  # Left-to-right
-            "splines": "ortho",  # Orthogonal edges
-            "nodesep": "1.0",
-            "ranksep": "1.5",
+            "rankdir": "TB",  # Top-to-bottom for better layering
+            "splines": "ortho",  # Orthogonal edges to minimize crossings
+            "nodesep": "1.2",  # Increased spacing for clarity
+            "ranksep": "1.8",  # Better layer separation
             "compound": "true",  # Allow edges between clusters
+            "concentrate": "true",  # Merge parallel edges to reduce clutter
+            "newrank": "true",  # Better ranking algorithm
+        })
+        
+        # Enhanced node attributes for better label visibility
+        custom_node_attr = NODE_ATTR.copy()
+        custom_node_attr.update({
+            "width": "2.0",  # Increased width for longer labels
+            "height": "1.5",  # Increased height
+            "fontsize": "9",  # Slightly smaller font to fit better
+            "shape": "box",   # Box shape for better label visibility
+            "style": "rounded,filled",  # Rounded corners and filled background
+            "margin": "0.1,0.05",  # Margin around text
         })
         
         with Diagram(
@@ -85,7 +103,7 @@ class DiagramRenderer:
             outformat="png",
             filename=output_path,
             graph_attr=custom_graph_attr,
-            node_attr=NODE_ATTR,
+            node_attr=custom_node_attr,
         ):
             # Create clusters first
             cluster_contexts = self._create_clusters(graph)

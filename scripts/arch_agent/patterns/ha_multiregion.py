@@ -48,7 +48,7 @@ class HAMultiRegionPattern:
         return graph
     
     def _organize_services(self, intents: List[UserIntent], requirements: Requirements) -> Dict[str, List[UserIntent]]:
-        """Organize services into logical groups."""
+        """Organize services into logical groups for clear layering."""
         groups = {
             "edge": [],
             "identity": [],
@@ -72,67 +72,99 @@ class HAMultiRegionPattern:
         for intent in intents:
             service_type = intent.kind
             
+            # Edge/Internet services (top layer)
             if service_type in ["front_door", "cdn", "traffic_manager"]:
                 groups["edge"].append(intent)
-            elif service_type in ["entra_id", "key_vault"]:
+            
+            # Identity and security services (top-left layer)
+            elif service_type in ["entra_id", "key_vault", "active_directory"]:
                 groups["identity"].append(intent)
-            elif service_type in ["vm", "web_app", "function_app", "app_service_plan"]:
+            
+            # Compute services (middle layer)
+            elif service_type in ["vm", "web_app", "function_app", "app_service_plan", "app_services", "container_instances", "aks"]:
                 groups["region_compute"].append(intent)
-            elif service_type in ["vnet", "subnet", "nsg", "public_ip", "load_balancer", "application_gateway"]:
+            
+            # Network services (entry layer within regions)
+            elif service_type in ["vnet", "subnet", "nsg", "public_ip", "load_balancer", "application_gateway", "vpn_gateway", "express_route"]:
                 groups["region_network"].append(intent)
-            elif service_type in ["storage_account", "disk"]:
+            
+            # Storage services (bottom layer) - includes Queue Storage and Table Storage
+            elif service_type in ["storage_account", "disk", "blob_storage", "queue_storage", "table_storage", "file_storage", "data_lake"]:
                 groups["region_storage"].append(intent)
-            elif service_type in ["sql_database", "redis"]:
+            
+            # Database and cache services (bottom layer) - includes Redis
+            elif service_type in ["sql_database", "redis", "cosmos_db", "mysql", "postgresql", "cache_for_redis"]:
                 groups["region_database"].append(intent)
-            elif service_type in ["log_analytics", "application_insights"]:
+            
+            # Monitoring and observability (bottom/right layer)
+            elif service_type in ["log_analytics", "application_insights", "monitor", "sentinel", "security_center"]:
                 groups["monitoring"].append(intent)
+            
             else:
-                # Default to region compute
+                # Default to region compute for unknown services
                 groups["region_compute"].append(intent)
         
         return groups
     
     def _create_clusters(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
-        """Create cluster definitions for the layout."""
-        # Edge/Identity column (left side) - only create if there are actual services
-        if len(service_groups["edge"]) > 0 or len(service_groups["identity"]) > 0:
-            graph.clusters["edge_identity"] = {
-                "label": "Edge & Identity",
+        """Create cluster definitions for clear swimlanes and logical layering."""
+        
+        # Internet/Edge Layer (Top) - Global entry points
+        if len(service_groups["edge"]) > 0:
+            graph.clusters["internet_edge"] = {
+                "label": "Internet & Edge Services",
                 "bgcolor": "#E8F4F8",
-                "style": "rounded",
-                "rank": "min"
+                "style": "rounded,bold",
+                "rank": "min",
+                "penwidth": "2.0"
             }
         
-        # Primary regions
+        # Identity Layer (Top-Left) - Authentication and security
+        if len(service_groups["identity"]) > 0:
+            graph.clusters["identity_security"] = {
+                "label": "Identity & Security",
+                "bgcolor": "#FDECEE", 
+                "style": "rounded,bold",
+                "rank": "min",
+                "penwidth": "2.0"
+            }
+        
+        # Active regions with clear horizontal alignment
         for i, region in enumerate(requirements.regions[:2]):  # Max 2 active regions
             cluster_name = f"region_{region.lower().replace(' ', '_')}"
+            region_label = f"Active Region: {region}" if i < 2 else f"Region: {region}"
+            
             graph.clusters[cluster_name] = {
-                "label": f"Region: {region}",
+                "label": region_label,
                 "bgcolor": "#F0F8F0" if i == 0 else "#F8F0F8",
-                "style": "rounded",
-                "rank": "same" if len(requirements.regions) > 1 else "max"
+                "style": "rounded,bold",
+                "rank": "same",
+                "penwidth": "2.0"
             }
             
-            # Sub-clusters within region
-            graph.clusters[f"{cluster_name}_compute"] = {
-                "label": "Compute & Apps",
+            # Clear sub-clusters for layered architecture within region
+            graph.clusters[f"{cluster_name}_network"] = {
+                "label": "Network Layer",
                 "bgcolor": "#FFFFFF",
                 "style": "dashed",
-                "parent": cluster_name
+                "parent": cluster_name,
+                "rank": "0"
+            }
+            
+            graph.clusters[f"{cluster_name}_compute"] = {
+                "label": "App & Compute Layer", 
+                "bgcolor": "#FFFFFF",
+                "style": "dashed",
+                "parent": cluster_name,
+                "rank": "1"
             }
             
             graph.clusters[f"{cluster_name}_data"] = {
-                "label": "Data & Storage",
-                "bgcolor": "#FFFFFF",
-                "style": "dashed", 
-                "parent": cluster_name
-            }
-            
-            graph.clusters[f"{cluster_name}_network"] = {
-                "label": "Networking",
-                "bgcolor": "#FFFFFF",
+                "label": "Data & Storage Layer",
+                "bgcolor": "#FFFFFF", 
                 "style": "dashed",
-                "parent": cluster_name
+                "parent": cluster_name,
+                "rank": "2"
             }
         
         # Standby region (if multi-region and more than 2 regions)
@@ -140,71 +172,76 @@ class HAMultiRegionPattern:
             standby_region = requirements.regions[2]
             cluster_name = f"region_{standby_region.lower().replace(' ', '_')}_standby"
             graph.clusters[cluster_name] = {
-                "label": f"Standby: {standby_region}",
+                "label": f"Standby Region: {standby_region}",
                 "bgcolor": "#F5F5F5",
-                "style": "rounded",
-                "rank": "max"
+                "style": "rounded,bold",
+                "rank": "max",
+                "penwidth": "2.0"
+            }
+            
+            # Add standby sub-clusters for consistency
+            graph.clusters[f"{cluster_name}_compute"] = {
+                "label": "Standby Compute",
+                "bgcolor": "#FFFFFF",
+                "style": "dashed",
+                "parent": cluster_name
+            }
+            
+            graph.clusters[f"{cluster_name}_data"] = {
+                "label": "Standby Data",
+                "bgcolor": "#FFFFFF",
+                "style": "dashed", 
+                "parent": cluster_name
             }
         
-        # Monitoring cluster (right side)
-        graph.clusters["monitoring"] = {
-            "label": "Monitoring & Observability",
-            "bgcolor": "#FFF8DC",
-            "style": "rounded",
-            "rank": "max"
-        }
+        # Monitoring cluster (Bottom/Right) - Observability layer
+        if len(service_groups["monitoring"]) > 0:
+            graph.clusters["monitoring"] = {
+                "label": "Monitoring & Observability",
+                "bgcolor": "#EBF5FB",
+                "style": "rounded,bold", 
+                "rank": "max",
+                "penwidth": "2.0"
+            }
     
     def _place_nodes(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
-        """Place service nodes in appropriate clusters."""
+        """Place service nodes in appropriate clusters with clear layering."""
         node_id_counter = 1
         
-        # Edge and Identity services (left column)
-        for intent in service_groups["edge"] + service_groups["identity"]:
+        # Internet/Edge services (Top layer)
+        for intent in service_groups["edge"]:
             node = LayoutNode(
                 id=f"node_{node_id_counter}",
                 service_type=intent.kind,
                 name=intent.name or self._get_default_name(intent.kind),
-                cluster="edge_identity",
-                rank=1,
+                cluster="internet_edge",
+                rank=0,  # Top layer
                 properties=intent.properties
             )
             graph.nodes.append(node)
             node_id_counter += 1
         
-        # Regional services
+        # Identity services (Top-Left layer)
+        for intent in service_groups["identity"]:
+            node = LayoutNode(
+                id=f"node_{node_id_counter}",
+                service_type=intent.kind,
+                name=intent.name or self._get_default_name(intent.kind),
+                cluster="identity_security",
+                rank=0,  # Top layer
+                properties=intent.properties
+            )
+            graph.nodes.append(node)
+            node_id_counter += 1
+        
+        # Regional services with proper layering
         for i, region in enumerate(requirements.regions[:2]):
             cluster_prefix = f"region_{region.lower().replace(' ', '_')}"
             
-            # Compute services
-            for intent in service_groups["region_compute"]:
-                node = LayoutNode(
-                    id=f"node_{node_id_counter}",
-                    service_type=intent.kind,
-                    name=f"{intent.name or self._get_default_name(intent.kind)} ({region})",
-                    cluster=f"{cluster_prefix}_compute",
-                    rank=2 + i,
-                    properties=intent.properties
-                )
-                graph.nodes.append(node)
-                node_id_counter += 1
-            
-            # Data services
-            for intent in service_groups["region_storage"] + service_groups["region_database"]:
-                node = LayoutNode(
-                    id=f"node_{node_id_counter}",
-                    service_type=intent.kind,
-                    name=f"{intent.name or self._get_default_name(intent.kind)} ({region})",
-                    cluster=f"{cluster_prefix}_data",
-                    rank=2 + i,
-                    properties=intent.properties
-                )
-                graph.nodes.append(node)
-                node_id_counter += 1
-            
-            # Network services (place in network sub-cluster)
+            # Network services (Layer 0 - Entry points)
             for intent in service_groups["region_network"]:
-                # Skip internal components like NIC, disk that aren't shown separately
-                if intent.kind in ["nic", "disk"]:
+                # Skip internal components that aren't shown separately
+                if intent.kind in ["nic", "disk", "subnet"]:
                     continue
                     
                 node = LayoutNode(
@@ -212,20 +249,77 @@ class HAMultiRegionPattern:
                     service_type=intent.kind,
                     name=f"{intent.name or self._get_default_name(intent.kind)} ({region})",
                     cluster=f"{cluster_prefix}_network",
-                    rank=2 + i,
+                    rank=10 + i,  # Network layer
+                    properties=intent.properties
+                )
+                graph.nodes.append(node)
+                node_id_counter += 1
+            
+            # Compute services (Layer 1 - Application layer)
+            for intent in service_groups["region_compute"]:
+                node = LayoutNode(
+                    id=f"node_{node_id_counter}",
+                    service_type=intent.kind,
+                    name=f"{intent.name or self._get_default_name(intent.kind)} ({region})",
+                    cluster=f"{cluster_prefix}_compute",
+                    rank=20 + i,  # Compute layer
+                    properties=intent.properties
+                )
+                graph.nodes.append(node)
+                node_id_counter += 1
+            
+            # Data/Storage services (Layer 2 - Data layer)
+            for intent in service_groups["region_storage"] + service_groups["region_database"]:
+                node = LayoutNode(
+                    id=f"node_{node_id_counter}",
+                    service_type=intent.kind,
+                    name=f"{intent.name or self._get_default_name(intent.kind)} ({region})",
+                    cluster=f"{cluster_prefix}_data",
+                    rank=30 + i,  # Data layer
                     properties=intent.properties
                 )
                 graph.nodes.append(node)
                 node_id_counter += 1
         
-        # Monitoring services (right side)
+        # Standby region services (if applicable)
+        if len(requirements.regions) > 2:
+            standby_region = requirements.regions[2]
+            cluster_prefix = f"region_{standby_region.lower().replace(' ', '_')}_standby"
+            
+            # Standby compute services
+            for intent in service_groups["region_compute"]:
+                node = LayoutNode(
+                    id=f"node_{node_id_counter}",
+                    service_type=intent.kind,
+                    name=f"{intent.name or self._get_default_name(intent.kind)} (Standby {standby_region})",
+                    cluster=f"{cluster_prefix}_compute",
+                    rank=50,  # Standby layer
+                    properties=intent.properties
+                )
+                graph.nodes.append(node)
+                node_id_counter += 1
+            
+            # Standby data services
+            for intent in service_groups["region_storage"] + service_groups["region_database"]:
+                node = LayoutNode(
+                    id=f"node_{node_id_counter}",
+                    service_type=intent.kind,
+                    name=f"{intent.name or self._get_default_name(intent.kind)} (Standby {standby_region})",
+                    cluster=f"{cluster_prefix}_data",
+                    rank=51,  # Standby data layer
+                    properties=intent.properties
+                )
+                graph.nodes.append(node)
+                node_id_counter += 1
+        
+        # Monitoring services (Bottom/Right layer)
         for intent in service_groups["monitoring"]:
             node = LayoutNode(
                 id=f"node_{node_id_counter}",
                 service_type=intent.kind,
                 name=intent.name or self._get_default_name(intent.kind),
                 cluster="monitoring",
-                rank=4,
+                rank=100,  # Bottom layer
                 properties=intent.properties
             )
             graph.nodes.append(node)
@@ -257,47 +351,91 @@ class HAMultiRegionPattern:
         self._create_security_connections(graph, service_to_nodes)
     
     def _create_edge_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create edge flow connections with numbering."""
-        # Front Door/CDN -> Application Gateway -> Web App
+        """Create edge flow connections with clear labeling and minimal crossings."""
+        step_counter = 1
+        
+        # Primary flow: Internet -> Edge services -> Regional gateways -> Apps
+        
+        # Step 1: Front Door/CDN -> Application Gateway
         if "front_door" in service_to_nodes and "application_gateway" in service_to_nodes:
             for fd_node in service_to_nodes["front_door"]:
                 for ag_node in service_to_nodes["application_gateway"]:
                     edge = LayoutEdge(
                         source=fd_node,
                         target=ag_node,
-                        label=f"{self.edge_step_counter}",
+                        label=f"{step_counter} (HTTPS)",
                         style="solid",
                         color="#2E86C1"
                     )
                     graph.edges.append(edge)
-                    self.edge_step_counter += 1
+            step_counter += 1
         
-        if "application_gateway" in service_to_nodes and "web_app" in service_to_nodes:
+        # Step 2: Application Gateway -> Load Balancer (if present)
+        if "application_gateway" in service_to_nodes and "load_balancer" in service_to_nodes:
+            for ag_node in service_to_nodes["application_gateway"]:
+                for lb_node in service_to_nodes["load_balancer"]:
+                    edge = LayoutEdge(
+                        source=ag_node,
+                        target=lb_node,
+                        label=f"{step_counter} (HTTP)",
+                        style="solid",
+                        color="#2E86C1"
+                    )
+                    graph.edges.append(edge)
+            step_counter += 1
+        
+        # Step 3: Load Balancer -> Web App OR Application Gateway -> Web App (if no LB)
+        if "load_balancer" in service_to_nodes and "web_app" in service_to_nodes:
+            for lb_node in service_to_nodes["load_balancer"]:
+                for wa_node in service_to_nodes["web_app"]:
+                    edge = LayoutEdge(
+                        source=lb_node,
+                        target=wa_node,
+                        label=f"{step_counter} (HTTP)",
+                        style="solid",
+                        color="#2E86C1"
+                    )
+                    graph.edges.append(edge)
+            step_counter += 1
+        elif "application_gateway" in service_to_nodes and "web_app" in service_to_nodes:
             for ag_node in service_to_nodes["application_gateway"]:
                 for wa_node in service_to_nodes["web_app"]:
                     edge = LayoutEdge(
                         source=ag_node,
                         target=wa_node,
-                        label=f"{self.edge_step_counter}",
+                        label=f"{step_counter} (HTTP)",
                         style="solid",
                         color="#2E86C1"
                     )
                     graph.edges.append(edge)
-                    self.edge_step_counter += 1
+            step_counter += 1
         
-        # If no Application Gateway, connect Front Door directly to Web App
-        elif "front_door" in service_to_nodes and "web_app" in service_to_nodes:
+        # Step 4: Web App -> Function App
+        if "web_app" in service_to_nodes and "function_app" in service_to_nodes:
+            for wa_node in service_to_nodes["web_app"]:
+                for fa_node in service_to_nodes["function_app"]:
+                    edge = LayoutEdge(
+                        source=wa_node,
+                        target=fa_node,
+                        label=f"{step_counter} (API)",
+                        style="solid",
+                        color="#2E86C1"
+                    )
+                    graph.edges.append(edge)
+            step_counter += 1
+        
+        # Direct Front Door -> Web App if no gateway
+        if "front_door" in service_to_nodes and "web_app" in service_to_nodes and "application_gateway" not in service_to_nodes:
             for fd_node in service_to_nodes["front_door"]:
                 for wa_node in service_to_nodes["web_app"]:
                     edge = LayoutEdge(
                         source=fd_node,
                         target=wa_node,
-                        label=f"{self.edge_step_counter}",
+                        label=f"{step_counter} (HTTPS)",
                         style="solid",
                         color="#2E86C1"
                     )
                     graph.edges.append(edge)
-                    self.edge_step_counter += 1
     
     def _create_regional_connectivity(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]], requirements: Requirements) -> None:
         """Create connectivity between regional services."""
@@ -327,11 +465,29 @@ class HAMultiRegionPattern:
                     graph.edges.append(edge)
     
     def _create_data_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create data flow connections."""
-        # App services -> Redis cache
-        app_services = service_to_nodes.get("web_app", []) + service_to_nodes.get("function_app", [])
+        """Create data flow connections with specific patterns for storage services."""
+        
+        # Get app services that will connect to data layers
+        app_services = (service_to_nodes.get("web_app", []) + 
+                       service_to_nodes.get("function_app", []) + 
+                       service_to_nodes.get("app_services", []))
+        
+        # Function App -> Queue Storage (Step 5: Messaging pattern)
+        if "function_app" in service_to_nodes and "queue_storage" in service_to_nodes:
+            for fa_node in service_to_nodes["function_app"]:
+                for queue_node in service_to_nodes["queue_storage"]:
+                    edge = LayoutEdge(
+                        source=fa_node,
+                        target=queue_node,
+                        label="5 (Queue)",
+                        style="solid",
+                        color="#FF8C00"
+                    )
+                    graph.edges.append(edge)
+        
+        # App services -> Redis Cache (Caching pattern)
         for app_node in app_services:
-            for redis_node in service_to_nodes.get("redis", []):
+            for redis_node in service_to_nodes.get("redis", []) + service_to_nodes.get("cache_for_redis", []):
                 edge = LayoutEdge(
                     source=app_node,
                     target=redis_node,
@@ -341,20 +497,32 @@ class HAMultiRegionPattern:
                 )
                 graph.edges.append(edge)
         
-        # App services -> Storage/Database
+        # App services -> Table Storage (Data pattern)
         for app_node in app_services:
-            # Storage connections
-            for storage_node in service_to_nodes.get("storage_account", []):
+            for table_node in service_to_nodes.get("table_storage", []):
                 edge = LayoutEdge(
                     source=app_node,
-                    target=storage_node,
+                    target=table_node,
                     label="Data",
                     style="solid",
                     color="#1E90FF"
                 )
                 graph.edges.append(edge)
-            
-            # Database connections
+        
+        # App services -> Storage Account (General storage)
+        for app_node in app_services:
+            for storage_node in service_to_nodes.get("storage_account", []):
+                edge = LayoutEdge(
+                    source=app_node,
+                    target=storage_node,
+                    label="Files",
+                    style="solid",
+                    color="#1E90FF"
+                )
+                graph.edges.append(edge)
+        
+        # App services -> SQL Database
+        for app_node in app_services:
             for db_node in service_to_nodes.get("sql_database", []):
                 edge = LayoutEdge(
                     source=app_node,
@@ -364,6 +532,9 @@ class HAMultiRegionPattern:
                     color="#1E90FF"
                 )
                 graph.edges.append(edge)
+        
+        # Cross-region replication patterns (minimal crossings)
+        self._create_replication_edges(graph, service_to_nodes)
     
     def _create_monitoring_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
         """Create monitoring connections with dotted lines."""
@@ -401,15 +572,54 @@ class HAMultiRegionPattern:
                     )
                     graph.edges.append(edge)
     
+    def _create_replication_edges(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
+        """Create cross-region replication edges with minimal crossings."""
+        
+        # Storage account replication (primary connection)
+        storage_nodes = service_to_nodes.get("storage_account", [])
+        if len(storage_nodes) >= 2:
+            for i in range(0, len(storage_nodes) - 1, 2):
+                if i + 1 < len(storage_nodes):
+                    edge = LayoutEdge(
+                        source=storage_nodes[i],
+                        target=storage_nodes[i + 1],
+                        label="Replication",
+                        style="solid",
+                        color="#2E86C1"
+                    )
+                    graph.edges.append(edge)
+        
+        # Redis cache replication (dashed for cache sync)
+        redis_nodes = (service_to_nodes.get("redis", []) + 
+                      service_to_nodes.get("cache_for_redis", []))
+        if len(redis_nodes) >= 2:
+            for i in range(0, len(redis_nodes) - 1, 2):
+                if i + 1 < len(redis_nodes):
+                    edge = LayoutEdge(
+                        source=redis_nodes[i],
+                        target=redis_nodes[i + 1],
+                        label="Sync",
+                        style="dashed",
+                        color="#7D3C98"
+                    )
+                    graph.edges.append(edge)
+    
     def _get_default_name(self, service_type: str) -> str:
         """Get default display name for a service type."""
         name_mapping = {
             "vm": "Virtual Machine",
             "web_app": "Web App",
             "function_app": "Function App",
+            "app_services": "App Service",
             "storage_account": "Storage Account",
+            "queue_storage": "Queue Storage",
+            "table_storage": "Table Storage",
+            "blob_storage": "Blob Storage",
+            "file_storage": "File Storage",
             "sql_database": "SQL Database",
-            "redis": "Redis Cache",
+            "redis": "Redis Cache", 
+            "cache_for_redis": "Redis Cache",
+            "cosmos_db": "Cosmos DB",
             "front_door": "Front Door",
             "application_gateway": "App Gateway",
             "load_balancer": "Load Balancer",
@@ -418,7 +628,10 @@ class HAMultiRegionPattern:
             "public_ip": "Public IP",
             "key_vault": "Key Vault",
             "entra_id": "Entra ID",
+            "active_directory": "Active Directory",
             "log_analytics": "Log Analytics",
-            "application_insights": "App Insights"
+            "application_insights": "App Insights",
+            "aks": "Kubernetes Service",
+            "container_instances": "Container Instances"
         }
         return name_mapping.get(service_type, service_type.replace("_", " ").title())
