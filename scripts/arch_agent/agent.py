@@ -182,8 +182,8 @@ class ArchitectureDiagramAgent:
                 self._select_services_from_category(requirements, category, categories[category])
         
         if not requirements.services:
-            print("⚠️  No services selected. Adding a default web application...")
-            requirements.services.append(UserIntent(kind="web_app", name="Web App"))
+            print("⚠️  No services selected. The architecture diagram will show an empty framework structure.")
+            # Do not add any default services - let the user make conscious choices
     
     def _select_services_from_category(self, requirements: Requirements, category: str, service_types: List[str]) -> None:
         """Select services from a specific category."""

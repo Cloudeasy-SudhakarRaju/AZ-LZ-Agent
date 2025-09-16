@@ -10,7 +10,8 @@ from diagrams.azure.storage import StorageAccounts
 from diagrams.azure.database import SQLDatabases, CacheForRedis
 from diagrams.azure.network import (
     VirtualNetworks, LoadBalancers, ApplicationGateway, 
-    PublicIpAddresses, NetworkSecurityGroupsClassic as NetworkSecurityGroups
+    PublicIpAddresses, NetworkSecurityGroupsClassic as NetworkSecurityGroups,
+    FrontDoors, CDNProfiles
 )
 from diagrams.azure.identity import ActiveDirectory
 from diagrams.azure.security import KeyVaults
@@ -43,66 +44,88 @@ class DiagramRenderer:
             "vnet": VirtualNetworks,
             "load_balancer": LoadBalancers,
             "application_gateway": ApplicationGateway,
+            "front_door": FrontDoors,
+            "cdn": CDNProfiles,
             "public_ip": PublicIpAddresses,
             "nsg": NetworkSecurityGroups,
             "entra_id": ActiveDirectory,
             "key_vault": KeyVaults,
             "log_analytics": LogAnalyticsWorkspaces,
             "application_insights": ApplicationInsights,
-            "front_door": FrontDoors,
-            "cdn": CDNProfiles,
         }
         
         # Track created nodes for edge connections
         self.node_instances = {}
     
-    def render(self, graph: LayoutGraph, output_path: str, title: str = "Azure Architecture") -> str:
+    def render(self, graph: LayoutGraph, output_path: str, title: str = "Azure Architecture", format: str = "png") -> str:
         """
-        Render a layout graph as a PNG diagram.
+        Render a layout graph as a diagram in the specified format.
         
         Args:
             graph: Layout graph to render
             output_path: Output file path (without extension)
             title: Diagram title
+            format: Output format ("png" or "svg")
             
         Returns:
-            Path to the generated PNG file
+            Path to the generated file
         """
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # Create enhanced graph attributes for better layout (requirement 12)
+        # Validate format
+        output_format = format.lower()
+        if output_format not in ["png", "svg"]:
+            output_format = "png"
+        
+        # Create enhanced graph attributes implementing architectural requirements 1-16
         custom_graph_attr = GRAPH_ATTR.copy()
         custom_graph_attr.update({
-            "rankdir": "LR",           # Left-to-right flow (requirement 3)
-            "splines": "polyline",     # Use polyline instead of ortho for edge labels
-            "nodesep": "1.5",          # Increased node separation for clarity
-            "ranksep": "2.5",          # Increased rank separation for visual hierarchy
-            "compound": "true",        # Allow edges between clusters
-            "concentrate": "false",    # Prevent edge merging for clarity
-            "remincross": "true",      # Minimize edge crossings (requirement 2)
-            "ordering": "out",         # Consistent edge ordering
-            "overlap": "false",        # Prevent node overlaps
-            "sep": "+25,25",           # Minimum separation
-            "esep": "+15,15",          # Edge separation
+            # Requirements 1 & 7: Clear containers/swimlanes and region separation
+            "rankdir": "TB",           # Top-to-bottom for clear logical layers
+            "splines": "polyline",     # Polyline routing for minimal crossings (req 2)
+            "nodesep": "2.0",          # Enhanced node separation for clarity (req 11)
+            "ranksep": "3.0",          # Enhanced rank separation for visual hierarchy (req 3, 10)
+            "compound": "true",        # Allow edges between clusters (req 1)
+            "concentrate": "false",    # Prevent edge merging for clarity (req 2)
+            "remincross": "true",      # Minimize edge crossings (req 2)
+            "ordering": "out",         # Consistent edge ordering (req 12)
+            "overlap": "false",        # Prevent node overlaps (req 11)
+            "sep": "+30,30",          # Enhanced separation (req 11) 
+            "esep": "+20,20",         # Enhanced edge separation (req 2)
+            "bgcolor": "#ffffff",      # Clean background (req 11)
+            "margin": "0.8,0.8",      # Better margins (req 11)
+            # Requirements 12 & 13: Strong layout constraints and pattern templates
+            "pack": "true",           # Efficient packing
+            "packmode": "cluster",    # Cluster-based packing for logical grouping (req 8)
+            "maxiter": "1000",        # Better layout convergence
+            "mclimit": "10.0"         # Memory cluster limit for complex diagrams
         })
         
-        # Enhanced node attributes for better visibility (requirement 6, 11)
+        # Enhanced node attributes implementing requirements 6, 10, 11
         custom_node_attr = NODE_ATTR.copy()
         custom_node_attr.update({
-            "fontsize": "11",
-            "width": "2.2",            # Larger width for long service names
-            "height": "1.5",           # Increased height
-            "fontname": "Inter",
+            # Requirement 11: Enhanced readability
+            "fontsize": "12",
+            "width": "2.5",            # Larger width for service names
+            "height": "1.8",           # Increased height for better visibility
+            "fontname": "Segoe UI",    # Professional font
             "shape": "box",
-            "style": "rounded,filled",
-            "margin": "0.1,0.1"
+            "style": "rounded,filled,bold",
+            "margin": "0.15,0.15",
+            # Requirement 6: Horizontal alignment with borders
+            "penwidth": "2.0",         # Enhanced borders
+            "color": "#2C5282",        # Professional border color
+            "fillcolor": "#EBF8FF",    # Light background color
+            # Requirement 10: Visual hierarchy with color coding
+            "gradientangle": "45",     # Subtle gradient effect
+            "fontcolor": "#1A202C"     # Professional text color
         })
         
         with Diagram(
             title,
             show=False,
-            outformat="png",
+            outformat=output_format,
             filename=output_path,
             graph_attr=custom_graph_attr,
             node_attr=custom_node_attr,
@@ -116,28 +139,95 @@ class DiagramRenderer:
             # Create edges
             self._create_edges(graph)
         
-        return f"{output_path}.png"
+        return f"{output_path}.{output_format}"
     
     def _create_clusters(self, graph: LayoutGraph) -> Dict[str, Any]:
         """
-        Create diagram clusters from the layout graph.
-        Returns a dictionary of cluster names to their context managers.
+        Create diagram clusters implementing requirements 1, 6, 7, 8, 10.
+        Requirements: Clear containers/swimlanes, horizontal alignment with borders,
+        clear region separation, logical grouping, visual hierarchy.
         """
         cluster_contexts = {}
         
         # Sort clusters by dependency (parent clusters first)
         sorted_clusters = self._sort_clusters_by_dependency(graph.clusters)
         
+        # Define cluster styling for visual hierarchy (requirement 10)
+        cluster_styles = {
+            "internet_edge": {
+                "bgcolor": "#FFF5F5",     # Light red for edge/internet
+                "pencolor": "#E53E3E", 
+                "penwidth": "3",
+                "style": "rounded,filled",
+                "fontcolor": "#1A202C",
+                "fontsize": "14"
+            },
+            "identity_security": {
+                "bgcolor": "#FFFAF0",     # Light orange for identity
+                "pencolor": "#DD6B20",
+                "penwidth": "3", 
+                "style": "rounded,filled",
+                "fontcolor": "#1A202C",
+                "fontsize": "14"
+            },
+            "active_region": {
+                "bgcolor": "#F0FFF4",     # Light green for active regions
+                "pencolor": "#38A169",
+                "penwidth": "3",
+                "style": "rounded,filled", 
+                "fontcolor": "#1A202C",
+                "fontsize": "14"
+            },
+            "standby_region": {
+                "bgcolor": "#F7FAFC",     # Light gray for standby regions
+                "pencolor": "#4A5568",
+                "penwidth": "3",
+                "style": "rounded,filled",
+                "fontcolor": "#1A202C", 
+                "fontsize": "14"
+            },
+            "monitoring": {
+                "bgcolor": "#EBF4FF",     # Light blue for monitoring
+                "pencolor": "#3182CE",
+                "penwidth": "3",
+                "style": "rounded,filled",
+                "fontcolor": "#1A202C",
+                "fontsize": "14"
+            },
+            "default": {
+                "bgcolor": "#F8F9FA",     # Light gray for other clusters
+                "pencolor": "#6B73FF",
+                "penwidth": "2",
+                "style": "rounded,filled",
+                "fontcolor": "#1A202C",
+                "fontsize": "13"
+            }
+        }
+        
         for cluster_name, cluster_def in sorted_clusters:
             # Skip sub-clusters for now - handle them in a second pass
             if cluster_def.get("parent"):
                 continue
-                
-            attrs = {
-                "label": cluster_def.get("label", cluster_name),
-                "bgcolor": cluster_def.get("bgcolor", "#FFFFFF"),
-                "style": cluster_def.get("style", "solid"),
-            }
+            
+            # Determine cluster style based on logical grouping (requirement 8)
+            style_key = "default"
+            if "edge" in cluster_name.lower() or "internet" in cluster_name.lower():
+                style_key = "internet_edge"
+            elif "identity" in cluster_name.lower() or "security" in cluster_name.lower():
+                style_key = "identity_security"
+            elif "active" in cluster_name.lower() and "region" in cluster_name.lower():
+                style_key = "active_region"
+            elif "standby" in cluster_name.lower() and "region" in cluster_name.lower():
+                style_key = "standby_region"
+            elif "monitor" in cluster_name.lower():
+                style_key = "monitoring"
+            
+            # Apply enhanced styling (requirements 1, 6, 7, 10)
+            attrs = cluster_styles[style_key].copy()
+            attrs["label"] = cluster_def.get("label", cluster_name)
+            
+            # Override with custom attributes if provided
+            attrs.update(cluster_def.get("graph_attr", {}))
             
             # Create the cluster context
             cluster_contexts[cluster_name] = Cluster(
@@ -216,73 +306,107 @@ class DiagramRenderer:
                 source_node >> Edge(**edge_attrs) >> target_node
     
     def _get_edge_attributes(self, edge: LayoutEdge) -> Dict[str, Any]:
-        """Get edge attributes for diagram rendering with enhanced styling (requirement 4, 14)."""
+        """Get edge attributes implementing requirements 4, 9, 14, 15 for enhanced connectivity visualization."""
         attrs = {}
         
+        # Base attributes for all edges
         if edge.label:
             attrs["label"] = edge.label
-            attrs["fontsize"] = "10"
-            attrs["fontname"] = "Inter"
+            attrs["fontsize"] = "11"
+            attrs["fontname"] = "Segoe UI"
+            attrs["labeldistance"] = "1.2"
+            attrs["labelangle"] = "0"
         
         if edge.color:
             attrs["color"] = edge.color
         else:
-            attrs["color"] = "#2E86C1"  # Default blue
+            attrs["color"] = "#2D3748"  # Professional default color
         
+        # Requirement 14: Line type distinctions for different purposes
         if edge.style:
             attrs["style"] = edge.style
         else:
             attrs["style"] = "solid"
         
-        # Enhanced styling based on connection type and requirements
-        if edge.label and any(word in edge.label for word in ["1.", "2.", "3.", "Traffic", "HTTPS"]):
-            # Primary workflow edges (requirement 4, 9)
+        # Requirement 4 & 9: Clear connection labeling with numbered workflow steps
+        if edge.label and any(word in edge.label for word in ["1.", "2.", "3.", "Step", "Traffic", "HTTPS", "Request"]):
+            # Primary workflow edges - requirement 9: numbered traffic flow
             attrs.update({
-                "penwidth": "3.0",
-                "fontsize": "12",
-                "fontcolor": edge.color or "#1976D2",
-                "arrowsize": "1.2",
-                "arrowhead": "normal"
+                "penwidth": "4.0",
+                "fontsize": "13",
+                "fontcolor": "#1A365D",
+                "fontweight": "bold",
+                "arrowsize": "1.5",
+                "arrowhead": "normal",
+                "color": "#3182CE",  # Primary blue for main flow
+                "style": "solid"
             })
         elif edge.style == "dashed":
-            # Cache, replication, and async patterns (requirement 14)
+            # Requirement 14: Dashed lines for async/cache patterns
             attrs.update({
-                "penwidth": "2.0",
-                "fontsize": "9",
-                "fontcolor": edge.color or "#FF6B35",
-                "arrowsize": "1.0",
-                "arrowhead": "vee"
+                "penwidth": "2.5",
+                "fontsize": "10",
+                "fontcolor": "#C53030",
+                "arrowsize": "1.2",
+                "arrowhead": "vee",
+                "color": "#E53E3E",  # Red for async patterns
+                "style": "dashed"
             })
         elif edge.style == "dotted":
-            # Monitoring and control connections (requirement 14)
-            attrs.update({
-                "penwidth": "1.5",
-                "fontsize": "8",
-                "fontcolor": edge.color or "#607D8B",
-                "arrowsize": "0.8",
-                "arrowhead": "diamond"
-            })
-        elif any(word in edge.label for word in ["Auth", "Secret", "Cert"]) if edge.label else False:
-            # Security connections (requirement 15)
+            # Requirement 14: Dotted lines for monitoring and control
             attrs.update({
                 "penwidth": "2.0",
                 "fontsize": "9",
-                "fontcolor": edge.color or "#795548",
+                "fontcolor": "#4A5568",
                 "arrowsize": "1.0",
-                "arrowhead": "box"
+                "arrowhead": "diamond",
+                "color": "#718096",  # Gray for monitoring
+                "style": "dotted"
+            })
+        elif any(word in (edge.label or "") for word in ["Auth", "Secret", "Cert", "Identity", "Key"]):
+            # Security connections - special styling for security flows
+            attrs.update({
+                "penwidth": "3.0",
+                "fontsize": "10",
+                "fontcolor": "#744210",
+                "arrowsize": "1.3",
+                "arrowhead": "box",
+                "color": "#D69E2E",  # Gold for security
+                "style": "solid"
+            })
+        elif any(word in (edge.label or "") for word in ["Data", "Storage", "Database", "Query"]):
+            # Data flow connections
+            attrs.update({
+                "penwidth": "2.8",
+                "fontsize": "10",
+                "fontcolor": "#22543D",
+                "arrowsize": "1.2",
+                "arrowhead": "normal",
+                "color": "#38A169",  # Green for data flow
+                "style": "solid"
             })
         else:
-            # Standard data flow edges (requirement 15)
+            # Standard service connections - requirement 15: directional clarity
             attrs.update({
-                "penwidth": "1.8",
-                "fontsize": "9",
-                "fontcolor": edge.color or "#4CAF50",
-                "arrowsize": "0.9",
-                "arrowhead": "normal"
+                "penwidth": "2.5",
+                "fontsize": "10",
+                "fontcolor": "#2D3748",
+                "arrowsize": "1.1",
+                "arrowhead": "normal",
+                "color": "#4A5568",  # Neutral gray for standard connections
+                "style": "solid"
             })
         
-        # Add constraint to minimize edge crossings (requirement 2, 12)
+        # Requirement 2 & 12: Add constraints to minimize edge crossings
         attrs["constraint"] = "true"
+        attrs["weight"] = "1"
+        
+        # Requirement 15: Enhance directional clarity
+        if "bidirectional" in (edge.label or "").lower():
+            attrs["dir"] = "both"
+            attrs["arrowtail"] = attrs["arrowhead"]
+        else:
+            attrs["dir"] = "forward"
         
         return attrs
 
@@ -295,7 +419,7 @@ class BatchRenderer:
     def __init__(self):
         self.renderer = DiagramRenderer()
     
-    def render_multiple(self, graphs: Dict[str, LayoutGraph], output_dir: str, title_prefix: str = "Azure") -> Dict[str, str]:
+    def render_multiple(self, graphs: Dict[str, LayoutGraph], output_dir: str, title_prefix: str = "Azure", format: str = "png") -> Dict[str, str]:
         """
         Render multiple layout graphs.
         
@@ -303,6 +427,7 @@ class BatchRenderer:
             graphs: Dictionary mapping names to layout graphs
             output_dir: Output directory
             title_prefix: Prefix for diagram titles
+            format: Output format ("png" or "svg")
             
         Returns:
             Dictionary mapping names to output file paths
@@ -314,7 +439,7 @@ class BatchRenderer:
             title = f"{title_prefix} - {name.replace('_', ' ').title()}"
             
             try:
-                file_path = self.renderer.render(graph, output_path, title)
+                file_path = self.renderer.render(graph, output_path, title, format)
                 output_files[name] = file_path
             except Exception as e:
                 print(f"Error rendering {name}: {e}")
