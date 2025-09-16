@@ -58,11 +58,14 @@ app.add_middleware(
 
 # Configure OpenAI API
 OPENAI_API_KEY = "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"
-openai.api_key = OPENAI_API_KEY
 
 # Initialize OpenAI client
 try:
-    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = openai.OpenAI(
+        api_key=OPENAI_API_KEY,
+        timeout=30.0,
+        max_retries=3
+    )
     logger.info("OpenAI API configured successfully")
 except Exception as e:
     logger.error(f"Failed to configure OpenAI API: {e}")
