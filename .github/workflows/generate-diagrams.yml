@@ -38,6 +38,7 @@ jobs:
 
       - name: Generate diagrams
         run: |
+          mkdir -p docs/diagrams
           python scripts/diagrams/generate_all.py
           python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --pattern ha-multiregion --out docs/diagrams/ha-multiregion
 
