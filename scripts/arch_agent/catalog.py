@@ -78,6 +78,34 @@ class ServiceCatalog:
                 diagram_class="StorageAccounts"
             ),
             
+            "queue_storage": ServiceDefinition(
+                name="Queue Storage",
+                category="storage",
+                dependencies=[
+                    ServiceDependency(service_type="storage_account", required=True),
+                ],
+                prompts=[
+                    "What visibility timeout? (default: 30 seconds)",
+                    "What message TTL? (default: 7 days)",
+                    "Do you need encryption at rest? (yes/no)"
+                ],
+                diagram_class="QueueStorage"
+            ),
+            
+            "table_storage": ServiceDefinition(
+                name="Table Storage",
+                category="storage",
+                dependencies=[
+                    ServiceDependency(service_type="storage_account", required=True),
+                ],
+                prompts=[
+                    "What consistency level needed? (Strong, Eventual)",
+                    "Do you need encryption at rest? (yes/no)",
+                    "What access tier? (Hot, Cool, Archive)"
+                ],
+                diagram_class="TableStorage"
+            ),
+            
             "redis": ServiceDefinition(
                 name="Azure Cache for Redis",
                 category="database",
