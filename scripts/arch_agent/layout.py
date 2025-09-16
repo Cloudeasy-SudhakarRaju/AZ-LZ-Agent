@@ -20,13 +20,14 @@ class LayoutComposer:
             "ha-multiregion": HAMultiRegionPattern()
         }
     
-    def compose_layout(self, requirements: Requirements, pattern: str = "ha-multiregion") -> LayoutGraph:
+    def compose_layout(self, requirements: Requirements, pattern: str = "ha-multiregion", ai_advisor=None) -> LayoutGraph:
         """
-        Compose a layout graph from requirements using the specified pattern.
+        Compose a layout graph from requirements using the specified pattern with optional AI enhancement.
         
         Args:
             requirements: Architecture requirements with user intents
             pattern: Layout pattern to use (default: "ha-multiregion")
+            ai_advisor: Optional AI advisor for enhanced service grouping and optimization
             
         Returns:
             LayoutGraph ready for rendering
@@ -37,9 +38,22 @@ class LayoutComposer:
         # Resolve dependencies for all user intents
         resolved_intents = self.catalog.resolve_dependencies(requirements.services)
         
-        # Apply the selected pattern
-        pattern_impl = self.patterns[pattern]
-        layout_graph = pattern_impl.apply_pattern(requirements, resolved_intents)
+        # Apply AI-enhanced service grouping if available (requirement 1 & 8)
+        if ai_advisor:
+            try:
+                ai_service_groups = ai_advisor.optimize_service_grouping(resolved_intents, requirements)
+                # Pass AI grouping to the pattern implementation
+                pattern_impl = self.patterns[pattern]
+                layout_graph = pattern_impl.apply_pattern_with_ai_grouping(requirements, resolved_intents, ai_service_groups)
+            except Exception as e:
+                print(f"Warning: AI grouping failed, using default: {e}")
+                # Fallback to standard pattern application
+                pattern_impl = self.patterns[pattern]
+                layout_graph = pattern_impl.apply_pattern(requirements, resolved_intents)
+        else:
+            # Apply the selected pattern without AI enhancement
+            pattern_impl = self.patterns[pattern]
+            layout_graph = pattern_impl.apply_pattern(requirements, resolved_intents)
         
         # Apply layout optimizations
         self._optimize_layout(layout_graph)
