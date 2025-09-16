@@ -2141,242 +2141,292 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
     
     return components
 
-def generate_professional_mermaid(inputs: CustomerInputs) -> str:
-    """Generate minimal Mermaid diagram for Azure Landing Zone based only on selected services"""
+def generate_dynamic_mermaid(inputs: CustomerInputs, ai_analysis: dict = None) -> str:
+    """Generate dynamic Mermaid diagram that adapts to architectural patterns and AI analysis"""
     
-    template = generate_architecture_template(inputs)
+    # Get AI analysis insights
+    pattern = ai_analysis.get("architecture_pattern", "Standard Architecture") if ai_analysis else "Standard Architecture"
+    services = ai_analysis.get("services", []) if ai_analysis else []
     
+    # Start with pattern-specific diagram structure
+    if "Microservices" in pattern:
+        return generate_microservices_mermaid(inputs, services, ai_analysis)
+    elif "E-commerce" in pattern:
+        return generate_ecommerce_mermaid(inputs, services, ai_analysis)
+    elif "Data Analytics" in pattern:
+        return generate_analytics_mermaid(inputs, services, ai_analysis)
+    else:
+        return generate_standard_mermaid(inputs, services, ai_analysis)
+
+def generate_microservices_mermaid(inputs: CustomerInputs, services: list, ai_analysis: dict) -> str:
+    """Generate microservices-specific mermaid diagram"""
     lines = [
         "graph TB",
-        "    subgraph \"Azure Architecture\"",
+        "    subgraph \"🌐 External Users\"",
+        "        USERS[\"👥 Users\"]",
+        "    end",
+        "",
+        "    subgraph \"🔄 API Gateway Layer\"",
+        "        APIGW[\"🚪 API Gateway\"]",
+        "        LB[\"⚖️ Load Balancer\"]",
+        "    end",
+        "",
+        "    subgraph \"📦 Microservices Platform\"",
+        "        AKS[\"☸️ Azure Kubernetes Service\"]",
+        "        subgraph \"🔧 Services\"",
+        "            SVC1[\"🎯 Auth Service\"]",
+        "            SVC2[\"💼 Business Service\"]",
+        "            SVC3[\"📊 Data Service\"]",
+        "        end",
+        "    end",
+        "",
+        "    subgraph \"💾 Data Layer\"",
+        "        DB[\"🗄️ Database\"]",
+        "        CACHE[\"⚡ Cache\"]",
+        "    end",
+        "",
+        "    subgraph \"🔐 Security & Operations\"",
+        "        VAULT[\"🔑 Key Vault\"]",
+        "        MONITOR[\"📊 Monitoring\"]",
+        "    end",
+        "",
+        "    %% Connections",
+        "    USERS --> LB",
+        "    LB --> APIGW",
+        "    APIGW --> AKS",
+        "    AKS --> SVC1",
+        "    AKS --> SVC2", 
+        "    AKS --> SVC3",
+        "    SVC1 --> DB",
+        "    SVC2 --> DB",
+        "    SVC3 --> DB",
+        "    SVC1 --> CACHE",
+        "    SVC2 --> CACHE",
+        "    AKS --> VAULT",
+        "    AKS --> MONITOR",
+        "",
+        "    %% Styling",
+        "    classDef primary fill:#0078d4,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef secondary fill:#107c10,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef data fill:#d83b01,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef security fill:#5c2d91,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "",
+        "    class USERS,LB,APIGW primary;",
+        "    class AKS,SVC1,SVC2,SVC3 secondary;",
+        "    class DB,CACHE data;",
+        "    class VAULT,MONITOR security;"
     ]
     
-    # Check if we have any services selected (including AI suggested ones)
-    ai_services = template.get("ai_services", [])
-    total_selected_services = sum([
-        len(inputs.compute_services or []),
-        len(inputs.network_services or []),
-        len(inputs.storage_services or []),
-        len(inputs.database_services or []),
-        len(inputs.security_services or []),
-        len(inputs.monitoring_services or []),
-        len(inputs.ai_services or []),
-        len(inputs.analytics_services or []),
-        len(inputs.integration_services or []),
-        len(inputs.devops_services or []),
-        len(inputs.backup_services or []),
-        len(ai_services)
-    ])
-    
-    # Only add structure if we have services
-    if total_selected_services > 0:
-        lines.extend([
-            "        SUBSCRIPTION[\"📦 Azure Subscription\"]"
-        ])
-        
-        # Add Resource Group only if we have resources
-        lines.extend([
-            "        RESOURCEGROUP[\"📁 Resource Group\"]",
-            "        SUBSCRIPTION --> RESOURCEGROUP"
-        ])
-        
-        service_count = 0
-        
-        # Add compute services if selected
-        if inputs.compute_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "compute" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Compute Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected compute services
-            for service in (inputs.compute_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"COMPUTE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested compute services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "compute":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"COMPUTE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-        
-        # Add network services if selected
-        if inputs.network_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "network" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Network Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected network services
-            for service in (inputs.network_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"NETWORK{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested network services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "network":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"NETWORK{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-        
-        # Add storage services if selected
-        if inputs.storage_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "storage" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Storage Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected storage services
-            for service in (inputs.storage_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"STORAGE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested storage services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "storage":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"STORAGE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-        
-        # Add database services if selected
-        if inputs.database_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "database" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Database Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected database services
-            for service in (inputs.database_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"DATABASE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested database services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "database":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"DATABASE{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-        
-        # Add security services if selected
-        if inputs.security_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "security" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Security Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected security services
-            for service in (inputs.security_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"SECURITY{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested security services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "security":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"SECURITY{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-        
-        # Add monitoring services if selected
-        if inputs.monitoring_services or (ai_services and any(service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "monitoring" for service in ai_services)):
-            lines.extend([
-                "        subgraph \"Monitoring Services\""
-            ])
-            
-            service_connections = []
-            # Add explicitly selected monitoring services
-            for service in (inputs.monitoring_services or []):
-                if service in AZURE_SERVICES_MAPPING:
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"MONITORING{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            # Add AI-suggested monitoring services
-            for service in ai_services:
-                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["category"] == "monitoring":
-                    service_info = AZURE_SERVICES_MAPPING[service]
-                    service_id = f"MONITORING{service_count}"
-                    lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                    service_connections.append(f"            RESOURCEGROUP --> {service_id}")
-                    service_count += 1
-            
-            lines.extend(service_connections)
-            lines.append("        end")
-    
-    else:
-        # If no services selected, show minimal placeholder
-        lines.extend([
-            "        PLACEHOLDER[\"📝 No Services Selected\"]",
-            "        PLACEHOLDER2[\"ℹ️ Please select Azure services to generate architecture\"]"
-        ])
-    
-    lines.append("    end")
-    
-    # Add styling
-    lines.extend([
-        "",
-        "    classDef subscription fill:#e1f5fe,stroke:#01579b,stroke-width:2px;",
-        "    classDef resourceGroup fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;",
-        "    classDef compute fill:#fff3e0,stroke:#e65100,stroke-width:2px;",
-        "    classDef network fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px;",
-        "    classDef storage fill:#fce4ec,stroke:#880e4f,stroke-width:2px;",
-        "    classDef database fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px;",
-        "    classDef security fill:#ffebee,stroke:#b71c1c,stroke-width:2px;",
-        "    classDef monitoring fill:#f1f8e9,stroke:#33691e,stroke-width:2px;",
-        "",
-        "    class SUBSCRIPTION subscription;",
-        "    class RESOURCEGROUP resourceGroup;"
-    ])
-    
-    return "\n".join(lines)
+    return "\\n".join(lines)
 
+def generate_ecommerce_mermaid(inputs: CustomerInputs, services: list, ai_analysis: dict) -> str:
+    """Generate e-commerce-specific mermaid diagram"""
+    lines = [
+        "graph TB",
+        "    subgraph \"🌍 Global Users\"",
+        "        USERS[\"🛒 Customers\"]",
+        "        ADMIN[\"👨‍💼 Admin\"]",
+        "    end",
+        "",
+        "    subgraph \"🌐 Edge & CDN\"",
+        "        CDN[\"🚀 Azure CDN\"]",
+        "        WAF[\"🛡️ Web Application Firewall\"]",
+        "    end",
+        "",
+        "    subgraph \"🏪 Application Layer\"",
+        "        APPGW[\"🚪 Application Gateway\"]",
+        "        WEBAPP[\"🌐 Web Application\"]",
+        "        API[\"🔗 API Services\"]",
+        "    end",
+        "",
+        "    subgraph \"💳 Business Services\"",
+        "        PAYMENT[\"💰 Payment Processing\"]",
+        "        INVENTORY[\"📦 Inventory Management\"]",
+        "        ORDER[\"📋 Order Processing\"]",
+        "    end",
+        "",
+        "    subgraph \"💾 Data & Cache\"",
+        "        DB[\"🗄️ SQL Database\"]",
+        "        REDIS[\"⚡ Redis Cache\"]",
+        "        STORAGE[\"📁 Blob Storage\"]",
+        "    end",
+        "",
+        "    subgraph \"🔐 Security & Operations\"",
+        "        VAULT[\"🔑 Key Vault\"]",
+        "        AAD[\"🆔 Azure AD\"]",
+        "        MONITOR[\"📊 Application Insights\"]",
+        "    end",
+        "",
+        "    %% User flows",
+        "    USERS --> CDN",
+        "    ADMIN --> APPGW",
+        "    CDN --> WAF",
+        "    WAF --> APPGW",
+        "    APPGW --> WEBAPP",
+        "    WEBAPP --> API",
+        "    API --> PAYMENT",
+        "    API --> INVENTORY",
+        "    API --> ORDER",
+        "",
+        "    %% Data flows",
+        "    PAYMENT --> DB",
+        "    INVENTORY --> DB",
+        "    ORDER --> DB",
+        "    API --> REDIS",
+        "    WEBAPP --> STORAGE",
+        "",
+        "    %% Security flows",
+        "    API --> VAULT",
+        "    API --> AAD",
+        "    WEBAPP --> MONITOR",
+        "    API --> MONITOR",
+        "",
+        "    %% Styling",
+        "    classDef frontend fill:#0078d4,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef business fill:#107c10,stroke:#ffffff,stroke-width:2px,color:#ffffff;", 
+        "    classDef data fill:#d83b01,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef security fill:#5c2d91,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "",
+        "    class USERS,CDN,WAF,APPGW,WEBAPP frontend;",
+        "    class API,PAYMENT,INVENTORY,ORDER business;",
+        "    class DB,REDIS,STORAGE data;",
+        "    class VAULT,AAD,MONITOR security;"
+    ]
+    
+    return "\\n".join(lines)
+
+def generate_analytics_mermaid(inputs: CustomerInputs, services: list, ai_analysis: dict) -> str:
+    """Generate data analytics-specific mermaid diagram"""
+    lines = [
+        "graph LR",
+        "    subgraph \"📥 Data Sources\"",
+        "        SRC1[\"🏢 Enterprise Data\"]",
+        "        SRC2[\"☁️ Cloud APIs\"]",
+        "        SRC3[\"📱 IoT/Streaming\"]",
+        "    end",
+        "",
+        "    subgraph \"🔄 Data Ingestion\"",
+        "        ADF[\"🏭 Data Factory\"]",
+        "        EVENTHUB[\"📨 Event Hubs\"]",
+        "    end",
+        "",
+        "    subgraph \"💾 Data Storage\"",
+        "        LAKE[\"🏞️ Data Lake\"]",
+        "        DW[\"🏬 Synapse Analytics\"]",
+        "        BLOB[\"📁 Blob Storage\"]",
+        "    end",
+        "",
+        "    subgraph \"⚙️ Data Processing\"",
+        "        DATABRICKS[\"🧮 Databricks\"]",
+        "        SYNAPSE[\"⚡ Synapse Spark\"]",
+        "    end",
+        "",
+        "    subgraph \"📊 Analytics & ML\"",
+        "        ML[\"🤖 Machine Learning\"]",
+        "        POWERBI[\"📈 Power BI\"]",
+        "        COGNITIVE[\"🧠 Cognitive Services\"]",
+        "    end",
+        "",
+        "    subgraph \"🔐 Security & Governance\"",
+        "        VAULT[\"🔑 Key Vault\"]",
+        "        PURVIEW[\"📋 Data Governance\"]",
+        "        MONITOR[\"📊 Monitor\"]",
+        "    end",
+        "",
+        "    %% Data flow",
+        "    SRC1 --> ADF",
+        "    SRC2 --> ADF",
+        "    SRC3 --> EVENTHUB",
+        "    ADF --> LAKE",
+        "    EVENTHUB --> LAKE",
+        "    LAKE --> DW",
+        "    LAKE --> DATABRICKS",
+        "    DW --> SYNAPSE",
+        "    DATABRICKS --> ML",
+        "    DW --> POWERBI",
+        "    ML --> COGNITIVE",
+        "",
+        "    %% Security and governance",
+        "    DATABRICKS --> VAULT",
+        "    DW --> VAULT",
+        "    ADF --> PURVIEW",
+        "    DATABRICKS --> MONITOR",
+        "    DW --> MONITOR",
+        "",
+        "    %% Styling",
+        "    classDef source fill:#0078d4,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef ingestion fill:#107c10,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef storage fill:#d83b01,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef processing fill:#ff8c00,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef analytics fill:#5c2d91,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "",
+        "    class SRC1,SRC2,SRC3 source;",
+        "    class ADF,EVENTHUB ingestion;",
+        "    class LAKE,DW,BLOB storage;",
+        "    class DATABRICKS,SYNAPSE processing;",
+        "    class ML,POWERBI,COGNITIVE,VAULT,PURVIEW,MONITOR analytics;"
+    ]
+    
+    return "\\n".join(lines)
+
+def generate_standard_mermaid(inputs: CustomerInputs, services: list, ai_analysis: dict) -> str:
+    """Generate standard web application mermaid diagram"""
+    lines = [
+        "graph TB",
+        "    subgraph \"👥 Users\"",
+        "        USERS[\"🌐 Web Users\"]",
+        "    end",
+        "",
+        "    subgraph \"🌐 Application Layer\"",
+        "        APPGW[\"🚪 Application Gateway\"]",
+        "        WEBAPP[\"🌐 App Service\"]",
+        "    end",
+        "",
+        "    subgraph \"💾 Data Layer\"",
+        "        DB[\"🗄️ SQL Database\"]",
+        "        STORAGE[\"📁 Storage Account\"]",
+        "    end",
+        "",
+        "    subgraph \"🔐 Security & Operations\"",
+        "        VAULT[\"🔑 Key Vault\"]",
+        "        MONITOR[\"📊 Azure Monitor\"]",
+        "        VNET[\"🔒 Virtual Network\"]",
+        "    end",
+        "",
+        "    %% Connections",
+        "    USERS --> APPGW",
+        "    APPGW --> WEBAPP",
+        "    WEBAPP --> DB",
+        "    WEBAPP --> STORAGE",
+        "    WEBAPP --> VAULT",
+        "    WEBAPP --> MONITOR",
+        "    WEBAPP -.-> VNET",
+        "    DB -.-> VNET",
+        "",
+        "    %% Styling", 
+        "    classDef frontend fill:#0078d4,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef data fill:#d83b01,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "    classDef security fill:#5c2d91,stroke:#ffffff,stroke-width:2px,color:#ffffff;",
+        "",
+        "    class USERS,APPGW,WEBAPP frontend;",
+        "    class DB,STORAGE data;",
+        "    class VAULT,MONITOR,VNET security;"
+    ]
+    
+    return "\\n".join(lines)
+
+def generate_professional_mermaid(inputs: CustomerInputs) -> str:
+    """Legacy wrapper - now generates dynamic diagrams when possible"""
+    # Try to get AI analysis from the template
+    template = generate_architecture_template(inputs)
+    ai_analysis = template.get("ai_analysis", {})
+    
+    # If we have AI analysis, use dynamic generation
+    if ai_analysis and ai_analysis.get("architecture_pattern"):
+        return generate_dynamic_mermaid(inputs, ai_analysis)
+    
+    # Otherwise fall back to the original logic but simplified
+    return generate_standard_mermaid(inputs, [], {})
 def generate_enhanced_drawio_xml(inputs: CustomerInputs) -> str:
     """Generate enhanced Draw.io XML with comprehensive Azure stencils based on user selections"""
     
@@ -4147,9 +4197,12 @@ def generate_interactive_azure_architecture(inputs: CustomerInputs):
         # Generate intelligent feedback questions using AI analysis
         feedback_questions = generate_intelligent_feedback_questions(inputs, ai_analysis)
         
-        # Generate Mermaid diagram
-        logger.info("Generating Mermaid diagram...")
-        mermaid_diagram = generate_professional_mermaid(inputs)
+        # Generate dynamic Mermaid diagram based on AI analysis
+        logger.info("Generating dynamic Mermaid diagram...")
+        if ai_analysis:
+            mermaid_diagram = generate_dynamic_mermaid(inputs, ai_analysis)
+        else:
+            mermaid_diagram = generate_professional_mermaid(inputs)
         logger.info("Mermaid diagram generated successfully")
         
         # Generate Azure SVG diagram with proper Azure icons
