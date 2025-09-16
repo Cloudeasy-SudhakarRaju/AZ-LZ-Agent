@@ -687,99 +687,65 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
         return f"Error generating AI recommendations: {str(e)}"
 
 def analyze_free_text_requirements(free_text: str) -> dict:
-    """Analyze free text input to extract comprehensive service requirements using AI (OpenAI primary, Gemini fallback)"""
+    """Conservative AI analysis of free text input with strict service limits and transparency"""
     try:
         if not openai_client and not gemini_model and not OPENAI_API_KEY:
-            return {"services": [], "reasoning": "No AI analysis available"}
+            return {"services": [], "reasoning": "No AI analysis available - please select services manually", "needs_confirmation": True}
             
         prompt = """
-        You are an ENTERPRISE AZURE SOLUTIONS ARCHITECT with deep expertise in designing production-ready, scalable, and secure Azure Landing Zone architectures. You have extensive experience with Azure Well-Architected Framework, Azure CAF (Cloud Adoption Framework), and enterprise-grade architectural patterns.
+        You are a CONSERVATIVE AZURE SOLUTIONS ARCHITECT focused on minimal viable architectures that strictly adhere to user requirements. Your goal is to suggest ONLY the essential services explicitly needed for the stated requirement.
 
         User Requirement: "{}"
 
-        ENTERPRISE ANALYSIS INSTRUCTIONS:
+        CONSERVATIVE ANALYSIS INSTRUCTIONS:
+
+        1. MINIMAL SERVICE SELECTION (MAXIMUM 5 SERVICES):
+           - Suggest ONLY services that are explicitly required for the stated need
+           - DO NOT add "nice to have" or "recommended" services unless specifically mentioned
+           - Prefer simple, proven solutions over complex architectures
+           - Focus on the core requirement rather than comprehensive enterprise features
+
+        2. EXPLICIT REQUIREMENT MAPPING:
+           - Map each suggested service directly to a specific part of the user's requirement
+           - Do not make assumptions about unstated needs
+           - If the requirement is unclear, ask for clarification rather than assuming
+
+        3. TRANSPARENCY AND REASONING:
+           - Clearly explain why each service is essential for the stated requirement
+           - Avoid generic architectural recommendations
+           - Focus on the minimum viable solution
+
+        4. USER CONFIRMATION REQUIRED:
+           - Always indicate when user confirmation is needed for ambiguous requirements
+           - Suggest alternatives when multiple service options exist
+           - Make it clear that this is a starting point for discussion
+
+        AVAILABLE AZURE SERVICES (SELECT MAXIMUM 5):
         
-        1. COMPREHENSIVE BUSINESS ANALYSIS:
-           - Analyze the business requirement to understand the complete technical and operational context
-           - Consider enterprise-grade scalability, security, compliance, and governance needs
-           - Think about future growth, disaster recovery, and business continuity requirements
-           - Identify the appropriate Azure architectural pattern (e.g., N-tier, microservices, event-driven, etc.)
+        Essential Compute: virtual_machines, aks, app_services, functions
+        Essential Network: virtual_network, application_gateway, load_balancer, firewall
+        Essential Storage: storage_accounts, blob_storage
+        Essential Database: sql_database, cosmos_db, mysql, postgresql, redis
+        Essential Security: key_vault, active_directory
+        Essential Monitoring: azure_monitor, application_insights
 
-        2. INTELLIGENT SERVICE SELECTION:
-           - Select ONLY services that are truly needed for the specific requirement
-           - DO NOT include random or default services unless they are justified by the requirement
-           - For each service selected, provide clear architectural reasoning
-           - Consider service dependencies and integration patterns
-           - Ensure services work together as a cohesive architectural solution
+        RESPONSE FORMAT - Provide a CONSERVATIVE JSON response:
 
-        3. ENTERPRISE ARCHITECTURE PATTERNS:
-           - Apply proven enterprise patterns: Hub-and-Spoke networking, Microservices, Event-driven architecture
-           - Consider cross-cutting concerns: Security, Monitoring, Logging, Backup, Disaster Recovery
-           - Design for High Availability (99.9%+), Scalability, and Performance
-           - Include appropriate governance and compliance services when needed
-
-        4. CONNECTIVITY AND INTEGRATION:
-           - Design proper service-to-service communication patterns
-           - Consider network security groups, private endpoints, and secure communication
-           - Plan for API management, service mesh, and integration patterns
-           - Design proper data flow and processing pipelines
-
-        5. SECURITY BY DESIGN:
-           - Implement Zero Trust security model where appropriate
-           - Consider identity and access management, data encryption, network security
-           - Include security monitoring and threat detection capabilities
-           - Plan for compliance requirements (GDPR, HIPAA, SOC 2, etc.)
-
-        AVAILABLE AZURE SERVICES BY CATEGORY:
-        
-        Compute: virtual_machines, aks, app_services, functions, container_instances, service_fabric, batch
-        Network: virtual_network, vpn_gateway, expressroute, load_balancer, application_gateway, firewall, waf, cdn, traffic_manager, virtual_wan
-        Storage: storage_accounts, blob_storage, data_lake_storage, file_storage, disk_storage
-        Database: sql_database, cosmos_db, mysql, postgresql, redis, synapse_dedicated_pools
-        Security: key_vault, security_center, sentinel, azure_ad_b2c, azure_firewall, ddos_protection, active_directory
-        Monitoring: azure_monitor, log_analytics, application_insights, azure_advisor
-        Analytics: synapse_analytics, data_factory, databricks, stream_analytics, event_hubs, power_bi
-        Integration: logic_apps, service_bus, event_grid, api_management
-        DevOps: devops, pipelines, container_registry, azure_artifacts
-        Backup: backup_vault, site_recovery, azure_backup
-
-        RESPONSE FORMAT - Provide a DETAILED JSON response with:
-
-        1. "services" - Array of Azure service keys that form a complete, enterprise-ready solution
-        2. "reasoning" - Comprehensive architectural explanation (minimum 200 words) covering:
-           - Why each service was selected and how it fits the architectural pattern
-           - How services integrate and communicate with each other
-           - Security, scalability, and operational considerations
-           - Alternatives considered and why they were not chosen
-           
-        3. "architecture_pattern" - Detailed description of the overall architecture pattern and design principles
-        4. "connectivity_requirements" - Specific connectivity patterns, network topology, and communication flows
-        5. "security_considerations" - Comprehensive security architecture including identity, network, data, and application security
-        6. "scalability_design" - How the architecture scales to meet demand
-        7. "operational_excellence" - Monitoring, logging, automation, and maintenance considerations
-        8. "cost_optimization" - Cost-effective design choices and optimization strategies
-        9. "needs_confirmation" - Set to true if clarification is needed from the user
-        10. "suggested_additions" - Additional services or patterns to consider for enhancement
-
-        EXAMPLE FOR "I need a scalable e-commerce platform with microservices architecture":
         {{
-          "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "redis", "service_bus", "api_management", "key_vault", "azure_monitor", "log_analytics", "application_insights", "storage_accounts", "cdn", "container_registry"],
-          "reasoning": "Designed a comprehensive microservices-based e-commerce platform using Azure Kubernetes Service (AKS) as the container orchestration platform for scalable microservices. Application Gateway provides SSL termination, web application firewall, and load balancing across AKS nodes. Virtual Network ensures secure communication between services with network segmentation. Cosmos DB serves as the primary database for product catalog and user data with global distribution capabilities. Redis provides high-performance caching for session management and frequently accessed data. Service Bus enables reliable asynchronous communication between microservices. API Management provides centralized API gateway functionality with rate limiting, authentication, and API versioning. Key Vault securely manages secrets, certificates, and encryption keys. Comprehensive monitoring stack with Azure Monitor, Log Analytics, and Application Insights provides observability across the entire platform. Storage Accounts handle static assets and file uploads. CDN improves global performance for static content delivery. Container Registry stores and manages container images for the microservices.",
-          "architecture_pattern": "Cloud-native microservices architecture with event-driven communication, implementing Domain-Driven Design principles with separate bounded contexts for user management, product catalog, order processing, and payment services",
-          "connectivity_requirements": "Application Gateway -> AKS Ingress -> Microservices, Service Bus for async communication, API Management for external APIs, Private endpoints for databases, VNet integration for all services",
-          "security_considerations": "Zero Trust network model with NSGs, private endpoints for data services, Key Vault integration for secrets, Application Gateway WAF for web protection, Azure AD integration for authentication, RBAC for authorization",
-          "scalability_design": "Horizontal pod autoscaling in AKS, Cosmos DB auto-scaling, Redis clustering, Application Gateway auto-scaling, CDN for global content delivery",
-          "operational_excellence": "Centralized logging with Log Analytics, distributed tracing with Application Insights, automated deployment with Container Registry and AKS, health checks and monitoring alerts",
-          "cost_optimization": "AKS spot instances for non-critical workloads, Cosmos DB reserved capacity, appropriate storage tiers, CDN for reduced bandwidth costs",
-          "needs_confirmation": false,
-          "suggested_additions": ["Azure Front Door for global load balancing", "Azure DevOps for CI/CD pipeline", "Azure Backup for data protection"]
+          "services": [maximum 5 essential services],
+          "reasoning": "Conservative explanation focusing on why ONLY these services are essential for the specific requirement stated. Explain what each service does for this particular use case and why it cannot be omitted.",
+          "architecture_pattern": "Simple description focusing on the minimal viable solution",
+          "needs_confirmation": true/false (set to true if any assumptions were made or if the requirement needs clarification),
+          "assumptions_made": ["List any assumptions that were necessary"],
+          "alternative_options": ["List alternative service choices if applicable"],
+          "next_steps": "What the user should consider or clarify next"
         }}
 
-        CRITICAL REQUIREMENTS:
-        - ONLY suggest services that are specifically needed for the stated requirement
-        - Provide detailed architectural reasoning for every service selection
-        - Ensure all services work together as an integrated solution
-        - Consider enterprise-grade non-functional requirements (security, scalability, monitoring)
+        CRITICAL CONSTRAINTS:
+        - MAXIMUM 5 services total
+        - Each service must be directly required for the stated need
+        - Avoid comprehensive enterprise architecture patterns unless explicitly requested
+        - Focus on the specific use case, not general best practices
         - Return ONLY valid JSON format with no additional text
 
         """.format(free_text)
@@ -796,58 +762,146 @@ def analyze_free_text_requirements(free_text: str) -> dict:
             json_str = json_match.group()
             try:
                 analysis = json.loads(json_str)
-                # Ensure backward compatibility by adding missing fields
-                if "architecture_pattern" not in analysis:
-                    analysis["architecture_pattern"] = "Custom architecture"
-                if "connectivity_requirements" not in analysis:
-                    analysis["connectivity_requirements"] = "Standard Azure networking"
-                if "security_considerations" not in analysis:
-                    analysis["security_considerations"] = "Standard security practices"
-                if "scalability_design" not in analysis:
-                    analysis["scalability_design"] = "Standard scalability patterns"
-                if "operational_excellence" not in analysis:
-                    analysis["operational_excellence"] = "Standard monitoring and operations"
-                if "cost_optimization" not in analysis:
-                    analysis["cost_optimization"] = "Standard cost optimization"
-                if "needs_confirmation" not in analysis:
-                    analysis["needs_confirmation"] = False
-                if "suggested_additions" not in analysis:
-                    analysis["suggested_additions"] = []
+                
+                # Enforce maximum 5 services constraint
+                if "services" in analysis and len(analysis["services"]) > 5:
+                    logger.warning(f"AI suggested {len(analysis['services'])} services, limiting to 5 most essential")
+                    analysis["services"] = analysis["services"][:5]
+                    analysis["reasoning"] += f" (Note: Limited to 5 most essential services for clarity and manageability)"
+                    analysis["needs_confirmation"] = True
+                
+                # Validate suggested services exist in our mapping
+                valid_services = []
+                invalid_services = []
+                for service in analysis.get("services", []):
+                    if service in AZURE_SERVICES_MAPPING:
+                        valid_services.append(service)
+                    else:
+                        invalid_services.append(service)
+                
+                if invalid_services:
+                    logger.warning(f"AI suggested invalid services: {invalid_services}")
+                    analysis["services"] = valid_services
+                    analysis["reasoning"] += f" (Note: Removed invalid services: {', '.join(invalid_services)})"
+                    analysis["needs_confirmation"] = True
+                
+                # Ensure all required fields are present with defaults
+                defaults = {
+                    "architecture_pattern": "Minimal viable architecture",
+                    "needs_confirmation": True,
+                    "assumptions_made": [],
+                    "alternative_options": [],
+                    "next_steps": "Review the suggested services and confirm they meet your specific needs"
+                }
+                
+                for key, default_value in defaults.items():
+                    if key not in analysis:
+                        analysis[key] = default_value
+                
+                # Log the analysis for transparency
+                logger.info(f"Conservative AI analysis completed: {len(analysis['services'])} services suggested, confirmation needed: {analysis['needs_confirmation']}")
+                
                 return analysis
-            except json.JSONDecodeError:
-                pass
+                
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse AI response as JSON: {e}")
         
-        # Fallback: Extract services from text response
-        logger.warning("Failed to parse AI response as JSON, attempting text parsing")
-        services = extract_services_from_text(result_text)
+        # Fallback: Conservative manual parsing if JSON parsing fails
+        logger.warning("Failed to parse AI response as JSON, using conservative fallback")
+        conservative_services = extract_conservative_services_from_text(result_text, free_text)
         
         return {
-            "services": services, 
-            "reasoning": result_text,
-            "architecture_pattern": "Text-based analysis",
-            "connectivity_requirements": "Standard Azure networking patterns",
-            "security_considerations": "Enterprise security best practices",
-            "scalability_design": "Auto-scaling and high availability",
-            "operational_excellence": "Azure Monitor and Log Analytics",
-            "cost_optimization": "Right-sizing and reserved instances",
-            "needs_confirmation": False,
-            "suggested_additions": []
+            "services": conservative_services, 
+            "reasoning": f"Conservative analysis based on text parsing: {result_text[:500]}...",
+            "architecture_pattern": "Minimal viable solution",
+            "needs_confirmation": True,
+            "assumptions_made": ["AI parsing failed, used conservative text analysis"],
+            "alternative_options": ["Manual service selection recommended"],
+            "next_steps": "Please review and manually select the specific services you need"
         }
         
     except Exception as e:
-        logger.error(f"Error analyzing free text requirements: {e}")
+        logger.error(f"Error in conservative free text analysis: {e}")
         return {
             "services": [], 
-            "reasoning": f"Analysis error: {str(e)}",
-            "architecture_pattern": "Error",
-            "connectivity_requirements": "Error",
-            "security_considerations": "Error",
-            "scalability_design": "Error",
-            "operational_excellence": "Error",
-            "cost_optimization": "Error",
+            "reasoning": f"Analysis error occurred: {str(e)}. Please manually select the services you need.",
+            "architecture_pattern": "Manual selection required",
             "needs_confirmation": True,
-            "suggested_additions": []
+            "assumptions_made": ["Error in AI analysis"],
+            "alternative_options": ["Manual service selection"],
+            "next_steps": "Please manually select services from the available categories"
         }
+
+def extract_conservative_services_from_text(text: str, original_requirement: str) -> list:
+    """Extract Azure service names conservatively from text response with maximum 5 services"""
+    
+    # Start with an empty list and only add explicitly mentioned services
+    conservative_services = []
+    text_lower = text.lower()
+    requirement_lower = original_requirement.lower()
+    
+    # Conservative service mapping - only add if explicitly needed
+    essential_mappings = {
+        # Only add compute if explicitly mentioned
+        "virtual machine": "virtual_machines",
+        "vm": "virtual_machines", 
+        "kubernetes": "aks",
+        "aks": "aks",
+        "web app": "app_services",
+        "app service": "app_services",
+        "function": "functions",
+        
+        # Only add storage if data storage is mentioned
+        "storage": "storage_accounts",
+        "blob": "blob_storage",
+        
+        # Only add database if data persistence is mentioned
+        "database": "sql_database",
+        "sql": "sql_database",
+        "cosmos": "cosmos_db",
+        "mysql": "mysql",
+        "postgresql": "postgresql",
+        "redis": "redis",
+        
+        # Only add networking if web access or networking is mentioned
+        "network": "virtual_network",
+        "load balancer": "load_balancer",
+        "application gateway": "application_gateway",
+        
+        # Only add security if security is specifically mentioned
+        "key vault": "key_vault",
+        "security": "key_vault",
+        "active directory": "active_directory",
+        "authentication": "active_directory",
+        
+        # Only add monitoring if observability is mentioned
+        "monitor": "azure_monitor",
+        "monitoring": "azure_monitor",
+        "observability": "azure_monitor",
+        "insights": "application_insights"
+    }
+    
+    # Check both the AI response and the original requirement for conservative matches
+    combined_text = f"{text_lower} {requirement_lower}"
+    
+    for phrase, service in essential_mappings.items():
+        if phrase in combined_text and service not in conservative_services:
+            conservative_services.append(service)
+            # Stop at 5 services maximum
+            if len(conservative_services) >= 5:
+                break
+    
+    # If no services found but this appears to be a web application, add minimal web stack
+    if not conservative_services:
+        web_indicators = ["web", "app", "website", "portal", "frontend", "ui", "interface"]
+        if any(indicator in requirement_lower for indicator in web_indicators):
+            conservative_services = ["app_services", "sql_database", "virtual_network"]
+        else:
+            # Truly minimal: just virtual machines and basic networking
+            conservative_services = ["virtual_machines", "virtual_network"]
+    
+    # Ensure we don't exceed 5 services
+    return conservative_services[:5]
 
 def extract_services_from_text(text: str) -> list:
     """Extract Azure service names from text response"""
@@ -891,58 +945,149 @@ def extract_services_from_text(text: str) -> list:
     return list(set(found_services))  # Remove duplicates
 
 def validate_customer_inputs(inputs: CustomerInputs) -> None:
-    """Validate customer inputs to prevent potential errors"""
-    # Check for extremely long strings that might cause issues
-    string_fields = [
-        inputs.business_objective, inputs.regulatory, inputs.industry,
-        inputs.org_structure, inputs.governance, inputs.identity,
-        inputs.connectivity, inputs.network_model, inputs.ip_strategy,
-        inputs.security_zone, inputs.security_posture, inputs.key_vault,
-        inputs.threat_protection, inputs.workload, inputs.architecture_style,
-        inputs.scalability, inputs.ops_model, inputs.monitoring, inputs.backup,
-        inputs.topology_pattern, inputs.migration_scope, inputs.cost_priority, inputs.iac,
-        inputs.url_input
-    ]
+    """Enhanced validation for customer inputs with detailed error messages"""
     
-    for field in string_fields:
-        if field and len(field) > 1000:  # Reasonable limit for most fields
-            raise ValueError(f"Input field too long: {len(field)} characters (max 1000)")
+    # Check for extremely long strings that might cause issues
+    string_fields = {
+        'business_objective': inputs.business_objective,
+        'regulatory': inputs.regulatory,
+        'industry': inputs.industry,
+        'org_structure': inputs.org_structure,
+        'governance': inputs.governance,
+        'identity': inputs.identity,
+        'connectivity': inputs.connectivity,
+        'network_model': inputs.network_model,
+        'ip_strategy': inputs.ip_strategy,
+        'security_zone': inputs.security_zone,
+        'security_posture': inputs.security_posture,
+        'key_vault': inputs.key_vault,
+        'threat_protection': inputs.threat_protection,
+        'workload': inputs.workload,
+        'architecture_style': inputs.architecture_style,
+        'scalability': inputs.scalability,
+        'ops_model': inputs.ops_model,
+        'monitoring': inputs.monitoring,
+        'backup': inputs.backup,
+        'topology_pattern': inputs.topology_pattern,
+        'migration_scope': inputs.migration_scope,
+        'cost_priority': inputs.cost_priority,
+        'iac': inputs.iac,
+        'url_input': inputs.url_input
+    }
+    
+    for field_name, field_value in string_fields.items():
+        if field_value and len(field_value) > 1000:
+            raise ValueError(f"Field '{field_name}' is too long: {len(field_value)} characters (maximum 1000 characters allowed). Please provide a more concise description.")
     
     # Special validation for free-text input (allowing more characters)
     if inputs.free_text_input and len(inputs.free_text_input) > 10000:
-        raise ValueError(f"Free text input too long: {len(inputs.free_text_input)} characters (max 10000)")
+        raise ValueError(f"Free text input is too long: {len(inputs.free_text_input)} characters (maximum 10000 characters allowed). Please provide a more concise description.")
     
-    # Check service lists for reasonable sizes
-    service_lists = [
-        inputs.compute_services, inputs.network_services, inputs.storage_services,
-        inputs.database_services, inputs.security_services, inputs.monitoring_services,
-        inputs.ai_services, inputs.analytics_services, inputs.integration_services,
-        inputs.devops_services, inputs.backup_services
-    ]
+    # Enhanced service validation with specific error messages
+    service_categories = {
+        'compute_services': inputs.compute_services,
+        'network_services': inputs.network_services,
+        'storage_services': inputs.storage_services,
+        'database_services': inputs.database_services,
+        'security_services': inputs.security_services,
+        'monitoring_services': inputs.monitoring_services,
+        'ai_services': inputs.ai_services,
+        'analytics_services': inputs.analytics_services,
+        'integration_services': inputs.integration_services,
+        'devops_services': inputs.devops_services,
+        'backup_services': inputs.backup_services
+    }
     
-    for service_list in service_lists:
-        if service_list and len(service_list) > 50:  # Reasonable limit
-            raise ValueError(f"Too many services selected: {len(service_list)} (max 50)")
+    # Validate each service category
+    for category_name, service_list in service_categories.items():
+        if service_list:
+            # Check for reasonable service count
+            if len(service_list) > 20:  # Reduced from 50 to prevent over-provisioning
+                raise ValueError(f"Too many services selected in '{category_name}': {len(service_list)} services (maximum 20 per category). Please select only the essential services you need.")
+            
+            # Validate each service exists in the mapping
+            invalid_services = []
+            for service in service_list:
+                if service not in AZURE_SERVICES_MAPPING:
+                    invalid_services.append(service)
+            
+            if invalid_services:
+                category_display = category_name.replace('_', ' ').title()
+                available_services = [k for k, v in AZURE_SERVICES_MAPPING.items() if v['category'] == category_name.replace('_services', '')]
+                if not available_services:
+                    # Fallback: show all services for that category type
+                    available_services = [k for k, v in AZURE_SERVICES_MAPPING.items() if category_name.replace('_services', '') in v['category']]
+                
+                error_msg = f"Invalid services in '{category_display}': {', '.join(invalid_services)}. "
+                if available_services:
+                    error_msg += f"Available services include: {', '.join(available_services[:10])}"
+                    if len(available_services) > 10:
+                        error_msg += f" (and {len(available_services) - 10} more)"
+                else:
+                    error_msg += "Please check the service names and try again."
+                raise ValueError(error_msg)
     
-    # Validate URL format if provided
+    # Enhanced URL validation
     if inputs.url_input:
-        if not inputs.url_input.startswith(('http://', 'https://')):
-            raise ValueError("URL must start with http:// or https://")
+        url = inputs.url_input.strip()
+        if not url.startswith(('http://', 'https://')):
+            raise ValueError("URL must start with 'http://' or 'https://'. Example: 'https://example.com'")
+        
+        # Basic URL structure validation
+        if len(url) > 2000:
+            raise ValueError(f"URL is too long: {len(url)} characters (maximum 2000 characters allowed)")
+        
+        # Check for obvious malformed URLs
+        if ' ' in url or '\n' in url or '\t' in url:
+            raise ValueError("URL contains invalid characters (spaces, newlines, or tabs). Please provide a valid URL.")
     
-    # Validate uploaded files info
+    # Enhanced uploaded files validation
     if inputs.uploaded_files_info:
-        if len(inputs.uploaded_files_info) > 10:  # Reasonable limit
-            raise ValueError(f"Too many uploaded files: {len(inputs.uploaded_files_info)} (max 10)")
+        if len(inputs.uploaded_files_info) > 5:  # Reduced from 10 for better performance
+            raise ValueError(f"Too many uploaded files: {len(inputs.uploaded_files_info)} files (maximum 5 files allowed). Please select only the most relevant files.")
+        
+        # Validate file info structure
+        for i, file_info in enumerate(inputs.uploaded_files_info):
+            if not isinstance(file_info, dict):
+                raise ValueError(f"File #{i+1} information is invalid. Expected file metadata.")
+            
+            # Check for required file metadata
+            if 'filename' not in file_info:
+                raise ValueError(f"File #{i+1} is missing filename information.")
+    
+    # Total service count validation to prevent over-complex architectures
+    total_services = sum(len(service_list) for service_list in service_categories.values() if service_list)
+    if total_services > 50:  # Conservative limit for manageable architectures
+        raise ValueError(f"Too many total services selected: {total_services} services (maximum 50 total services recommended). Please focus on the most essential services for your architecture to ensure clarity and manageability.")
+    
+    logger.info(f"Input validation passed: {total_services} total services across {sum(1 for sl in service_categories.values() if sl)} categories")
 
 def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str = None, format: str = "png") -> str:
-    """Generate Azure architecture diagram using the Python Diagrams library with proper Azure icons"""
+    """Generate Azure architecture diagram using the Python Diagrams library with strict user input adherence"""
     
-    logger.info("Starting Azure architecture diagram generation")
+    logger.info("Starting Azure architecture diagram generation with strict user input adherence")
     
     try:
-        # Validate inputs first
+        # Enhanced input validation first
         validate_customer_inputs(inputs)
-        logger.info("Input validation completed successfully")
+        logger.info("Enhanced input validation completed successfully")
+        
+        # Count user-selected services for transparency
+        user_service_count = sum([
+            len(inputs.compute_services or []),
+            len(inputs.network_services or []),
+            len(inputs.storage_services or []),
+            len(inputs.database_services or []),
+            len(inputs.security_services or []),
+            len(inputs.monitoring_services or []),
+            len(inputs.ai_services or []),
+            len(inputs.analytics_services or []),
+            len(inputs.integration_services or []),
+            len(inputs.devops_services or []),
+            len(inputs.backup_services or [])
+        ])
+        
+        logger.info(f"User selected {user_service_count} services across all categories - diagram will include ONLY these services")
         
         # Get safe output directory
         if output_dir is None:
@@ -951,21 +1096,29 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
         # Clean up old files to prevent disk space issues
         cleanup_old_files(output_dir)
         
-        # Verify Graphviz availability before proceeding
+        # Enhanced Graphviz validation with detailed error messages
         try:
             result = subprocess.run(['dot', '-V'], capture_output=True, text=True, timeout=10)
             if result.returncode != 0:
-                raise Exception(f"Graphviz 'dot' command failed with return code {result.returncode}. stderr: {result.stderr}")
-            logger.info(f"Graphviz version: {result.stderr.strip()}")
+                error_msg = f"Graphviz 'dot' command failed with return code {result.returncode}. stderr: {result.stderr}"
+                logger.error(error_msg)
+                raise Exception(f"{error_msg}\n\nTo fix this issue:\n1. Install Graphviz: sudo apt-get install -y graphviz graphviz-dev\n2. Ensure 'dot' command is in your PATH\n3. Restart the application")
+            logger.info(f"Graphviz validation passed: {result.stderr.strip()}")
         except subprocess.TimeoutExpired:
-            raise Exception("Graphviz 'dot' command timed out. Graphviz may be unresponsive.")
+            error_msg = "Graphviz 'dot' command timed out. Graphviz may be unresponsive."
+            logger.error(error_msg)
+            raise Exception(f"{error_msg}\n\nTroubleshooting steps:\n1. Check system resources\n2. Reinstall Graphviz: sudo apt-get install --reinstall graphviz\n3. Restart the system if necessary")
         except FileNotFoundError:
-            raise Exception("Graphviz is not installed or not accessible. Please install Graphviz: sudo apt-get install -y graphviz graphviz-dev")
+            error_msg = "Graphviz is not installed or not accessible."
+            logger.error(error_msg)
+            raise Exception(f"{error_msg}\n\nInstallation instructions:\n1. Ubuntu/Debian: sudo apt-get install -y graphviz graphviz-dev\n2. RedHat/CentOS: sudo yum install graphviz graphviz-devel\n3. macOS: brew install graphviz\n4. Verify installation: dot -V")
         except subprocess.SubprocessError as e:
-            raise Exception(f"Graphviz check failed: {str(e)}. Please install Graphviz: sudo apt-get install -y graphviz graphviz-dev")
+            error_msg = f"Graphviz check failed: {str(e)}"
+            logger.error(error_msg)
+            raise Exception(f"{error_msg}\n\nPlease ensure Graphviz is properly installed and accessible.")
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        unique_id = str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for uniqueness
+        unique_id = str(uuid.uuid4())[:8]
         filename = f"azure_landing_zone_{timestamp}_{unique_id}"
         filepath = os.path.join(output_dir, filename)
         
@@ -973,13 +1126,13 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
         
         # Verify output directory is writable
         if not os.access(output_dir, os.W_OK):
-            raise Exception(f"Output directory {output_dir} is not writable")
+            raise Exception(f"Output directory {output_dir} is not writable. Please check directory permissions.")
         
         # Determine organization template
         template = generate_architecture_template(inputs)
         org_name = inputs.org_structure or "Enterprise"
         
-        logger.info(f"Using template: {template['template']['name']}")
+        logger.info(f"Using template: {template['template']['name']} for organization: {org_name}")
         
         try:
             # Set the format based on the requested output format
@@ -998,7 +1151,11 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                     "nodesep": "1.0",
                     "ranksep": "1.5",
                     "bgcolor": "#ffffff",
-                    "margin": "0.5"
+                    "margin": "0.5",
+                    "label": f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\\nUser Services Only: {user_service_count} services",
+                    "labelloc": "b",
+                    "fontcolor": "#666666",
+                    "fontsize": "10"
                 },
                 node_attr={
                     "fontsize": "12",
@@ -1010,185 +1167,217 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 }
             ):
                 
-                logger.info("Creating diagram structure...")
+                logger.info("Creating diagram structure with STRICT user input adherence...")
                 
-                # Enhanced cluster organization implementing requirements 1, 7, 8
-                # Create logical layers: Internet Edge -> Identity Security -> Active Regions -> Standby Region -> Monitoring
-                
+                # Track all created resources for verification
                 created_resources = []
-                edge_resources = []
-                identity_resources = []
-                compute_resources = []
-                data_resources = []
-                monitoring_resources = []
+                resources_by_category = {}
                 
-                # Internet Edge Layer (Requirement 1, 3: Clear containers, visual hierarchy)
-                if inputs.network_services and any(svc in inputs.network_services for svc in ["front_door", "cdn", "application_gateway"]):
-                    with Cluster("Internet Edge", graph_attr={
-                        "bgcolor": "#FFF5F5", "style": "rounded,bold", "pencolor": "#E53E3E", "penwidth": "3",
-                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "min"
+                # Only create what the user explicitly selected
+                if user_service_count == 0:
+                    # User selected no services - show empty architecture framework
+                    logger.info("No services selected by user - creating empty architecture framework")
+                    with Cluster("Azure Landing Zone Framework", graph_attr={
+                        "bgcolor": "#f8f9fa", 
+                        "style": "rounded,bold", 
+                        "pencolor": "#6c757d", 
+                        "penwidth": "2",
+                        "fontsize": "14", 
+                        "fontcolor": "#1A202C"
                     }):
-                        if "front_door" in inputs.network_services:
-                            front_door = FrontDoors("Azure Front Door")
-                            edge_resources.append(front_door)
-                            created_resources.append(front_door)
-                        
-                        if "cdn" in inputs.network_services:
-                            cdn = CDNProfiles("Content Delivery Network")
-                            edge_resources.append(cdn)
-                            created_resources.append(cdn)
-                        
-                        if "application_gateway" in inputs.network_services:
-                            app_gw = ApplicationGateway("Application Gateway")
-                            edge_resources.append(app_gw)
-                            created_resources.append(app_gw)
-                
-                # Identity & Security Layer (Requirement 3: Identity/edge services at top-left)
-                if inputs.security_services and ("active_directory" in inputs.security_services or "key_vault" in inputs.security_services):
-                    with Cluster("Identity Security", graph_attr={
-                        "bgcolor": "#FFFAF0", "style": "rounded,bold", "pencolor": "#DD6B20", "penwidth": "3",
-                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "same"
-                    }):
-                        if inputs.security_services and "active_directory" in inputs.security_services:
-                            aad = ActiveDirectory("Azure Active Directory")
-                            identity_resources.append(aad)
-                            created_resources.append(aad)
+                        placeholder = Subscriptions(f"Ready for Service Selection\\n\\nNo services specified\\nPlease select Azure services\\nto populate this architecture")
+                        created_resources.append(placeholder)
+                        logger.info("Created empty framework placeholder")
+                else:
+                    # Create architecture based on ONLY user-selected services
+                    logger.info(f"Creating architecture with {user_service_count} user-selected services")
+                    
+                    # Process each service category that the user specified
+                    service_categories = [
+                        ("compute_services", "Compute Services", inputs.compute_services),
+                        ("network_services", "Network Services", inputs.network_services),
+                        ("storage_services", "Storage Services", inputs.storage_services),
+                        ("database_services", "Database Services", inputs.database_services),
+                        ("security_services", "Security Services", inputs.security_services),
+                        ("monitoring_services", "Monitoring Services", inputs.monitoring_services),
+                        ("ai_services", "AI/ML Services", inputs.ai_services),
+                        ("analytics_services", "Analytics Services", inputs.analytics_services),
+                        ("integration_services", "Integration Services", inputs.integration_services),
+                        ("devops_services", "DevOps Services", inputs.devops_services),
+                        ("backup_services", "Backup Services", inputs.backup_services)
+                    ]
+                    
+                    for category_key, category_display, service_list in service_categories:
+                        if service_list and len(service_list) > 0:
+                            logger.info(f"Processing {category_display}: {len(service_list)} services")
                             
-                        if inputs.security_services and "key_vault" in inputs.security_services:
-                            key_vault = KeyVaults("Key Vault")
-                            identity_resources.append(key_vault)
-                            created_resources.append(key_vault)
+                            # Create cluster for this category
+                            cluster_colors = {
+                                "compute_services": {"bgcolor": "#E3F2FD", "pencolor": "#1976D2"},
+                                "network_services": {"bgcolor": "#F3E5F5", "pencolor": "#7B1FA2"},
+                                "storage_services": {"bgcolor": "#E8F5E8", "pencolor": "#388E3C"},
+                                "database_services": {"bgcolor": "#FFF3E0", "pencolor": "#F57C00"},
+                                "security_services": {"bgcolor": "#FFEBEE", "pencolor": "#D32F2F"},
+                                "monitoring_services": {"bgcolor": "#E0F2F1", "pencolor": "#00796B"},
+                                "ai_services": {"bgcolor": "#F1F8E9", "pencolor": "#689F38"},
+                                "analytics_services": {"bgcolor": "#E8EAF6", "pencolor": "#3F51B5"},
+                                "integration_services": {"bgcolor": "#FCE4EC", "pencolor": "#C2185B"},
+                                "devops_services": {"bgcolor": "#EFEBE9", "pencolor": "#5D4037"},
+                                "backup_services": {"bgcolor": "#F9FBE7", "pencolor": "#827717"}
+                            }
                             
-                        if inputs.security_services and "security_center" in inputs.security_services:
-                            sec_center = SecurityCenter("Security Center")
-                            identity_resources.append(sec_center)
-                            created_resources.append(sec_center)
+                            colors = cluster_colors.get(category_key, {"bgcolor": "#F5F5F5", "pencolor": "#9E9E9E"})
                             
-                        if inputs.security_services and "sentinel" in inputs.security_services:
-                            sentinel = Sentinel("Sentinel")
-                            identity_resources.append(sentinel)
-                            created_resources.append(sentinel)
-                
-                # Azure Subscription with enhanced structure
-                subscription = None
-                total_services = sum([
-                    len(inputs.compute_services or []),
-                    len(inputs.network_services or []),
-                    len(inputs.storage_services or []),
-                    len(inputs.database_services or []),
-                    len(inputs.security_services or []),
-                    len(inputs.monitoring_services or []),
-                    len(inputs.ai_services or []),
-                    len(inputs.analytics_services or []),
-                    len(inputs.integration_services or []),
-                    len(inputs.devops_services or []),
-                    len(inputs.backup_services or [])
-                    # Note: Removed AI template services to strictly follow user input
-                ])
-                
-                if total_services > 0:
-                    # Active Regions Layer (Requirement 3: compute in middle, 7: clear region separation)
-                    with Cluster("Active Region - Primary", graph_attr={
-                        "bgcolor": "#F0FFF4", "style": "rounded,bold", "pencolor": "#38A169", "penwidth": "3",
-                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "same"
-                    }):
-                        subscription = Subscriptions("Azure Subscription")
-                        created_resources.append(subscription)
-                
-                # Create core network services (excluding edge services handled above)
-                network_resources_by_type = {}
-                core_network_services = [svc for svc in (inputs.network_services or []) 
-                                       if svc not in ["front_door", "cdn", "application_gateway"]]
-                if core_network_services:
-                    with Cluster("Network Architecture", graph_attr={
-                        "bgcolor": "#EDF2F7", "style": "rounded,bold", "pencolor": "#4A5568", "penwidth": "2",
-                        "fontsize": "14", "fontcolor": "#1A202C", "rank": "same"
-                    }):
-                        network_resources = []
-                        for service in core_network_services:
-                            if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
-                                diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
-                                service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                                network_resource = diagram_class(service_name)
-                                network_resources.append(network_resource)
-                                created_resources.append(network_resource)
+                            with Cluster(category_display, graph_attr={
+                                "bgcolor": colors["bgcolor"], 
+                                "style": "rounded,bold", 
+                                "pencolor": colors["pencolor"], 
+                                "penwidth": "2",
+                                "fontsize": "14", 
+                                "fontcolor": "#1A202C"
+                            }):
+                                category_resources = []
                                 
-                                # Track network resources by type
-                                if service not in network_resources_by_type:
-                                    network_resources_by_type[service] = []
-                                network_resources_by_type[service].append(network_resource)
-                        
-                        # Intelligent network connections based on Azure patterns
-                        _add_intelligent_network_connections(network_resources, network_resources_by_type)
+                                for service in service_list:
+                                    if service in AZURE_SERVICES_MAPPING:
+                                        service_info = AZURE_SERVICES_MAPPING[service]
+                                        if service_info["diagram_class"]:
+                                            try:
+                                                diagram_class = service_info["diagram_class"]
+                                                service_name = service_info["name"]
+                                                service_resource = diagram_class(service_name)
+                                                category_resources.append(service_resource)
+                                                created_resources.append(service_resource)
+                                                logger.info(f"Created service: {service_name} ({service})")
+                                            except Exception as e:
+                                                logger.warning(f"Failed to create service {service}: {e}")
+                                        else:
+                                            logger.info(f"Service {service} has no diagram representation (internal component)")
+                                    else:
+                                        logger.warning(f"Service {service} not found in AZURE_SERVICES_MAPPING")
+                                
+                                resources_by_category[category_key] = category_resources
+                                logger.info(f"Created {len(category_resources)} resources for {category_display}")
                 
-                # Create other service clusters and get resource tracking
-                all_resources, resources_by_type = _add_selected_service_clusters(inputs, created_resources)
+                # Add minimal intelligent connections only between user-selected services
+                if user_service_count > 1:
+                    logger.info("Adding intelligent connections between user-selected services")
+                    _add_conservative_connections(resources_by_category, inputs)
                 
-                # Merge network resources into the overall tracking
-                resources_by_type.update(network_resources_by_type)
-                
-                # Add intelligent connections between all services
-                _add_intelligent_service_connections(inputs, resources_by_type, template)
-                
-                # If no services are selected at all, provide proper empty architecture structure
-                if len(all_resources) == 0:
-                    # Create minimal structure following architectural requirements but without services
-                    with Cluster("Azure Landing Zone Structure", graph_attr={"bgcolor": "#f8f9fa", "style": "rounded"}):
-                        placeholder = Subscriptions("Ready for Service Selection\n\nArchitecture framework prepared\naccording to best practices")
-                        all_resources.append(placeholder)
-                
-                logger.info("Diagram structure and intelligent connections created successfully")
+                logger.info(f"Diagram structure completed with {len(created_resources)} total resources")
         
         except Exception as e:
             logger.error(f"Error during diagram creation: {str(e)}")
             logger.error(traceback.format_exc())
-            raise Exception(f"Error generating Azure architecture diagram: {str(e)}")
+            raise Exception(f"Error generating Azure architecture diagram: {str(e)}\n\nThis could be due to:\n1. Graphviz installation issues\n2. Invalid service configurations\n3. System resource constraints\n\nPlease check the logs for more details.")
         
-        # Return the file path of the generated diagram
-        if format.lower() == "svg":
-            # Check for SVG file generated directly by diagrams library
-            svg_path = f"{filepath}.svg"
-            if os.path.exists(svg_path):
-                file_size = os.path.getsize(svg_path)
-                logger.info(f"SVG diagram generated successfully: {svg_path} (size: {file_size} bytes)")
-                return svg_path
-            else:
-                # Fallback: try to generate SVG using dot command from gv file
-                dot_path = f"{filepath}.gv" 
-                if os.path.exists(dot_path):
-                    try:
-                        # Convert dot file to SVG
-                        result = subprocess.run(['dot', '-Tsvg', dot_path, '-o', svg_path], 
-                                              capture_output=True, text=True, timeout=30)
-                        if result.returncode != 0:
-                            raise Exception(f"SVG generation failed: {result.stderr}")
-                        
-                        if os.path.exists(svg_path):
-                            file_size = os.path.getsize(svg_path)
-                            logger.info(f"SVG diagram generated successfully via dot: {svg_path} (size: {file_size} bytes)")
-                            return svg_path
-                        else:
-                            raise Exception(f"SVG generation failed - file not found: {svg_path}")
-                    except subprocess.TimeoutExpired:
-                        raise Exception("SVG generation timed out")
-                    except Exception as e:
-                        raise Exception(f"Failed to generate SVG: {str(e)}")
+        # Enhanced file generation verification
+        try:
+            if format.lower() == "svg":
+                svg_path = f"{filepath}.svg"
+                if os.path.exists(svg_path):
+                    file_size = os.path.getsize(svg_path)
+                    if file_size < 100:  # SVG files should be at least 100 bytes
+                        raise Exception(f"Generated SVG file is too small ({file_size} bytes), likely corrupted")
+                    logger.info(f"SVG diagram generated successfully: {svg_path} (size: {file_size} bytes)")
+                    return svg_path
                 else:
-                    raise Exception(f"Neither SVG nor dot file found: {svg_path}, {dot_path}")
-        else:
-            # Default PNG generation
-            png_path = f"{filepath}.png"
-            if os.path.exists(png_path):
-                file_size = os.path.getsize(png_path)
-                logger.info(f"Diagram generated successfully: {png_path} (size: {file_size} bytes)")
-                return png_path
+                    # Fallback: try to generate SVG using dot command
+                    dot_path = f"{filepath}.gv" 
+                    if os.path.exists(dot_path):
+                        try:
+                            result = subprocess.run(['dot', '-Tsvg', dot_path, '-o', svg_path], 
+                                                  capture_output=True, text=True, timeout=30)
+                            if result.returncode != 0:
+                                raise Exception(f"SVG generation failed: {result.stderr}")
+                            
+                            if os.path.exists(svg_path):
+                                file_size = os.path.getsize(svg_path)
+                                if file_size < 100:
+                                    raise Exception(f"Generated SVG file is too small ({file_size} bytes)")
+                                logger.info(f"SVG diagram generated via dot command: {svg_path} (size: {file_size} bytes)")
+                                return svg_path
+                        except subprocess.TimeoutExpired:
+                            raise Exception("SVG generation timed out")
+                    raise Exception(f"SVG generation failed - no output files found")
             else:
-                raise Exception(f"Diagram generation failed - PNG file not found: {png_path}")
+                # PNG generation with verification
+                png_path = f"{filepath}.png"
+                if os.path.exists(png_path):
+                    file_size = os.path.getsize(png_path)
+                    if file_size < 1000:  # PNG files should be at least 1KB
+                        raise Exception(f"Generated PNG file is too small ({file_size} bytes), likely corrupted")
+                    logger.info(f"PNG diagram generated successfully: {png_path} (size: {file_size} bytes)")
+                    return png_path
+                else:
+                    raise Exception(f"PNG diagram generation failed - file not found: {png_path}")
+        
+        except Exception as verification_error:
+            logger.error(f"File generation verification failed: {verification_error}")
+            raise Exception(f"Diagram file generation verification failed: {str(verification_error)}\n\nPossible causes:\n1. Insufficient disk space\n2. File permission issues\n3. Graphviz rendering problems\n\nPlease check system resources and permissions.")
             
     except Exception as e:
         logger.error(f"Failed to generate Azure architecture diagram: {str(e)}")
         logger.error(traceback.format_exc())
-        raise
+        # Provide user-friendly error messages
+        if "Graphviz" in str(e):
+            raise Exception(f"Graphviz error: {str(e)}")
+        elif "permission" in str(e).lower():
+            raise Exception(f"Permission error: {str(e)}\n\nPlease check directory permissions for: {output_dir}")
+        elif "space" in str(e).lower() or "disk" in str(e).lower():
+            raise Exception(f"Disk space error: {str(e)}\n\nPlease free up disk space and try again.")
+        else:
+            raise Exception(f"Diagram generation failed: {str(e)}")
+
+def _add_conservative_connections(resources_by_category: dict, inputs: CustomerInputs) -> None:
+    """Add minimal, conservative connections only between user-selected services"""
+    logger.info("Adding conservative connections between user-selected services only")
+    
+    # Only add connections that make obvious sense based on what the user selected
+    try:
+        # Example: Connect compute to networking if both are selected
+        compute_resources = resources_by_category.get("compute_services", [])
+        network_resources = resources_by_category.get("network_services", [])
+        database_resources = resources_by_category.get("database_services", [])
+        security_resources = resources_by_category.get("security_services", [])
+        
+        # Conservative connection 1: Compute to networking (if both exist)
+        if compute_resources and network_resources:
+            for compute in compute_resources[:1]:  # Just first compute service
+                for network in network_resources[:1]:  # Just first network service
+                    try:
+                        compute >> Edge(label="network") >> network
+                        logger.info(f"Connected {compute} to {network}")
+                    except Exception as e:
+                        logger.warning(f"Failed to connect compute to network: {e}")
+        
+        # Conservative connection 2: Compute to database (if both exist)
+        if compute_resources and database_resources:
+            for compute in compute_resources[:1]:
+                for database in database_resources[:1]:
+                    try:
+                        compute >> Edge(label="data") >> database
+                        logger.info(f"Connected {compute} to {database}")
+                    except Exception as e:
+                        logger.warning(f"Failed to connect compute to database: {e}")
+        
+        # Conservative connection 3: Security to other services (if security exists)
+        if security_resources:
+            security_service = security_resources[0]
+            for category_name, resources in resources_by_category.items():
+                if category_name != "security_services" and resources:
+                    try:
+                        security_service >> Edge(label="secures", style="dashed") >> resources[0]
+                        logger.info(f"Connected security to {category_name}")
+                        break  # Only connect to one other category
+                    except Exception as e:
+                        logger.warning(f"Failed to connect security to {category_name}: {e}")
+        
+        logger.info("Conservative connections completed")
+        
+    except Exception as e:
+        logger.warning(f"Failed to add conservative connections: {e}")
+        # Don't fail the entire diagram generation for connection issues
 
 def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
     """Generate a minimal SVG diagram based only on selected services"""
