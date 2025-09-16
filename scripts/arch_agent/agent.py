@@ -18,23 +18,25 @@ from scripts.arch_agent.schemas import Requirements, UserIntent
 from scripts.arch_agent.catalog import ServiceCatalog
 from scripts.arch_agent.layout import LayoutComposer
 from scripts.arch_agent.render import DiagramRenderer
+from scripts.arch_agent.ai_advisor import AIArchitecturalAdvisor
 
 
 class ArchitectureDiagramAgent:
-    """Main agent class that orchestrates diagram generation."""
+    """Main agent class that orchestrates diagram generation with AI-enhanced pattern selection."""
     
     def __init__(self):
         self.catalog = ServiceCatalog()
         self.composer = LayoutComposer(self.catalog)
         self.renderer = DiagramRenderer()
+        self.ai_advisor = AIArchitecturalAdvisor()  # AI integration for requirement 8
     
     def generate_from_manifest(self, manifest_path: str, pattern: str = "ha-multiregion", output_path: str = None) -> str:
         """
-        Generate diagram from a YAML manifest file.
+        Generate diagram from a YAML manifest file with AI-enhanced analysis.
         
         Args:
             manifest_path: Path to YAML manifest file
-            pattern: Layout pattern to use
+            pattern: Layout pattern to use (can be overridden by AI recommendation)
             output_path: Output file path (without extension)
             
         Returns:
@@ -43,13 +45,30 @@ class ArchitectureDiagramAgent:
         # Load and validate manifest
         requirements = self._load_manifest(manifest_path)
         
+        # AI-enhanced pattern selection and analysis (requirement 8)
+        print("🤖 Analyzing architecture with AI advisor...")
+        ai_analysis = self.ai_advisor.analyze_architectural_intent(requirements)
+        
+        # Use AI recommendation for pattern if available
+        recommended_pattern = ai_analysis.get("pattern_recommendation", pattern)
+        if recommended_pattern != pattern:
+            print(f"📊 AI recommends pattern: {recommended_pattern} (instead of {pattern})")
+            pattern = recommended_pattern
+        
+        # AI-enhanced dependency inference (requirement 6)
+        print("🔍 Inferring missing dependencies...")
+        inferred_dependencies = self.ai_advisor.infer_missing_dependencies(requirements.services)
+        if inferred_dependencies:
+            print(f"💡 AI suggests {len(inferred_dependencies)} additional components for completeness")
+            requirements.services.extend(inferred_dependencies)
+        
         # Validate requirements
         validation_errors = self.composer.validate_requirements(requirements)
         if validation_errors:
             raise ValueError(f"Validation errors: {'; '.join(validation_errors)}")
         
-        # Generate layout
-        layout_graph = self.composer.compose_layout(requirements, pattern)
+        # Generate layout with AI-enhanced service grouping
+        layout_graph = self.composer.compose_layout(requirements, pattern, self.ai_advisor)
         
         # Render diagram
         if not output_path:
@@ -59,17 +78,17 @@ class ArchitectureDiagramAgent:
     
     def generate_interactive(self, pattern: str = "ha-multiregion", output_path: str = None) -> str:
         """
-        Generate diagram through interactive prompts.
+        Generate diagram through interactive prompts with AI assistance.
         
         Args:
-            pattern: Layout pattern to use
+            pattern: Layout pattern to use (can be overridden by AI recommendation)
             output_path: Output file path (without extension)
             
         Returns:
             Path to generated PNG file
         """
-        print("🚀 Azure Architecture Diagram Agent")
-        print("====================================")
+        print("🚀 Azure Architecture Diagram Agent with AI Enhancement")
+        print("=====================================================")
         print()
         
         # Gather basic requirements
@@ -77,6 +96,35 @@ class ArchitectureDiagramAgent:
         
         # Gather service selections
         self._gather_services(requirements)
+        
+        # AI-enhanced analysis and recommendations (requirement 8)
+        print()
+        print("🤖 Analyzing your architecture with AI advisor...")
+        ai_analysis = self.ai_advisor.analyze_architectural_intent(requirements)
+        
+        # Display AI recommendations
+        self._display_ai_recommendations(ai_analysis, pattern)
+        
+        # Use AI recommendation for pattern if user accepts
+        recommended_pattern = ai_analysis.get("pattern_recommendation", pattern)
+        if recommended_pattern != pattern:
+            accept_pattern = input(f"Accept AI-recommended pattern '{recommended_pattern}'? [y/N]: ").strip().lower()
+            if accept_pattern in ['y', 'yes']:
+                pattern = recommended_pattern
+                print(f"✅ Using AI-recommended pattern: {pattern}")
+        
+        # AI-enhanced dependency inference (requirement 6)
+        print("🔍 Checking for missing dependencies...")
+        inferred_dependencies = self.ai_advisor.infer_missing_dependencies(requirements.services)
+        if inferred_dependencies:
+            print(f"💡 AI suggests {len(inferred_dependencies)} additional components:")
+            for dep in inferred_dependencies:
+                print(f"   - {dep.kind}: {dep.name or 'Auto-generated'}")
+            
+            accept_deps = input("Add these AI-recommended components? [Y/n]: ").strip().lower()
+            if accept_deps not in ['n', 'no']:
+                requirements.services.extend(inferred_dependencies)
+                print("✅ Added AI-recommended components")
         
         # Handle missing configurations
         self._handle_missing_configurations(requirements)
@@ -89,9 +137,9 @@ class ArchitectureDiagramAgent:
                 print(f"   - {error}")
             return None
         
-        # Generate layout
-        print("🔄 Generating layout...")
-        layout_graph = self.composer.compose_layout(requirements, pattern)
+        # Generate layout with AI enhancement
+        print("🔄 Generating AI-optimized layout...")
+        layout_graph = self.composer.compose_layout(requirements, pattern, self.ai_advisor)
         
         # Render diagram
         if not output_path:
@@ -231,6 +279,35 @@ class ArchitectureDiagramAgent:
                     # For now, we'll just collect them
                     pass
             print()
+    
+    def _display_ai_recommendations(self, ai_analysis: Dict[str, Any], current_pattern: str) -> None:
+        """Display AI analysis and recommendations to the user."""
+        print()
+        print("🧠 AI Architecture Analysis")
+        print("---------------------------")
+        
+        recommended_pattern = ai_analysis.get("pattern_recommendation", current_pattern)
+        if recommended_pattern != current_pattern:
+            print(f"📊 Recommended pattern: {recommended_pattern} (current: {current_pattern})")
+        
+        cluster_strategy = ai_analysis.get("cluster_strategy", "Not specified")
+        print(f"🏗️ Clustering strategy: {cluster_strategy}")
+        
+        missing_components = ai_analysis.get("missing_components", [])
+        if missing_components:
+            print(f"⚠️  Missing components: {', '.join(missing_components)}")
+        
+        optimizations = ai_analysis.get("optimization_suggestions", [])
+        if optimizations:
+            print("💡 Optimization suggestions:")
+            for suggestion in optimizations[:3]:  # Show top 3
+                print(f"   - {suggestion}")
+        
+        risk_assessment = ai_analysis.get("risk_assessment", "")
+        if risk_assessment:
+            print(f"🛡️ Risk assessment: {risk_assessment}")
+        
+        print()
 
 
 def main():
