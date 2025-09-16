@@ -998,33 +998,89 @@ def validate_customer_inputs(inputs: CustomerInputs) -> None:
         'backup_services': inputs.backup_services
     }
     
-    # Validate each service category
+    # Enhanced service validation with auto-correction for common mistakes
+    service_name_aliases = {
+        # Common service name corrections
+        "app_service": "app_services",  # singular vs plural
+        "azure_monitor": "monitor",     # common mistake adding "azure_" prefix
+        "container_registry": "devops", # ACR is often used instead of devops
+        "keyvault": "key_vault",        # spacing issue
+        "azure_ad": "active_directory", # common alias
+        "sql": "sql_database",          # incomplete name
+        "cosmosdb": "cosmos_db",        # spacing issue
+        "vm": "virtual_machines",       # common abbreviation
+        "kubernetes": "aks",            # full name vs service name
+        "webapp": "app_services",       # alternative name
+        "function": "functions",        # singular vs plural
+        "storage": "storage_accounts",  # incomplete name
+        "vnet": "virtual_network",      # common abbreviation
+        "lb": "load_balancer",          # common abbreviation
+        "app_insights": "application_insights", # common abbreviation
+    }
+    
+    # Validate and auto-correct each service category
     for category_name, service_list in service_categories.items():
         if service_list:
             # Check for reasonable service count
             if len(service_list) > 20:  # Reduced from 50 to prevent over-provisioning
                 raise ValueError(f"Too many services selected in '{category_name}': {len(service_list)} services (maximum 20 per category). Please select only the essential services you need.")
             
-            # Validate each service exists in the mapping
-            invalid_services = []
-            for service in service_list:
-                if service not in AZURE_SERVICES_MAPPING:
-                    invalid_services.append(service)
+            # Auto-correct and validate services
+            corrected_services = []
+            still_invalid = []
+            corrections_made = []
             
-            if invalid_services:
+            for service in service_list:
+                # Try auto-correction first
+                corrected_service = service_name_aliases.get(service.lower(), service)
+                
+                if corrected_service in AZURE_SERVICES_MAPPING:
+                    corrected_services.append(corrected_service)
+                    if corrected_service != service:
+                        corrections_made.append(f"'{service}' -> '{corrected_service}'")
+                else:
+                    still_invalid.append(service)
+            
+            # Update the input with corrected services
+            setattr(inputs, category_name, corrected_services)
+            
+            # Log corrections made
+            if corrections_made:
+                logger.info(f"Auto-corrected services in {category_name}: {'; '.join(corrections_made)}")
+            
+            # Raise error for services that couldn't be corrected
+            if still_invalid:
                 category_display = category_name.replace('_', ' ').title()
                 available_services = [k for k, v in AZURE_SERVICES_MAPPING.items() if v['category'] == category_name.replace('_services', '')]
                 if not available_services:
                     # Fallback: show all services for that category type
                     available_services = [k for k, v in AZURE_SERVICES_MAPPING.items() if category_name.replace('_services', '') in v['category']]
                 
-                error_msg = f"Invalid services in '{category_display}': {', '.join(invalid_services)}. "
+                # Provide helpful suggestions for invalid services
+                suggestions = []
+                for invalid_service in still_invalid:
+                    service_suggestions = []
+                    invalid_lower = invalid_service.lower()
+                    
+                    # Find partial matches
+                    for available in available_services:
+                        if (invalid_lower in available.lower() or 
+                            available.lower() in invalid_lower or
+                            any(part in available.lower() for part in invalid_lower.split('_'))):
+                            service_suggestions.append(available)
+                    
+                    if service_suggestions:
+                        suggestions.append(f"'{invalid_service}' -> try: {', '.join(service_suggestions[:3])}")
+                
+                error_msg = f"Invalid services in '{category_display}': {', '.join(still_invalid)}. "
                 if available_services:
                     error_msg += f"Available services include: {', '.join(available_services[:10])}"
                     if len(available_services) > 10:
                         error_msg += f" (and {len(available_services) - 10} more)"
-                else:
-                    error_msg += "Please check the service names and try again."
+                
+                if suggestions:
+                    error_msg += f" | Suggestions: {'; '.join(suggestions)}"
+                
                 raise ValueError(error_msg)
     
     # Enhanced URL validation
