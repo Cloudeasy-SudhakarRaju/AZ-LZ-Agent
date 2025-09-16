@@ -3581,7 +3581,6 @@ def health_check():
     
     # Test a simple diagram generation
     try:
-        from main import CustomerInputs
         test_inputs = CustomerInputs(business_objective="Health check test")
         # Just validate inputs, don't generate full diagram
         validate_customer_inputs(test_inputs)
