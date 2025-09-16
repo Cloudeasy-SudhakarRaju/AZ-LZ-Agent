@@ -15,6 +15,14 @@ from datetime import datetime
 from pathlib import Path
 import requests
 import google.generativeai as genai
+# Import OpenAI only if available
+try:
+    import openai
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    logger.warning("OpenAI library not available, will use HTTP requests if needed")
 
 # Document processing imports
 import PyPDF2
@@ -56,14 +64,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Google Gemini API
+# Configure AI APIs - OpenAI as primary, Gemini as fallback
+OPENAI_API_KEY = "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"
 GEMINI_API_KEY = "AIzaSyAkKPvLZq2wyeT0Di49rkc8bvq8bF1HGOg"
-genai.configure(api_key=GEMINI_API_KEY)
 
-# Initialize Gemini model
+# Initialize OpenAI client
+openai_client = None
 try:
+    if OPENAI_API_KEY and OPENAI_API_KEY.startswith('sk-') and OPENAI_AVAILABLE:
+        # Try to import and initialize OpenAI client
+        openai.api_key = OPENAI_API_KEY
+        # Try a simple client initialization
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        logger.info("OpenAI API configured successfully")
+    else:
+        if not OPENAI_AVAILABLE:
+            logger.info("OpenAI library not available, will use HTTP requests")
+        else:
+            logger.warning("Invalid or missing OpenAI API key")
+        openai_client = None
+except Exception as e:
+    logger.warning(f"OpenAI API initialization failed (will use HTTP fallback): {e}")
+    openai_client = None
+
+# Initialize Gemini model (as fallback)
+gemini_model = None
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
     gemini_model = genai.GenerativeModel('gemini-2.5-flash')
-    logger.info("Google Gemini API configured successfully with gemini-2.5-flash")
+    logger.info("Google Gemini API configured successfully with gemini-2.5-flash (fallback)")
 except Exception as e:
     logger.error(f"Failed to configure Gemini API: {e}")
     gemini_model = None
@@ -308,12 +337,65 @@ def cleanup_old_files(directory: str, max_age_hours: int = 24):
     except Exception as e:
         logger.warning(f"Failed to perform cleanup in {directory}: {e}")
 
-# Google Gemini AI Integration Functions
-def analyze_url_content(url: str) -> str:
-    """Fetch and analyze URL content using Gemini AI"""
+def call_ai_with_fallback(prompt: str, model: str = "gpt-4") -> str:
+    """Call AI with OpenAI as primary and Gemini as fallback"""
     try:
-        if not gemini_model:
-            return "Gemini AI not available for URL analysis"
+        # Try OpenAI first
+        if openai_client:
+            logger.info("Using OpenAI API for AI generation")
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4000,
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        elif OPENAI_API_KEY and OPENAI_API_KEY.startswith('sk-'):
+            # Fallback: Direct HTTP request to OpenAI API
+            logger.info("Using OpenAI API via HTTP request")
+            import requests
+            headers = {
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+            data = {
+                'model': 'gpt-3.5-turbo',  # Use more stable model
+                'messages': [{'role': 'user', 'content': prompt}],
+                'max_tokens': 4000,
+                'temperature': 0.7
+            }
+            response = requests.post('https://api.openai.com/v1/chat/completions', 
+                                   headers=headers, json=data, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                return result['choices'][0]['message']['content']
+            else:
+                logger.warning(f"OpenAI HTTP request failed: {response.status_code} - {response.text}")
+        else:
+            logger.warning("OpenAI client not available, trying Gemini fallback")
+    except Exception as e:
+        logger.warning(f"OpenAI API failed: {e}, trying Gemini fallback")
+    
+    try:
+        # Fallback to Gemini
+        if gemini_model:
+            logger.info("Using Gemini API as fallback")
+            result = gemini_model.generate_content(prompt)
+            return result.text
+        else:
+            logger.error("Gemini model not available")
+    except Exception as e:
+        logger.error(f"Gemini API failed: {e}")
+    
+    # If both fail, return an error message
+    return "AI services are currently unavailable. Please try again later or contact support."
+
+# AI Integration Functions with OpenAI Primary and Gemini Fallback
+def analyze_url_content(url: str) -> str:
+    """Fetch and analyze URL content using AI (OpenAI primary, Gemini fallback)"""
+    try:
+        if not openai_client and not gemini_model:
+            return "AI services not available for URL analysis"
             
         # Fetch URL content
         response = requests.get(url, timeout=10)
@@ -336,18 +418,17 @@ def analyze_url_content(url: str) -> str:
         Format your response as a structured analysis.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        return call_ai_with_fallback(prompt)
         
     except Exception as e:
         logger.error(f"Error analyzing URL {url}: {e}")
         return f"Error analyzing URL: {str(e)}"
 
 def process_uploaded_document(file_content: bytes, filename: str, file_type: str) -> str:
-    """Process uploaded document using Gemini AI"""
+    """Process uploaded document using AI (OpenAI primary, Gemini fallback)"""
     try:
-        if not gemini_model:
-            return "Gemini AI not available for document analysis"
+        if not openai_client and not gemini_model:
+            return "AI services not available for document analysis"
             
         text_content = ""
         
@@ -383,8 +464,7 @@ def process_uploaded_document(file_content: bytes, filename: str, file_type: str
         Format your response as a structured analysis for enterprise architecture planning.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        return call_ai_with_fallback(prompt)
         
     except Exception as e:
         logger.error(f"Error processing document {filename}: {e}")
@@ -441,9 +521,9 @@ def extract_pptx_text(file_content: bytes) -> str:
         return ""
 
 def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: str = "", doc_analysis: str = "") -> str:
-    """Generate AI-enhanced architecture recommendations using Gemini"""
+    """Generate AI-enhanced architecture recommendations using AI (OpenAI primary, Gemini fallback)"""
     try:
-        if not gemini_model:
+        if not openai_client and not gemini_model:
             return "Standard recommendations (AI enhancement not available)"
             
         # Build context from inputs
@@ -490,18 +570,17 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
         Format your response as a comprehensive enterprise architecture document.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        return call_ai_with_fallback(prompt)
         
     except Exception as e:
         logger.error(f"Error generating AI recommendations: {e}")
         return f"Error generating AI recommendations: {str(e)}"
 
 def analyze_free_text_requirements(free_text: str) -> dict:
-    """Analyze free text input to extract comprehensive service requirements using AI"""
+    """Analyze free text input to extract comprehensive service requirements using AI (OpenAI primary, Gemini fallback)"""
     try:
-        if not gemini_model or not free_text:
-            return {"services": [], "reasoning": "No analysis available"}
+        if not openai_client and not gemini_model:
+            return {"services": [], "reasoning": "No AI analysis available"}
             
         prompt = """
         You are an ENTERPRISE AZURE SOLUTIONS ARCHITECT with deep expertise in designing production-ready, scalable, and secure Azure Landing Zone architectures. You have extensive experience with Azure Well-Architected Framework, Azure CAF (Cloud Adoption Framework), and enterprise-grade architectural patterns.
@@ -595,15 +674,14 @@ def analyze_free_text_requirements(free_text: str) -> dict:
 
         """.format(free_text)
         
-        result = gemini_model.generate_content(prompt)
-        response_text = result.text.strip()
+        result_text = call_ai_with_fallback(prompt, model="gpt-4")
         
         # Try to extract JSON from the response
         import json
         import re
         
         # Look for JSON content
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
         if json_match:
             json_str = json_match.group()
             try:
@@ -630,7 +708,7 @@ def analyze_free_text_requirements(free_text: str) -> dict:
                 pass
         
         # Fallback parsing if JSON parsing fails
-        logger.warning(f"Failed to parse AI response as JSON: {response_text}")
+        logger.warning(f"Failed to parse AI response as JSON: {result_text}")
         return {
             "services": [], 
             "reasoning": "Could not parse AI analysis",
