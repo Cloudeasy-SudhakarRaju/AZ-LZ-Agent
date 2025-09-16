@@ -66,7 +66,7 @@ app.add_middleware(
 
 # Configure AI APIs - OpenAI as primary, Gemini as fallback
 OPENAI_API_KEY = "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"
-GEMINI_API_KEY = "AIzaSyAkKPvLZq2wyeT0Di49rkc8bvq8bF1HGOg"
+GEMINI_API_KEY = "AIzaSyCww_LtfxiFweWRJI19IGTynDRrgkcNTU8"
 
 # Initialize OpenAI client
 openai_client = None
