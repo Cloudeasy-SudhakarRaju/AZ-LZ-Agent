@@ -344,7 +344,7 @@ def cleanup_old_files(directory: str, max_age_hours: int = 24):
     except Exception as e:
         logger.warning(f"Failed to perform cleanup in {directory}: {e}")
 
-def call_ai_with_fallback(prompt: str, model: str = "gpt-4") -> str:
+def call_ai_with_fallback(prompt: str, model: str = "gpt-4", original_user_input: str = None) -> str:
     """Call AI with OpenAI as primary and Gemini as fallback"""
     try:
         # Try OpenAI first
@@ -394,9 +394,12 @@ def call_ai_with_fallback(prompt: str, model: str = "gpt-4") -> str:
     except Exception as e:
         logger.error(f"Gemini API failed: {e}")
     
-    # If both fail, return a meaningful default response based on the prompt content
+    # If both fail, return a meaningful default response based on the original user input if available
     logger.warning("Both AI services failed, providing default analysis")
-    return generate_default_ai_response(prompt)
+    
+    # Use original user input for pattern detection if available, otherwise fall back to the prompt
+    analysis_text = original_user_input if original_user_input else prompt
+    return generate_default_ai_response(analysis_text)
 
 def generate_default_ai_response(prompt: str) -> str:
     """Generate a default AI response in JSON format when external APIs are unavailable"""
@@ -408,7 +411,7 @@ def generate_default_ai_response(prompt: str) -> str:
     
     if pattern == "Microservices Architecture":
         return json.dumps({
-            "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "key_vault", "azure_monitor", "api_management"],
+            "services": ["aks", "application_gateway", "virtual_network", "cosmos_db", "key_vault", "monitor", "api_management"],
             "reasoning": "Microservices architecture requires container orchestration (AKS), API gateway (Application Gateway + API Management), secure networking (Virtual Network), flexible data storage (Cosmos DB), secrets management (Key Vault), and comprehensive monitoring (Azure Monitor).",
             "architecture_pattern": "Microservices with API Gateway",
             "scalability_design": "Kubernetes auto-scaling with horizontal pod autoscaling",
@@ -432,7 +435,7 @@ def generate_default_ai_response(prompt: str) -> str:
     
     elif pattern == "E-commerce Platform":
         return json.dumps({
-            "services": ["app_services", "sql_database", "application_gateway", "cdn_profiles", "key_vault", "azure_monitor", "redis", "active_directory"],
+            "services": ["app_services", "sql_database", "application_gateway", "cdn_profiles", "key_vault", "monitor", "redis", "active_directory"],
             "reasoning": "E-commerce platform requires web hosting (App Services), persistent data storage (SQL Database), load balancing and security (Application Gateway), global content delivery (CDN), secrets management (Key Vault), caching (Redis), monitoring (Azure Monitor), and user authentication (Active Directory).",
             "architecture_pattern": "E-commerce Platform with CDN and Caching",
             "scalability_design": "Auto-scaling App Services with CDN for global reach",
@@ -456,7 +459,7 @@ def generate_default_ai_response(prompt: str) -> str:
     
     elif pattern == "Data Analytics Platform":
         return json.dumps({
-            "services": ["data_factory", "databricks", "storage_accounts", "synapse_analytics", "azure_monitor", "key_vault"],
+            "services": ["data_factory", "databricks", "storage_accounts", "synapse_analytics", "monitor", "key_vault"],
             "reasoning": "Data analytics platform requires data ingestion and orchestration (Data Factory), data processing and ML (Databricks), scalable storage (Storage Accounts), data warehousing (Synapse Analytics), monitoring (Azure Monitor), and security (Key Vault).",
             "architecture_pattern": "Modern Data Platform",
             "scalability_design": "Auto-scaling compute clusters with elastic storage",
@@ -481,7 +484,7 @@ def generate_default_ai_response(prompt: str) -> str:
     else:
         # Default web application
         return json.dumps({
-            "services": ["app_services", "sql_database", "virtual_network", "key_vault", "azure_monitor"],
+            "services": ["app_services", "sql_database", "virtual_network", "key_vault", "monitor"],
             "reasoning": "Standard web application requires hosting platform (App Services), database (SQL Database), secure networking (Virtual Network), secrets management (Key Vault), and monitoring (Azure Monitor). This provides a solid foundation for most web applications.",
             "architecture_pattern": "Standard N-tier Web Application",
             "scalability_design": "Auto-scaling web app with database scaling options",
@@ -833,7 +836,7 @@ QUALITY REQUIREMENTS:
 
 """
         
-        result_text = call_ai_with_fallback(prompt, model="gpt-4")
+        result_text = call_ai_with_fallback(prompt, model="gpt-4", original_user_input=free_text)
         
         # Try to extract JSON from the response
         import json
