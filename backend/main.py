@@ -3951,3 +3951,171 @@ def validate_ai_service_selection(request: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Error validating AI service selection: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to validate service selection: {str(e)}")
+
+# New Simplified Interface Endpoints
+
+class SimplifiedAnalysisRequest(BaseModel):
+    free_text_input: str
+
+class SimplifiedGenerationRequest(BaseModel):
+    free_text_input: str
+    ai_analysis: Optional[Dict[str, Any]] = None
+    follow_up_answers: Optional[Dict[str, str]] = None
+
+@app.post("/analyze-requirements")
+def analyze_requirements_endpoint(request: SimplifiedAnalysisRequest):
+    """Enhanced AI analysis endpoint for the simplified interface"""
+    try:
+        if not request.free_text_input.strip():
+            raise HTTPException(status_code=400, detail="Requirements text is required")
+        
+        logger.info(f"Analyzing requirements: {len(request.free_text_input)} characters")
+        
+        # Get comprehensive AI analysis
+        analysis = analyze_free_text_requirements(request.free_text_input)
+        
+        # Enhance the analysis with follow-up questions if needed
+        follow_up_questions = []
+        
+        # Determine if clarification is needed based on the requirements
+        needs_clarification = False
+        
+        # Check for ambiguous patterns that need clarification
+        text_lower = request.free_text_input.lower()
+        
+        if "scalable" in text_lower or "scale" in text_lower:
+            if not any(term in text_lower for term in ["auto-scaling", "manual", "global", "region"]):
+                follow_up_questions.append("What type of scaling do you need? (Auto-scaling, manual scaling, global scaling)")
+                needs_clarification = True
+        
+        if "database" in text_lower or "data" in text_lower:
+            if not any(db in text_lower for db in ["sql", "nosql", "cosmos", "mysql", "postgresql"]):
+                follow_up_questions.append("What type of database do you prefer? (SQL Database, Cosmos DB, MySQL, PostgreSQL)")
+                needs_clarification = True
+        
+        if "web" in text_lower or "app" in text_lower:
+            if not any(platform in text_lower for platform in ["vm", "container", "serverless", "aks"]):
+                follow_up_questions.append("How would you like to host your application? (Virtual Machines, Containers/AKS, App Services, Serverless Functions)")
+                needs_clarification = True
+        
+        if "secure" in text_lower or "security" in text_lower:
+            if not any(sec in text_lower for sec in ["firewall", "waf", "zero trust", "vpn"]):
+                follow_up_questions.append("What specific security features do you need? (Firewall, WAF, Zero Trust, VPN connectivity)")
+                needs_clarification = True
+        
+        # Update analysis with follow-up questions
+        enhanced_analysis = {
+            **analysis,
+            "follow_up_questions": follow_up_questions,
+            "needs_confirmation": needs_clarification or analysis.get("needs_confirmation", False)
+        }
+        
+        logger.info(f"Analysis completed. Services identified: {len(analysis.get('services', []))}, Pattern: {analysis.get('architecture_pattern', 'unknown')}")
+        
+        return enhanced_analysis
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error analyzing requirements: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze requirements: {str(e)}")
+
+@app.post("/generate-simplified-architecture")
+def generate_simplified_architecture(request: SimplifiedGenerationRequest):
+    """Generate architecture using the simplified interface approach"""
+    try:
+        if not request.free_text_input.strip():
+            raise HTTPException(status_code=400, detail="Requirements text is required")
+        
+        logger.info("Generating simplified architecture")
+        
+        # Use AI analysis if provided, otherwise generate new one
+        if request.ai_analysis:
+            analysis = request.ai_analysis
+            logger.info("Using provided AI analysis")
+        else:
+            analysis = analyze_free_text_requirements(request.free_text_input)
+            logger.info("Generated new AI analysis")
+        
+        # Create CustomerInputs from the AI analysis and free text
+        simplified_inputs = CustomerInputs(
+            free_text_input=request.free_text_input,
+            business_objective="agility",  # Default to agility for simplified interface
+            
+            # Map AI analysis to customer inputs
+            network_model="hub-spoke" if "hub" in analysis.get("architecture_pattern", "").lower() else "single-vnet",
+            security_posture="zero-trust" if "zero trust" in analysis.get("security_considerations", "").lower() else "defense-in-depth",
+            workload="web-apps",  # Default workload
+            architecture_style="microservices" if "microservices" in analysis.get("architecture_pattern", "").lower() else "n-tier",
+            monitoring="azure-monitor",
+            scalability="auto-scaling" if "auto" in analysis.get("scalability_design", "").lower() else "manual-scaling",
+            
+            # Map services from AI analysis to service categories
+            compute_services=[],
+            network_services=[],
+            storage_services=[],
+            database_services=[],
+            security_services=[],
+            monitoring_services=[],
+            ai_services=[],
+            analytics_services=[],
+            integration_services=[],
+            devops_services=[],
+            backup_services=[]
+        )
+        
+        # Map AI-suggested services to appropriate categories
+        for service in analysis.get("services", []):
+            if service in ["vm", "virtual_machines", "aks", "app_services", "function_app", "container_instances"]:
+                simplified_inputs.compute_services.append(service)
+            elif service in ["virtual_network", "application_gateway", "load_balancer", "firewall", "vpn_gateway"]:
+                simplified_inputs.network_services.append(service)
+            elif service in ["storage_accounts", "blob_storage", "data_lake"]:
+                simplified_inputs.storage_services.append(service)
+            elif service in ["sql_database", "cosmos_db", "mysql", "postgresql"]:
+                simplified_inputs.database_services.append(service)
+            elif service in ["key_vault", "security_center", "sentinel", "active_directory"]:
+                simplified_inputs.security_services.append(service)
+            elif service in ["azure_monitor", "log_analytics", "application_insights"]:
+                simplified_inputs.monitoring_services.append(service)
+            elif service in ["cognitive_services", "machine_learning", "openai"]:
+                simplified_inputs.ai_services.append(service)
+            elif service in ["synapse", "data_factory", "databricks", "stream_analytics"]:
+                simplified_inputs.analytics_services.append(service)
+            elif service in ["logic_apps", "service_bus", "event_hubs", "api_management"]:
+                simplified_inputs.integration_services.append(service)
+            elif service in ["devops", "container_registry", "github"]:
+                simplified_inputs.devops_services.append(service)
+            elif service in ["backup", "site_recovery"]:
+                simplified_inputs.backup_services.append(service)
+        
+        # Ensure we have at least basic services
+        if not simplified_inputs.compute_services:
+            simplified_inputs.compute_services = ["virtual_machines"]
+        if not simplified_inputs.network_services:
+            simplified_inputs.network_services = ["virtual_network"]
+        if not simplified_inputs.security_services:
+            simplified_inputs.security_services = ["key_vault"]
+        if not simplified_inputs.monitoring_services:
+            simplified_inputs.monitoring_services = ["azure_monitor"]
+        
+        logger.info(f"Mapped services to categories. Compute: {len(simplified_inputs.compute_services)}, Network: {len(simplified_inputs.network_services)}")
+        
+        # Generate the full architecture using existing endpoint logic
+        result = generate_interactive_azure_architecture(simplified_inputs)
+        
+        # Enhance result with AI analysis information
+        if isinstance(result, dict) and result.get("success"):
+            result["ai_analysis"] = analysis
+            result["original_requirements"] = request.free_text_input
+            if request.follow_up_answers:
+                result["follow_up_answers"] = request.follow_up_answers
+        
+        logger.info("Simplified architecture generation completed successfully")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating simplified architecture: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate simplified architecture: {str(e)}")
