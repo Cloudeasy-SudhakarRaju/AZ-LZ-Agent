@@ -36,6 +36,8 @@ class DiagramRenderer:
             "web_app": AppServices,
             "function_app": FunctionApps,
             "storage_account": StorageAccounts,
+            "queue_storage": StorageAccounts,  # Use StorageAccounts for queue storage
+            "table_storage": StorageAccounts,  # Use StorageAccounts for table storage
             "sql_database": SQLDatabases,
             "redis": CacheForRedis,
             "vnet": VirtualNetworks,
@@ -69,14 +71,32 @@ class DiagramRenderer:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # Create custom graph attributes for Image1-style layout
+        # Create enhanced graph attributes for better layout (requirement 12)
         custom_graph_attr = GRAPH_ATTR.copy()
         custom_graph_attr.update({
-            "rankdir": "LR",  # Left-to-right
-            "splines": "ortho",  # Orthogonal edges
-            "nodesep": "1.0",
-            "ranksep": "1.5",
-            "compound": "true",  # Allow edges between clusters
+            "rankdir": "LR",           # Left-to-right flow (requirement 3)
+            "splines": "polyline",     # Use polyline instead of ortho for edge labels
+            "nodesep": "1.5",          # Increased node separation for clarity
+            "ranksep": "2.5",          # Increased rank separation for visual hierarchy
+            "compound": "true",        # Allow edges between clusters
+            "concentrate": "false",    # Prevent edge merging for clarity
+            "remincross": "true",      # Minimize edge crossings (requirement 2)
+            "ordering": "out",         # Consistent edge ordering
+            "overlap": "false",        # Prevent node overlaps
+            "sep": "+25,25",           # Minimum separation
+            "esep": "+15,15",          # Edge separation
+        })
+        
+        # Enhanced node attributes for better visibility (requirement 6, 11)
+        custom_node_attr = NODE_ATTR.copy()
+        custom_node_attr.update({
+            "fontsize": "11",
+            "width": "2.2",            # Larger width for long service names
+            "height": "1.5",           # Increased height
+            "fontname": "Inter",
+            "shape": "box",
+            "style": "rounded,filled",
+            "margin": "0.1,0.1"
         })
         
         with Diagram(
@@ -85,7 +105,7 @@ class DiagramRenderer:
             outformat="png",
             filename=output_path,
             graph_attr=custom_graph_attr,
-            node_attr=NODE_ATTR,
+            node_attr=custom_node_attr,
         ):
             # Create clusters first
             cluster_contexts = self._create_clusters(graph)
@@ -196,45 +216,73 @@ class DiagramRenderer:
                 source_node >> Edge(**edge_attrs) >> target_node
     
     def _get_edge_attributes(self, edge: LayoutEdge) -> Dict[str, Any]:
-        """Get edge attributes for diagram rendering."""
+        """Get edge attributes for diagram rendering with enhanced styling (requirement 4, 14)."""
         attrs = {}
         
         if edge.label:
             attrs["label"] = edge.label
+            attrs["fontsize"] = "10"
+            attrs["fontname"] = "Inter"
         
         if edge.color:
             attrs["color"] = edge.color
         else:
-            attrs["color"] = "#2E86C1"  # Default color
+            attrs["color"] = "#2E86C1"  # Default blue
         
         if edge.style:
             attrs["style"] = edge.style
         else:
             attrs["style"] = "solid"
         
-        # Set edge styling based on edge type
-        if edge.label and edge.label.isdigit():
-            # Workflow step edges
+        # Enhanced styling based on connection type and requirements
+        if edge.label and any(word in edge.label for word in ["1.", "2.", "3.", "Traffic", "HTTPS"]):
+            # Primary workflow edges (requirement 4, 9)
+            attrs.update({
+                "penwidth": "3.0",
+                "fontsize": "12",
+                "fontcolor": edge.color or "#1976D2",
+                "arrowsize": "1.2",
+                "arrowhead": "normal"
+            })
+        elif edge.style == "dashed":
+            # Cache, replication, and async patterns (requirement 14)
             attrs.update({
                 "penwidth": "2.0",
-                "fontsize": "10",
-                "fontcolor": attrs["color"],
-                "arrowsize": "1.0"
+                "fontsize": "9",
+                "fontcolor": edge.color or "#FF6B35",
+                "arrowsize": "1.0",
+                "arrowhead": "vee"
             })
-        elif edge.label in ["Cache", "Telemetry", "API", "Data", "SQL"]:
-            # Data flow edges
+        elif edge.style == "dotted":
+            # Monitoring and control connections (requirement 14)
             attrs.update({
                 "penwidth": "1.5",
+                "fontsize": "8",
+                "fontcolor": edge.color or "#607D8B",
+                "arrowsize": "0.8",
+                "arrowhead": "diamond"
+            })
+        elif any(word in edge.label for word in ["Auth", "Secret", "Cert"]) if edge.label else False:
+            # Security connections (requirement 15)
+            attrs.update({
+                "penwidth": "2.0",
                 "fontsize": "9",
-                "fontcolor": attrs["color"],
-                "arrowsize": "0.8"
+                "fontcolor": edge.color or "#795548",
+                "arrowsize": "1.0",
+                "arrowhead": "box"
             })
         else:
-            # Default edges
+            # Standard data flow edges (requirement 15)
             attrs.update({
-                "penwidth": "1.4",
-                "arrowsize": "0.8"
+                "penwidth": "1.8",
+                "fontsize": "9",
+                "fontcolor": edge.color or "#4CAF50",
+                "arrowsize": "0.9",
+                "arrowhead": "normal"
             })
+        
+        # Add constraint to minimize edge crossings (requirement 2, 12)
+        attrs["constraint"] = "true"
         
         return attrs
 

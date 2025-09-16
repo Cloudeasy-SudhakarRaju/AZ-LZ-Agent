@@ -80,10 +80,13 @@ class LayoutComposer:
             "nsg": 31,
             "public_ip": 32,
             
-            # Data services
+            # Data services - proper ordering for data layer
             "redis": 40,
-            "sql_database": 41,
-            "storage_account": 42,
+            "queue_storage": 41,
+            "table_storage": 42,
+            "storage_account": 43,
+            "sql_database": 44,
+            "cosmos_db": 45,
             
             # Monitoring
             "log_analytics": 50,
