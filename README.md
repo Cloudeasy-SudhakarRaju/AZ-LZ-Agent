@@ -5,10 +5,71 @@ Professional Azure Landing Zone Architecture Generator that creates comprehensiv
 ## Features
 
 - **Enterprise-Grade Diagrams**: Generate Azure architecture diagrams with official Microsoft Azure icons
+- **Architecture Diagram Agent**: Prompt-driven agent that generates organized Azure diagrams with dependency inference
 - **Multiple Output Formats**: PNG diagrams with Python Diagrams library and Draw.io XML
 - **Professional Documentation**: Technical Specification Document (TSD), High-Level Design (HLD), and Low-Level Design (LLD)
 - **Azure Architecture Templates**: Support for multiple Azure Landing Zone patterns
 - **API-Driven**: RESTful API with comprehensive endpoints
+
+## Architecture Diagram Agent
+
+The Architecture Diagram Agent is a new command-line tool that generates organized Azure diagrams following clean, story-first layouts with dynamic service selection and dependency inference.
+
+### Key Features
+
+- **Pattern-Constrained Layout**: Left-to-right flow with orthogonal edges and minimal crossings
+- **Dynamic Service Selection**: Parse user intent and automatically infer dependencies
+- **Interactive & Non-Interactive Modes**: CLI prompts or YAML manifest input
+- **Dependency Inference**: Automatically adds required services (e.g., VM → VNet/Subnet/NIC/NSG)
+
+### Usage
+
+#### Non-Interactive Mode (Recommended for CI/CD)
+```bash
+python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --pattern ha-multiregion
+```
+
+#### Interactive Mode
+```bash
+python scripts/arch_agent/agent.py --interactive
+```
+
+#### Custom Output Path
+```bash
+python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --out docs/diagrams/my_architecture
+```
+
+### Example YAML Manifest
+
+```yaml
+project_name: "Sample HA Application"
+environment: "prod"
+regions:
+  - "East US 2"
+  - "West US 2"
+ha_mode: "active-active"
+
+services:
+  - kind: "web_app"
+    name: "Frontend Web App"
+    properties:
+      runtime: ".NET 8"
+      tier: "P1v2"
+  
+  - kind: "function_app" 
+    name: "API Functions"
+    properties:
+      runtime: ".NET 8"
+      hosting_plan: "Premium"
+  
+  - kind: "redis"
+    name: "App Cache"
+    properties:
+      tier: "Standard"
+      size: "C1"
+```
+
+The agent automatically infers dependencies and generates clean, organized diagrams with proper clustering and workflow numbering.
 
 ## System Requirements
 
