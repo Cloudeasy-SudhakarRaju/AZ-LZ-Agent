@@ -57,13 +57,13 @@ app.add_middleware(
 )
 
 # Configure Google Gemini API
-GEMINI_API_KEY = "AIzaSyCuYYvGh5wjwNniv9ZQ1QC-5pxwdj5lCWQ"
+GEMINI_API_KEY = "AIzaSyAkKPvLZq2wyeT0Di49rkc8bvq8bF1HGOg"
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize Gemini model
 try:
-    gemini_model = genai.GenerativeModel('gemini-1.5-pro')
-    logger.info("Google Gemini API configured successfully")
+    gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+    logger.info("Google Gemini 2.0 Flash API configured successfully")
 except Exception as e:
     logger.error(f"Failed to configure Gemini API: {e}")
     gemini_model = None
