@@ -1,0 +1,1 @@
+# Diagrams package for Azure architecture diagrams
