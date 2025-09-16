@@ -14,7 +14,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 import requests
-import google.generativeai as genai
+import openai
 
 # Document processing imports
 import PyPDF2
@@ -56,17 +56,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Google Gemini API
-GEMINI_API_KEY = "AIzaSyCuYYvGh5wjwNniv9ZQ1QC-5pxwdj5lCWQ"
-genai.configure(api_key=GEMINI_API_KEY)
+# Configure OpenAI API
+OPENAI_API_KEY = "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"
+openai.api_key = OPENAI_API_KEY
 
-# Initialize Gemini model
+# Initialize OpenAI client
 try:
-    gemini_model = genai.GenerativeModel('gemini-1.5-pro')
-    logger.info("Google Gemini API configured successfully")
+    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    logger.info("OpenAI API configured successfully")
 except Exception as e:
-    logger.error(f"Failed to configure Gemini API: {e}")
-    gemini_model = None
+    logger.error(f"Failed to configure OpenAI API: {e}")
+    openai_client = None
 
 
 class CustomerInputs(BaseModel):
@@ -310,10 +310,10 @@ def cleanup_old_files(directory: str, max_age_hours: int = 24):
 
 # Google Gemini AI Integration Functions
 def analyze_url_content(url: str) -> str:
-    """Fetch and analyze URL content using Gemini AI"""
+    """Fetch and analyze URL content using ChatGPT AI"""
     try:
-        if not gemini_model:
-            return "Gemini AI not available for URL analysis"
+        if not openai_client:
+            return "ChatGPT AI not available for URL analysis"
             
         # Fetch URL content
         response = requests.get(url, timeout=10)
@@ -336,18 +336,26 @@ def analyze_url_content(url: str) -> str:
         Format your response as a structured analysis.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        response = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert Azure Solutions Architect. Analyze web content to extract Azure architecture insights and requirements."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.3
+        )
+        return response.choices[0].message.content
         
     except Exception as e:
         logger.error(f"Error analyzing URL {url}: {e}")
         return f"Error analyzing URL: {str(e)}"
 
 def process_uploaded_document(file_content: bytes, filename: str, file_type: str) -> str:
-    """Process uploaded document using Gemini AI"""
+    """Process uploaded document using ChatGPT AI"""
     try:
-        if not gemini_model:
-            return "Gemini AI not available for document analysis"
+        if not openai_client:
+            return "ChatGPT AI not available for document analysis"
             
         text_content = ""
         
@@ -383,8 +391,16 @@ def process_uploaded_document(file_content: bytes, filename: str, file_type: str
         Format your response as a structured analysis for enterprise architecture planning.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        result = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert Azure Solutions Architect. Analyze documents to extract Azure architecture insights and requirements."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.3
+        )
+        return result.choices[0].message.content
         
     except Exception as e:
         logger.error(f"Error processing document {filename}: {e}")
@@ -441,9 +457,9 @@ def extract_pptx_text(file_content: bytes) -> str:
         return ""
 
 def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: str = "", doc_analysis: str = "") -> str:
-    """Generate AI-enhanced architecture recommendations using Gemini"""
+    """Generate AI-enhanced architecture recommendations using ChatGPT"""
     try:
-        if not gemini_model:
+        if not openai_client:
             return "Standard recommendations (AI enhancement not available)"
             
         # Build context from inputs
@@ -471,13 +487,15 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
             context += f"\n\nDocument Analysis Results:\n{doc_analysis}"
         
         prompt = f"""
-        Based on the following customer requirements and analysis, provide comprehensive Azure Landing Zone architecture recommendations:
+        Based on the following customer requirements and analysis, provide comprehensive Azure Landing Zone architecture recommendations focusing ONLY on the required resources specified by the user:
         
         {context}
         
+        IMPORTANT: Create an architecture that includes ONLY the resources and services that are explicitly needed based on the user's requirements. Do not add any additional or unnecessary resources.
+        
         Please provide:
         1. Recommended Azure Landing Zone template (Enterprise Scale, Small Scale, etc.)
-        2. Detailed architecture recommendations with specific Azure services
+        2. Detailed architecture recommendations with ONLY the specific Azure services selected by the user
         3. Security and compliance strategy
         4. Network topology and connectivity recommendations
         5. Identity and access management strategy
@@ -490,8 +508,16 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
         Format your response as a comprehensive enterprise architecture document.
         """
         
-        result = gemini_model.generate_content(prompt)
-        return result.text
+        response = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert Azure Solutions Architect specializing in Azure Landing Zone design. Focus on creating minimal, efficient architectures with only required resources."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=4000,
+            temperature=0.3
+        )
+        return response.choices[0].message.content
         
     except Exception as e:
         logger.error(f"Error generating AI recommendations: {e}")
@@ -500,7 +526,7 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
 def analyze_free_text_requirements(free_text: str) -> dict:
     """Analyze free text input to extract comprehensive service requirements using AI"""
     try:
-        if not gemini_model or not free_text:
+        if not openai_client or not free_text:
             return {"services": [], "reasoning": "No analysis available"}
             
         prompt = """
@@ -595,8 +621,16 @@ def analyze_free_text_requirements(free_text: str) -> dict:
 
         """.format(free_text)
         
-        result = gemini_model.generate_content(prompt)
-        response_text = result.text.strip()
+        response = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an ENTERPRISE AZURE SOLUTIONS ARCHITECT with deep expertise in designing production-ready, scalable, and secure Azure Landing Zone architectures. Focus on selecting ONLY the services that are truly needed for the specific requirement. Return ONLY valid JSON format with no additional text."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=4000,
+            temperature=0.3
+        )
+        response_text = response.choices[0].message.content.strip()
         
         # Try to extract JSON from the response
         import json
