@@ -15,6 +15,19 @@ from datetime import datetime
 from pathlib import Path
 import requests
 import google.generativeai as genai
+# Document processing imports
+import PyPDF2
+import openpyxl
+from pptx import Presentation
+
+# Configure logging first
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Import OpenAI only if available
 try:
     import openai
@@ -23,11 +36,6 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
     logger.warning("OpenAI library not available, will use HTTP requests if needed")
-
-# Document processing imports
-import PyPDF2
-import openpyxl
-from pptx import Presentation
 
 # Import diagrams for Azure architecture generation
 from diagrams import Diagram, Cluster, Edge
@@ -49,12 +57,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -1009,20 +1012,17 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 # Only create management groups if governance services are explicitly selected
                 created_resources = []
                 
-                # Identity and Security Services - ONLY if explicitly selected or AI recommended
+                # Identity and Security Services - ONLY if explicitly selected by user
                 identity_resources = []
-                if (inputs.security_services and ("active_directory" in inputs.security_services or "key_vault" in inputs.security_services)) or \
-                   (template.get("ai_services") and any(service in ["active_directory", "key_vault"] for service in template["ai_services"])):
+                if inputs.security_services and ("active_directory" in inputs.security_services or "key_vault" in inputs.security_services):
                     
                     with Cluster("Identity & Security", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
-                        if (inputs.security_services and "active_directory" in inputs.security_services) or \
-                           (template.get("ai_services") and "active_directory" in template["ai_services"]):
+                        if inputs.security_services and "active_directory" in inputs.security_services:
                             aad = ActiveDirectory("Azure Active Directory")
                             identity_resources.append(aad)
                             created_resources.append(aad)
                             
-                        if (inputs.security_services and "key_vault" in inputs.security_services) or \
-                           (template.get("ai_services") and "key_vault" in template["ai_services"]):
+                        if inputs.security_services and "key_vault" in inputs.security_services:
                             key_vault = KeyVaults("Key Vault")
                             identity_resources.append(key_vault)
                             created_resources.append(key_vault)
@@ -1037,7 +1037,7 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                             identity_resources.append(sentinel)
                             created_resources.append(sentinel)
                 
-                # Azure Subscription - ONLY if we actually have services to put in it
+                # Azure Subscription - ONLY if we actually have user-selected services
                 subscription = None
                 total_services = sum([
                     len(inputs.compute_services or []),
@@ -1050,8 +1050,8 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                     len(inputs.analytics_services or []),
                     len(inputs.integration_services or []),
                     len(inputs.devops_services or []),
-                    len(inputs.backup_services or []),
-                    len(template.get("ai_services", []))
+                    len(inputs.backup_services or [])
+                    # Note: Removed AI template services to strictly follow user input
                 ])
                 
                 if total_services > 0:
@@ -1089,11 +1089,12 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 # Add intelligent connections between all services
                 _add_intelligent_service_connections(inputs, resources_by_type, template)
                 
-                # If no services are selected at all, create a placeholder message
+                # If no services are selected at all, provide proper empty architecture structure
                 if len(all_resources) == 0:
-                    from diagrams.generic.blank import Blank
-                    placeholder = Blank("No Services Selected\n\nPlease specify Azure services\nto generate architecture")
-                    all_resources.append(placeholder)
+                    # Create minimal structure following architectural requirements but without services
+                    with Cluster("Azure Landing Zone Structure", graph_attr={"bgcolor": "#f8f9fa", "style": "rounded"}):
+                        placeholder = Subscriptions("Ready for Service Selection\n\nArchitecture framework prepared\naccording to best practices")
+                        all_resources.append(placeholder)
                 
                 logger.info("Diagram structure and intelligent connections created successfully")
         
