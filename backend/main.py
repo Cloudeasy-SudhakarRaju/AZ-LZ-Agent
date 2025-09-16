@@ -40,9 +40,9 @@ except ImportError:
 # Import diagrams for Azure architecture generation
 from diagrams import Diagram, Cluster, Edge
 from diagrams.azure.compute import VM, AKS, AppServices, FunctionApps, ContainerInstances, ServiceFabricClusters, BatchAccounts
-from diagrams.azure.network import VirtualNetworks, ApplicationGateway, LoadBalancers, Firewall, ExpressrouteCircuits, VirtualNetworkGateways
+from diagrams.azure.network import VirtualNetworks, ApplicationGateway, LoadBalancers, Firewall, ExpressrouteCircuits, VirtualNetworkGateways, FrontDoors, CDNProfiles
 from diagrams.azure.storage import StorageAccounts, BlobStorage, DataLakeStorage
-from diagrams.azure.database import SQLDatabases, CosmosDb, DatabaseForMysqlServers, DatabaseForPostgresqlServers
+from diagrams.azure.database import SQLDatabases, CosmosDb, DatabaseForMysqlServers, DatabaseForPostgresqlServers, CacheForRedis
 from diagrams.azure.security import KeyVaults, SecurityCenter, Sentinel
 from diagrams.azure.identity import ActiveDirectory
 from diagrams.azure.analytics import SynapseAnalytics, DataFactories, Databricks, StreamAnalyticsJobs, EventHubs
@@ -223,15 +223,18 @@ AZURE_SERVICES_MAPPING = {
     "expressroute": {"name": "ExpressRoute", "icon": "⚡", "drawio_shape": "expressroute_circuits", "diagram_class": ExpressrouteCircuits, "category": "network"},
     "load_balancer": {"name": "Load Balancer", "icon": "⚖️", "drawio_shape": "load_balancer", "diagram_class": LoadBalancers, "category": "network"},
     "application_gateway": {"name": "Application Gateway", "icon": "🚪", "drawio_shape": "application_gateway", "diagram_class": ApplicationGateway, "category": "network"},
+    "front_door": {"name": "Azure Front Door", "icon": "🌍", "drawio_shape": "front_door", "diagram_class": FrontDoors, "category": "network"},
     "firewall": {"name": "Azure Firewall", "icon": "🛡️", "drawio_shape": "firewall", "diagram_class": Firewall, "category": "network"},
     "waf": {"name": "Web Application Firewall", "icon": "🛡️", "drawio_shape": "application_gateway", "diagram_class": ApplicationGateway, "category": "network"},
-    "cdn": {"name": "Content Delivery Network", "icon": "🌍", "drawio_shape": "cdn_profiles", "diagram_class": None, "category": "network"},
+    "cdn": {"name": "Content Delivery Network", "icon": "🌍", "drawio_shape": "cdn_profiles", "diagram_class": CDNProfiles, "category": "network"},
     "traffic_manager": {"name": "Traffic Manager", "icon": "🚦", "drawio_shape": "traffic_manager_profiles", "diagram_class": None, "category": "network"},
     "virtual_wan": {"name": "Virtual WAN", "icon": "🌐", "drawio_shape": "virtual_wan", "diagram_class": VirtualNetworks, "category": "network"},
     
     # Storage Services
     "storage_accounts": {"name": "Storage Accounts", "icon": "💾", "drawio_shape": "storage_accounts", "diagram_class": StorageAccounts, "category": "storage"},
     "blob_storage": {"name": "Blob Storage", "icon": "📄", "drawio_shape": "blob_storage", "diagram_class": BlobStorage, "category": "storage"},
+    "queue_storage": {"name": "Queue Storage", "icon": "📬", "drawio_shape": "queue_storage", "diagram_class": StorageAccounts, "category": "storage"},
+    "table_storage": {"name": "Table Storage", "icon": "📋", "drawio_shape": "table_storage", "diagram_class": StorageAccounts, "category": "storage"},
     "file_storage": {"name": "Azure Files", "icon": "📁", "drawio_shape": "files", "diagram_class": StorageAccounts, "category": "storage"},
     "disk_storage": {"name": "Managed Disks", "icon": "💿", "drawio_shape": "managed_disks", "diagram_class": StorageAccounts, "category": "storage"},
     "data_lake": {"name": "Data Lake Storage", "icon": "🏞️", "drawio_shape": "data_lake_storage", "diagram_class": DataLakeStorage, "category": "storage"},
@@ -243,7 +246,7 @@ AZURE_SERVICES_MAPPING = {
     "mysql": {"name": "Azure Database for MySQL", "icon": "🐬", "drawio_shape": "database_for_mysql_servers", "diagram_class": DatabaseForMysqlServers, "category": "database"},
     "postgresql": {"name": "Azure Database for PostgreSQL", "icon": "🐘", "drawio_shape": "database_for_postgresql_servers", "diagram_class": DatabaseForPostgresqlServers, "category": "database"},
     "mariadb": {"name": "Azure Database for MariaDB", "icon": "🗄️", "drawio_shape": "database_for_mariadb_servers", "diagram_class": DatabaseForMysqlServers, "category": "database"},
-    "redis_cache": {"name": "Azure Cache for Redis", "icon": "⚡", "drawio_shape": "cache_redis", "diagram_class": None, "category": "database"},
+    "redis": {"name": "Azure Cache for Redis", "icon": "⚡", "drawio_shape": "cache_redis", "diagram_class": CacheForRedis, "category": "database"},
     
     # Security Services
     "key_vault": {"name": "Azure Key Vault", "icon": "🔐", "drawio_shape": "key_vault", "diagram_class": KeyVaults, "category": "security"},
@@ -1009,14 +1012,43 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 
                 logger.info("Creating diagram structure...")
                 
-                # Only create management groups if governance services are explicitly selected
-                created_resources = []
+                # Enhanced cluster organization implementing requirements 1, 7, 8
+                # Create logical layers: Internet Edge -> Identity Security -> Active Regions -> Standby Region -> Monitoring
                 
-                # Identity and Security Services - ONLY if explicitly selected by user
+                created_resources = []
+                edge_resources = []
                 identity_resources = []
+                compute_resources = []
+                data_resources = []
+                monitoring_resources = []
+                
+                # Internet Edge Layer (Requirement 1, 3: Clear containers, visual hierarchy)
+                if inputs.network_services and any(svc in inputs.network_services for svc in ["front_door", "cdn", "application_gateway"]):
+                    with Cluster("Internet Edge", graph_attr={
+                        "bgcolor": "#FFF5F5", "style": "rounded,bold", "pencolor": "#E53E3E", "penwidth": "3",
+                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "min"
+                    }):
+                        if "front_door" in inputs.network_services:
+                            front_door = FrontDoors("Azure Front Door")
+                            edge_resources.append(front_door)
+                            created_resources.append(front_door)
+                        
+                        if "cdn" in inputs.network_services:
+                            cdn = CDNProfiles("Content Delivery Network")
+                            edge_resources.append(cdn)
+                            created_resources.append(cdn)
+                        
+                        if "application_gateway" in inputs.network_services:
+                            app_gw = ApplicationGateway("Application Gateway")
+                            edge_resources.append(app_gw)
+                            created_resources.append(app_gw)
+                
+                # Identity & Security Layer (Requirement 3: Identity/edge services at top-left)
                 if inputs.security_services and ("active_directory" in inputs.security_services or "key_vault" in inputs.security_services):
-                    
-                    with Cluster("Identity & Security", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
+                    with Cluster("Identity Security", graph_attr={
+                        "bgcolor": "#FFFAF0", "style": "rounded,bold", "pencolor": "#DD6B20", "penwidth": "3",
+                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "same"
+                    }):
                         if inputs.security_services and "active_directory" in inputs.security_services:
                             aad = ActiveDirectory("Azure Active Directory")
                             identity_resources.append(aad)
@@ -1037,7 +1069,7 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                             identity_resources.append(sentinel)
                             created_resources.append(sentinel)
                 
-                # Azure Subscription - ONLY if we actually have user-selected services
+                # Azure Subscription with enhanced structure
                 subscription = None
                 total_services = sum([
                     len(inputs.compute_services or []),
@@ -1055,16 +1087,25 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 ])
                 
                 if total_services > 0:
-                    with Cluster("Azure Subscription", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
+                    # Active Regions Layer (Requirement 3: compute in middle, 7: clear region separation)
+                    with Cluster("Active Region - Primary", graph_attr={
+                        "bgcolor": "#F0FFF4", "style": "rounded,bold", "pencolor": "#38A169", "penwidth": "3",
+                        "fontsize": "16", "fontcolor": "#1A202C", "rank": "same"
+                    }):
                         subscription = Subscriptions("Azure Subscription")
                         created_resources.append(subscription)
                 
-                # Create network services only if explicitly selected
+                # Create core network services (excluding edge services handled above)
                 network_resources_by_type = {}
-                if inputs.network_services:
-                    with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
+                core_network_services = [svc for svc in (inputs.network_services or []) 
+                                       if svc not in ["front_door", "cdn", "application_gateway"]]
+                if core_network_services:
+                    with Cluster("Network Architecture", graph_attr={
+                        "bgcolor": "#EDF2F7", "style": "rounded,bold", "pencolor": "#4A5568", "penwidth": "2",
+                        "fontsize": "14", "fontcolor": "#1A202C", "rank": "same"
+                    }):
                         network_resources = []
-                        for service in inputs.network_services:
+                        for service in core_network_services:
                             if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                                 diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                                 service_name = AZURE_SERVICES_MAPPING[service]["name"]
@@ -1516,9 +1557,12 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
         # Track resources by type for intelligent connections
         resources_by_type = {}
         
-        # Compute Services - only if explicitly selected
+        # Compute Services - middle layer (Requirement 3: compute in middle)
         if inputs.compute_services:
-            with Cluster("Compute Services", graph_attr={"bgcolor": "#fff8dc", "style": "rounded"}):
+            with Cluster("Compute Services", graph_attr={
+                "bgcolor": "#EBF8FF", "style": "rounded,bold", "pencolor": "#3182CE", "penwidth": "2",
+                "fontsize": "14", "fontcolor": "#1A202C", "rank": "same"
+            }):
                 for service in inputs.compute_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
@@ -1531,9 +1575,12 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                             resources_by_type[service] = []
                         resources_by_type[service].append(resource)
         
-        # Storage Services - only if explicitly selected  
+        # Storage Services - organized by tier (Requirement 8: logical grouping)
         if inputs.storage_services:
-            with Cluster("Storage Services", graph_attr={"bgcolor": "#f5f5dc", "style": "rounded"}):
+            with Cluster("Storage Services", graph_attr={
+                "bgcolor": "#F7FAFC", "style": "rounded,bold", "pencolor": "#718096", "penwidth": "2",
+                "fontsize": "14", "fontcolor": "#1A202C", "rank": "same"
+            }):
                 for service in inputs.storage_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
@@ -1546,9 +1593,12 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                             resources_by_type[service] = []
                         resources_by_type[service].append(resource)
         
-        # Database Services - only if explicitly selected
+        # Database Services - data tier at bottom (Requirement 3: data at bottom)
         if inputs.database_services:
-            with Cluster("Database Services", graph_attr={"bgcolor": "#e6f3ff", "style": "rounded"}):
+            with Cluster("Data Services", graph_attr={
+                "bgcolor": "#FFF5F5", "style": "rounded,bold", "pencolor": "#E53E3E", "penwidth": "2",
+                "fontsize": "14", "fontcolor": "#1A202C", "rank": "max"
+            }):
                 for service in inputs.database_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
@@ -1576,9 +1626,12 @@ def _add_selected_service_clusters(inputs: CustomerInputs, existing_resources: l
                             resources_by_type[service] = []
                         resources_by_type[service].append(resource)
         
-        # Monitoring Services - only if explicitly selected
+        # Monitoring Services - observability layer (Requirement 1: clear containers)
         if inputs.monitoring_services:
-            with Cluster("Monitoring Services", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
+            with Cluster("Monitoring & Observability", graph_attr={
+                "bgcolor": "#EBF4FF", "style": "rounded,bold", "pencolor": "#3182CE", "penwidth": "2",
+                "fontsize": "14", "fontcolor": "#1A202C", "rank": "max"
+            }):
                 for service in inputs.monitoring_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]

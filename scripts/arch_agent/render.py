@@ -10,7 +10,8 @@ from diagrams.azure.storage import StorageAccounts
 from diagrams.azure.database import SQLDatabases, CacheForRedis
 from diagrams.azure.network import (
     VirtualNetworks, LoadBalancers, ApplicationGateway, 
-    PublicIpAddresses, NetworkSecurityGroupsClassic as NetworkSecurityGroups
+    PublicIpAddresses, NetworkSecurityGroupsClassic as NetworkSecurityGroups,
+    FrontDoors, CDNProfiles
 )
 from diagrams.azure.identity import ActiveDirectory
 from diagrams.azure.security import KeyVaults
@@ -43,14 +44,14 @@ class DiagramRenderer:
             "vnet": VirtualNetworks,
             "load_balancer": LoadBalancers,
             "application_gateway": ApplicationGateway,
+            "front_door": FrontDoors,
+            "cdn": CDNProfiles,
             "public_ip": PublicIpAddresses,
             "nsg": NetworkSecurityGroups,
             "entra_id": ActiveDirectory,
             "key_vault": KeyVaults,
             "log_analytics": LogAnalyticsWorkspaces,
             "application_insights": ApplicationInsights,
-            "front_door": FrontDoors,
-            "cdn": CDNProfiles,
         }
         
         # Track created nodes for edge connections
