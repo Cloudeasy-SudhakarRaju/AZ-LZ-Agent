@@ -36,8 +36,8 @@ class HAMultiRegionPattern:
         # Organize services by type and region
         service_groups = self._organize_services(resolved_intents, requirements)
         
-        # Create clusters based on the pattern
-        self._create_clusters(graph, requirements)
+        # Create clusters based on the pattern and actual service groups
+        self._create_clusters(graph, service_groups, requirements)
         
         # Place nodes in appropriate clusters
         self._place_nodes(graph, service_groups, requirements)
@@ -59,6 +59,16 @@ class HAMultiRegionPattern:
             "monitoring": []
         }
         
+        # First, add services from the edge_services and identity_services sections
+        for edge_service in requirements.edge_services:
+            edge_intent = UserIntent(kind=edge_service, name=None)
+            groups["edge"].append(edge_intent)
+        
+        for identity_service in requirements.identity_services:
+            identity_intent = UserIntent(kind=identity_service, name=None)
+            groups["identity"].append(identity_intent)
+        
+        # Then process the main services list
         for intent in intents:
             service_type = intent.kind
             
@@ -82,16 +92,15 @@ class HAMultiRegionPattern:
         
         return groups
     
-    def _create_clusters(self, graph: LayoutGraph, requirements: Requirements) -> None:
+    def _create_clusters(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
         """Create cluster definitions for the layout."""
-        # Edge/Identity column (left side)
-        if any(len(group) > 0 for group in [requirements.edge_services, requirements.identity_services]):
+        # Edge/Identity column (left side) - only create if there are actual services
+        if len(service_groups["edge"]) > 0 or len(service_groups["identity"]) > 0:
             graph.clusters["edge_identity"] = {
                 "label": "Edge & Identity",
                 "bgcolor": "#E8F4F8",
                 "style": "rounded",
-                "rank": "min",
-                "graph_attr": {"rankdir": "TB"}
+                "rank": "min"
             }
         
         # Primary regions
@@ -243,6 +252,9 @@ class HAMultiRegionPattern:
         
         # Monitoring connections
         self._create_monitoring_connections(graph, service_to_nodes)
+        
+        # Security connections (Key Vault)
+        self._create_security_connections(graph, service_to_nodes)
     
     def _create_edge_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
         """Create edge flow connections with numbering."""
@@ -265,6 +277,20 @@ class HAMultiRegionPattern:
                 for wa_node in service_to_nodes["web_app"]:
                     edge = LayoutEdge(
                         source=ag_node,
+                        target=wa_node,
+                        label=f"{self.edge_step_counter}",
+                        style="solid",
+                        color="#2E86C1"
+                    )
+                    graph.edges.append(edge)
+                    self.edge_step_counter += 1
+        
+        # If no Application Gateway, connect Front Door directly to Web App
+        elif "front_door" in service_to_nodes and "web_app" in service_to_nodes:
+            for fd_node in service_to_nodes["front_door"]:
+                for wa_node in service_to_nodes["web_app"]:
+                    edge = LayoutEdge(
+                        source=fd_node,
                         target=wa_node,
                         label=f"{self.edge_step_counter}",
                         style="solid",
@@ -354,6 +380,24 @@ class HAMultiRegionPattern:
                         label="Telemetry",
                         style="dotted",
                         color="#9932CC"
+                    )
+                    graph.edges.append(edge)
+    
+    def _create_security_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
+        """Create security connections from Key Vault to compute services."""
+        # Key Vault -> All compute services for secrets/certificates
+        key_vault_nodes = service_to_nodes.get("key_vault", [])
+        
+        for kv_node in key_vault_nodes:
+            # Connect Key Vault to compute services
+            for service_type in ["web_app", "function_app", "vm"]:
+                for service_node in service_to_nodes.get(service_type, []):
+                    edge = LayoutEdge(
+                        source=kv_node,
+                        target=service_node,
+                        label="Secrets",
+                        style="dashed",
+                        color="#FF6B6B"
                     )
                     graph.edges.append(edge)
     
