@@ -83,43 +83,48 @@ class DiagramRenderer:
         custom_graph_attr.update({
             # Requirements 1 & 7: Clear containers/swimlanes and region separation
             "rankdir": "TB",           # Top-to-bottom for clear logical layers
+            # Requirement 2 & 12: Polyline routing for minimal crossings and strong layout constraints
             "splines": "polyline",     # Polyline routing for minimal crossings (req 2)
-            "nodesep": "2.0",          # Enhanced node separation for clarity (req 11)
-            "ranksep": "3.0",          # Enhanced rank separation for visual hierarchy (req 3, 10)
+            "nodesep": "2.5",          # Enhanced node separation for clarity (req 11)
+            "ranksep": "3.5",          # Enhanced rank separation for visual hierarchy (req 3, 10)
             "compound": "true",        # Allow edges between clusters (req 1)
             "concentrate": "false",    # Prevent edge merging for clarity (req 2)
             "remincross": "true",      # Minimize edge crossings (req 2)
             "ordering": "out",         # Consistent edge ordering (req 12)
             "overlap": "false",        # Prevent node overlaps (req 11)
-            "sep": "+30,30",          # Enhanced separation (req 11) 
-            "esep": "+20,20",         # Enhanced edge separation (req 2)
+            "sep": "+40,40",          # Enhanced separation (req 11) 
+            "esep": "+25,25",         # Enhanced edge separation (req 2)
             "bgcolor": "#ffffff",      # Clean background (req 11)
-            "margin": "0.8,0.8",      # Better margins (req 11)
+            "margin": "1.0,1.0",      # Better margins (req 11)
             # Requirements 12 & 13: Strong layout constraints and pattern templates
             "pack": "true",           # Efficient packing
             "packmode": "cluster",    # Cluster-based packing for logical grouping (req 8)
-            "maxiter": "1000",        # Better layout convergence
-            "mclimit": "10.0"         # Memory cluster limit for complex diagrams
+            "maxiter": "2000",        # Better layout convergence for complex diagrams
+            "mclimit": "15.0",        # Memory cluster limit for complex diagrams
+            # Requirement 13: Pattern templates - Multi-region layout consistency
+            "clusterrank": "global",  # Global cluster ranking for consistency
+            "newrank": "true",        # Improved ranking algorithm
+            "smoothing": "power_dist" # Better edge smoothing for polylines
         })
         
         # Enhanced node attributes implementing requirements 6, 10, 11
         custom_node_attr = NODE_ATTR.copy()
         custom_node_attr.update({
-            # Requirement 11: Enhanced readability
-            "fontsize": "12",
-            "width": "2.5",            # Larger width for service names
-            "height": "1.8",           # Increased height for better visibility
-            "fontname": "Segoe UI",    # Professional font
+            # Requirement 11: Enhanced readability with improved spacing, sizing, and font rendering
+            "fontsize": "13",          # Larger font for better readability
+            "width": "3.0",            # Larger width for service names
+            "height": "2.0",           # Increased height for better visibility
+            "fontname": "Arial",       # Professional, widely supported font
             "shape": "box",
             "style": "rounded,filled,bold",
-            "margin": "0.15,0.15",
-            # Requirement 6: Horizontal alignment with borders
-            "penwidth": "2.0",         # Enhanced borders
+            "margin": "0.2,0.2",       # Increased margins for text
+            # Requirement 6: Horizontal alignment with borders - Enhanced cluster styling
+            "penwidth": "2.5",         # Enhanced borders for better definition
             "color": "#2C5282",        # Professional border color
             "fillcolor": "#EBF8FF",    # Light background color
             # Requirement 10: Visual hierarchy with color coding
             "gradientangle": "45",     # Subtle gradient effect
-            "fontcolor": "#1A202C"     # Professional text color
+            "fontcolor": "#1A202C"     # Professional text color with good contrast
         })
         
         with Diagram(
