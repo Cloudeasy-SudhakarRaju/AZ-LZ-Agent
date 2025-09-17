@@ -84,42 +84,47 @@ class DiagramRenderer:
             # Requirements 1 & 7: Clear containers/swimlanes and region separation
             "rankdir": "TB",           # Top-to-bottom for clear logical layers
             "splines": "polyline",     # Polyline routing for minimal crossings (req 2)
-            "nodesep": "2.0",          # Enhanced node separation for clarity (req 11)
-            "ranksep": "3.0",          # Enhanced rank separation for visual hierarchy (req 3, 10)
+            "nodesep": "3.5",          # Enhanced node separation for clarity (req 11)
+            "ranksep": "4.0",          # Enhanced rank separation for visual hierarchy (req 3, 10)
             "compound": "true",        # Allow edges between clusters (req 1)
             "concentrate": "false",    # Prevent edge merging for clarity (req 2)
             "remincross": "true",      # Minimize edge crossings (req 2)
             "ordering": "out",         # Consistent edge ordering (req 12)
             "overlap": "false",        # Prevent node overlaps (req 11)
-            "sep": "+30,30",          # Enhanced separation (req 11) 
-            "esep": "+20,20",         # Enhanced edge separation (req 2)
+            "sep": "+40,40",          # Enhanced separation (req 11) 
+            "esep": "+25,25",         # Enhanced edge separation (req 2)
             "bgcolor": "#ffffff",      # Clean background (req 11)
-            "margin": "0.8,0.8",      # Better margins (req 11)
+            "margin": "1.0,1.0",      # Better margins (req 11)
             # Requirements 12 & 13: Strong layout constraints and pattern templates
             "pack": "true",           # Efficient packing
             "packmode": "cluster",    # Cluster-based packing for logical grouping (req 8)
-            "maxiter": "1000",        # Better layout convergence
-            "mclimit": "10.0"         # Memory cluster limit for complex diagrams
+            "maxiter": "2000",        # Better layout convergence for complex diagrams
+            "mclimit": "15.0",        # Enhanced memory cluster limit for complex diagrams
+            # Additional layout enhancements
+            "clusterrank": "local",   # Local cluster ranking for better hierarchy (req 13)
+            "newrank": "true",        # Use new ranking algorithm for better layout
+            "mode": "hier",           # Hierarchical mode for clear layers (req 3)
+            "ratio": "auto"           # Automatic aspect ratio optimization
         })
         
         # Enhanced node attributes implementing requirements 6, 10, 11
         custom_node_attr = NODE_ATTR.copy()
         custom_node_attr.update({
             # Requirement 11: Enhanced readability
-            "fontsize": "12",
-            "width": "2.5",            # Larger width for service names
-            "height": "1.8",           # Increased height for better visibility
-            "fontname": "Segoe UI",    # Professional font
+            "fontsize": "13",
+            "width": "3.0",            # Larger width for service names
+            "height": "2.0",           # Increased height for better visibility
+            "fontname": "Segoe UI Bold",    # Professional bold font
             "shape": "box",
             "style": "rounded,filled,bold",
-            "margin": "0.15,0.15",
+            "margin": "0.2,0.2",
             # Requirement 6: Horizontal alignment with borders
-            "penwidth": "2.0",         # Enhanced borders
-            "color": "#2C5282",        # Professional border color
-            "fillcolor": "#EBF8FF",    # Light background color
+            "penwidth": "2.5",         # Enhanced borders
+            "color": "#1565C0",        # Professional blue border color
+            "fillcolor": "#E3F2FD",    # Light blue background color
             # Requirement 10: Visual hierarchy with color coding
-            "gradientangle": "45",     # Subtle gradient effect
-            "fontcolor": "#1A202C"     # Professional text color
+            "gradientangle": "90",     # Vertical gradient effect
+            "fontcolor": "#0D47A1"     # Professional dark blue text color
         })
         
         with Diagram(
@@ -329,50 +334,67 @@ class DiagramRenderer:
             attrs["style"] = "solid"
         
         # Requirement 4 & 9: Clear connection labeling with numbered workflow steps
-        if edge.label and any(word in edge.label for word in ["1.", "2.", "3.", "Step", "Traffic", "HTTPS", "Request"]):
+        if edge.label and any(word in edge.label.lower() for word in ["1.", "2.", "3.", "4.", "5.", "step", "traffic", "https", "request", "response"]):
             # Primary workflow edges - requirement 9: numbered traffic flow
             attrs.update({
-                "penwidth": "4.0",
-                "fontsize": "13",
-                "fontcolor": "#1A365D",
+                "penwidth": "4.5",
+                "fontsize": "14",
+                "fontcolor": "#0D47A1",
                 "fontweight": "bold",
-                "arrowsize": "1.5",
+                "arrowsize": "1.8",
                 "arrowhead": "normal",
-                "color": "#3182CE",  # Primary blue for main flow
-                "style": "solid"
+                "color": "#1976D2",  # Strong blue for main flow
+                "style": "solid",
+                "minlen": "2"        # Minimum edge length for clarity
             })
         elif edge.style == "dashed":
             # Requirement 14: Dashed lines for async/cache patterns
             attrs.update({
-                "penwidth": "2.5",
-                "fontsize": "10",
+                "penwidth": "3.0",
+                "fontsize": "11",
                 "fontcolor": "#C53030",
-                "arrowsize": "1.2",
+                "arrowsize": "1.4",
                 "arrowhead": "vee",
                 "color": "#E53E3E",  # Red for async patterns
-                "style": "dashed"
+                "style": "dashed",
+                "minlen": "1.5"
             })
         elif edge.style == "dotted":
             # Requirement 14: Dotted lines for monitoring and control
             attrs.update({
-                "penwidth": "2.0",
-                "fontsize": "9",
+                "penwidth": "2.5",
+                "fontsize": "10",
                 "fontcolor": "#4A5568",
-                "arrowsize": "1.0",
+                "arrowsize": "1.2",
                 "arrowhead": "diamond",
                 "color": "#718096",  # Gray for monitoring
-                "style": "dotted"
+                "style": "dotted",
+                "minlen": "1"
             })
-        elif any(word in (edge.label or "") for word in ["Auth", "Secret", "Cert", "Identity", "Key"]):
+        elif any(word in (edge.label or "").lower() for word in ["auth", "secret", "cert", "identity", "key", "security"]):
             # Security connections - special styling for security flows
+            attrs.update({
+                "penwidth": "3.5",
+                "fontsize": "11",
+                "fontcolor": "#744210",
+                "arrowsize": "1.5",
+                "arrowhead": "box",
+                "color": "#D69E2E",  # Gold for security
+                "style": "solid",
+                "minlen": "1.5"
+            })
+        elif any(word in (edge.label or "").lower() for word in ["data", "query", "read", "write", "backup", "sync"]):
+            # Data flow connections - requirement 15: directional clarity for data
             attrs.update({
                 "penwidth": "3.0",
                 "fontsize": "10",
-                "fontcolor": "#744210",
+                "fontcolor": "#2D5016",
                 "arrowsize": "1.3",
-                "arrowhead": "box",
-                "color": "#D69E2E",  # Gold for security
-                "style": "solid"
+                "arrowhead": "normal",
+                "color": "#38A169",  # Green for data flow
+                "style": "solid",
+                "minlen": "1.5"
+            })
             })
         elif any(word in (edge.label or "") for word in ["Data", "Storage", "Database", "Query"]):
             # Data flow connections

@@ -110,24 +110,34 @@ class HAMultiRegionPattern:
     def _create_clusters(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
         """Create cluster definitions with improved logical separation and visual hierarchy."""
         
-        # Internet/Edge Layer (Top-Left) - Entry points
+        # Internet/Edge Layer (Top-Left) - Entry points - Requirements 1, 3, 6, 8, 10
         if len(service_groups["edge"]) > 0:
             graph.clusters["internet_edge"] = {
-                "label": "Internet & Edge Services",
-                "bgcolor": "#E3F2FD",  # Light blue for internet/edge
-                "style": "bold,rounded",
+                "label": "🌐 Internet & Edge Services",
+                "bgcolor": "#E8F4FD",  # Enhanced light blue for internet/edge
+                "style": "bold,rounded,filled",
                 "rank": "min",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontsize": "14",
+                "fontname": "Segoe UI Bold",
+                "fontcolor": "#1565C0",
+                "margin": "20",
+                "color": "#1976D2"  # Strong blue border
             }
         
-        # Identity Layer (Left side, below edge) - Security and Identity
+        # Identity Layer (Left side, below edge) - Security and Identity - Requirements 1, 3, 6, 8, 10
         if len(service_groups["identity"]) > 0:
             graph.clusters["identity_security"] = {
-                "label": "Identity & Security",
-                "bgcolor": "#FFF3E0",  # Light orange for security
-                "style": "bold,rounded", 
+                "label": "🔐 Identity & Security",
+                "bgcolor": "#FFF8E1",  # Enhanced light amber for security
+                "style": "bold,rounded,filled", 
                 "rank": "min",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontsize": "14",
+                "fontname": "Segoe UI Bold",
+                "fontcolor": "#E65100",
+                "margin": "20",
+                "color": "#FF8F00"  # Orange border for security
             }
         
         # Active Regions - Horizontal layout for better visibility
@@ -136,75 +146,110 @@ class HAMultiRegionPattern:
         for i, region in enumerate(active_regions):
             cluster_name = f"active_region_{i+1}_{region.lower().replace(' ', '_')}"
             
-            # Main region cluster with enhanced styling
+            # Main region cluster with enhanced styling - Requirements 1, 6, 7, 8, 10
             graph.clusters[cluster_name] = {
-                "label": f"Active Region {i+1}: {region}",
-                "bgcolor": "#E8F5E8" if i == 0 else "#F3E5F5",  # Green for primary, purple for secondary
-                "style": "bold,rounded",
+                "label": f"🏢 Active Region {i+1}: {region}",
+                "bgcolor": "#E8F8F5" if i == 0 else "#F3E5F5",  # Enhanced green for primary, purple for secondary
+                "style": "bold,rounded,filled",
                 "rank": "same" if len(active_regions) > 1 else "same",
-                "penwidth": "3"
+                "penwidth": "4",
+                "fontsize": "16",
+                "fontname": "Segoe UI Bold",
+                "fontcolor": "#1B5E20" if i == 0 else "#4A148C",
+                "margin": "25",
+                "color": "#2E7D32" if i == 0 else "#7B1FA2"  # Strong green/purple borders for clear region separation
             }
             
-            # Network Layer (Top of region) - Following requirement 3
+            # Network Layer (Top of region) - Following requirement 3, 6, 8
             if any(intent.kind in ["vnet", "subnet", "nsg", "public_ip", "load_balancer", "application_gateway"] 
                    for intent in service_groups["region_network"]):
                 graph.clusters[f"{cluster_name}_network"] = {
-                    "label": "Network Layer",
-                    "bgcolor": "#FFFFFF",
-                    "style": "dashed,rounded",
+                    "label": "🌐 Network Layer",
+                    "bgcolor": "#F0F8FF",  # Alice blue for network
+                    "style": "filled,rounded,bold",
                     "parent": cluster_name,
-                    "rank": "min"
+                    "rank": "min",
+                    "penwidth": "2",
+                    "fontsize": "12",
+                    "fontname": "Segoe UI",
+                    "fontcolor": "#0D47A1",
+                    "color": "#1976D2"
                 }
             
-            # Application/Compute Layer (Middle of region) - Following requirement 3
+            # Application/Compute Layer (Middle of region) - Following requirement 3, 6, 8
             if len(service_groups["region_compute"]) > 0:
                 graph.clusters[f"{cluster_name}_compute"] = {
-                    "label": "Application & Compute",
-                    "bgcolor": "#FFFFFF", 
-                    "style": "dashed,rounded",
+                    "label": "⚙️ Application & Compute",
+                    "bgcolor": "#FFF3E0",  # Light orange for compute
+                    "style": "filled,rounded,bold",
                     "parent": cluster_name,
-                    "rank": "same"
+                    "rank": "same",
+                    "penwidth": "2",
+                    "fontsize": "12",
+                    "fontname": "Segoe UI",
+                    "fontcolor": "#E65100",
+                    "color": "#FF9800"
                 }
             
-            # Data Layer (Bottom of region) - Following requirement 3
+            # Data Layer (Bottom of region) - Following requirement 3, 6, 8
             if len(service_groups["region_storage"]) > 0 or len(service_groups["region_database"]) > 0:
                 graph.clusters[f"{cluster_name}_data"] = {
-                    "label": "Data & Storage",
-                    "bgcolor": "#FFFFFF",
-                    "style": "dashed,rounded",
+                    "label": "💾 Data & Storage",
+                    "bgcolor": "#E8F5E8",  # Light green for data
+                    "style": "filled,rounded,bold",
                     "parent": cluster_name,
-                    "rank": "max"
+                    "rank": "max",
+                    "penwidth": "2",
+                    "fontsize": "12",
+                    "fontname": "Segoe UI",
+                    "fontcolor": "#2E7D32",
+                    "color": "#4CAF50"
                 }
         
-        # Standby Region (Bottom) - Separate from active regions for clear distinction
+        # Standby Region (Bottom) - Separate from active regions for clear distinction - Requirements 7, 8, 10
         if len(requirements.regions) > 2 or requirements.ha_mode == "active-passive":
             standby_region = requirements.regions[-1] if len(requirements.regions) > 2 else requirements.regions[1]
             cluster_name = f"standby_region_{standby_region.lower().replace(' ', '_')}"
             
             graph.clusters[cluster_name] = {
-                "label": f"Standby Region: {standby_region}",
-                "bgcolor": "#F5F5F5",  # Gray for standby
-                "style": "bold,rounded,dashed",
+                "label": f"🏖️ Standby Region: {standby_region}",
+                "bgcolor": "#FAFAFA",  # Enhanced light gray for standby
+                "style": "bold,rounded,dashed,filled",
                 "rank": "max",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontsize": "14",
+                "fontname": "Segoe UI Bold",
+                "fontcolor": "#616161",
+                "margin": "20",
+                "color": "#9E9E9E"  # Gray border for standby region
             }
             
-            # Simplified standby components
+            # Simplified standby components - Requirements 6, 8
             graph.clusters[f"{cluster_name}_backup"] = {
-                "label": "Backup & DR",
+                "label": "🔄 Backup & DR",
                 "bgcolor": "#FFFFFF",
-                "style": "dashed,rounded",
-                "parent": cluster_name
+                "style": "filled,rounded,bold",
+                "parent": cluster_name,
+                "penwidth": "2",
+                "fontsize": "11",
+                "fontname": "Segoe UI",
+                "fontcolor": "#616161",
+                "color": "#9E9E9E"
             }
         
-        # Monitoring & Observability (Right side) - Separate from operational clusters
+        # Monitoring & Observability (Right side) - Separate from operational clusters - Requirements 8, 10
         if len(service_groups["monitoring"]) > 0:
             graph.clusters["monitoring_observability"] = {
-                "label": "Monitoring & Observability",
-                "bgcolor": "#FFF8DC",  # Light yellow for monitoring
-                "style": "bold,rounded",
+                "label": "📊 Monitoring & Observability",
+                "bgcolor": "#FFFDE7",  # Enhanced light yellow for monitoring
+                "style": "bold,rounded,filled",
                 "rank": "same",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontsize": "14",
+                "fontname": "Segoe UI Bold",
+                "fontcolor": "#F57F17",
+                "margin": "20",
+                "color": "#FBC02D"  # Yellow border for monitoring
             }
     
     def _place_nodes(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
@@ -348,7 +393,9 @@ class HAMultiRegionPattern:
         self._create_inter_region_connections(graph, service_to_nodes, requirements)
     
     def _create_primary_traffic_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create primary traffic flow with clear numbering and minimal crossings (requirement 2, 4)."""
+        """Create primary traffic flow with clear numbering and minimal crossings (requirement 2, 4, 9)."""
+        step_counter = 1
+        
         # Step 1: Internet -> Front Door (straight line, solid)
         if "front_door" in service_to_nodes:
             for fd_node in service_to_nodes["front_door"]:
@@ -358,12 +405,12 @@ class HAMultiRegionPattern:
                         edge = LayoutEdge(
                             source=fd_node,
                             target=ag_node,
-                            label="1. HTTPS Traffic",
+                            label=f"{step_counter}. Global HTTPS Entry Point",
                             style="solid",
                             color="#1976D2"  # Strong blue for primary traffic
                         )
                         graph.edges.append(edge)
-                        self.edge_step_counter += 1
+                        step_counter += 1
                 
                 # Direct connection to Web App if no App Gateway
                 elif "web_app" in service_to_nodes:
@@ -371,12 +418,12 @@ class HAMultiRegionPattern:
                         edge = LayoutEdge(
                             source=fd_node,
                             target=wa_node,
-                            label="1. HTTPS Traffic",
+                            label=f"{step_counter}. Direct HTTPS to App",
                             style="solid",
                             color="#1976D2"
                         )
                         graph.edges.append(edge)
-                        self.edge_step_counter += 1
+                        step_counter += 1
         
         # Step 2: Application Gateway -> Web Apps (straight line, solid)
         if "application_gateway" in service_to_nodes and "web_app" in service_to_nodes:
@@ -385,12 +432,12 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=ag_node,
                         target=wa_node,
-                        label="2. Load Balanced",
+                        label=f"{step_counter}. Load Balanced Routing",
                         style="solid",
                         color="#1976D2"
                     )
                     graph.edges.append(edge)
-                    self.edge_step_counter += 1
+                    step_counter += 1
         
         # Step 3: Load Balancer -> VMs (if present)
         if "load_balancer" in service_to_nodes and "vm" in service_to_nodes:
@@ -399,7 +446,7 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=lb_node,
                         target=vm_node,
-                        label="3. VM Traffic",
+                        label=f"{step_counter}. VM Workload Distribution",
                         style="solid",
                         color="#1976D2"
                     )
@@ -415,7 +462,7 @@ class HAMultiRegionPattern:
                 edge = LayoutEdge(
                     source=app_node,
                     target=redis_node,
-                    label="Cache (R/W)",
+                    label="🔄 High-Speed Cache Access",
                     style="dashed",
                     color="#FF6B35"  # Orange for cache traffic
                 )
@@ -426,7 +473,7 @@ class HAMultiRegionPattern:
                 edge = LayoutEdge(
                     source=app_node,
                     target=queue_node,
-                    label="Enqueue Messages",
+                    label="📨 Async Message Queue",
                     style="solid",
                     color="#4CAF50"  # Green for messaging
                 )
@@ -437,7 +484,7 @@ class HAMultiRegionPattern:
                 edge = LayoutEdge(
                     source=app_node,
                     target=table_node,
-                    label="Table Operations",
+                    label="📊 NoSQL Table Operations",
                     style="solid",
                     color="#4CAF50"
                 )
@@ -448,7 +495,7 @@ class HAMultiRegionPattern:
                 edge = LayoutEdge(
                     source=app_node,
                     target=storage_node,
-                    label="File/Blob Data",
+                    label="📁 Blob & File Storage",
                     style="solid",
                     color="#4CAF50"
                 )
@@ -459,7 +506,7 @@ class HAMultiRegionPattern:
                 edge = LayoutEdge(
                     source=app_node,
                     target=db_node,
-                    label="SQL Queries",
+                    label="🗄️ Relational Database",
                     style="solid",
                     color="#9C27B0"  # Purple for database traffic
                 )
