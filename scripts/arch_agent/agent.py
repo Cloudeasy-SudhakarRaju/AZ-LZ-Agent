@@ -7,6 +7,9 @@ import argparse
 import os
 import sys
 import yaml
+import uuid
+import tempfile
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # Add the repository root to the Python path
@@ -61,7 +64,8 @@ class ArchitectureDiagramAgent:
     
     def generate_figma_diagram(self, manifest_path: str = None, requirements: Requirements = None, 
                               pattern: str = "ha-multiregion", figma_file_id: str = None, 
-                              page_name: str = "Azure Architecture", figma_api_token: str = None) -> str:
+                              page_name: str = "Azure Architecture", figma_api_token: str = None, 
+                              fallback_format: str = "png") -> str:
         """
         Generate diagram using Figma API.
         
@@ -72,6 +76,7 @@ class ArchitectureDiagramAgent:
             figma_file_id: Existing Figma file ID (required)
             page_name: Name for the diagram page
             figma_api_token: Figma API token for authentication (required)
+            fallback_format: Format for fallback rendering (png or svg)
             
         Returns:
             URL to the generated Figma file
@@ -132,12 +137,24 @@ class ArchitectureDiagramAgent:
             
             # Fallback to standard diagram rendering
             try:
-                # Use a default output path if not provided
-                output_path = "docs/diagrams/architecture_fallback"
-                fallback_file = self.renderer.render(layout_graph, output_path, page_name)
+                # Use /tmp directory to align with backend download expectations
+                # Generate unique filename for fallback diagram with specified format
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                unique_id = str(uuid.uuid4())[:8]
+                format_ext = fallback_format.lower() if fallback_format.lower() in ["png", "svg"] else "png"
+                filename = f"azure_fallback_diagram_{timestamp}_{unique_id}"
+                output_path = os.path.join("/tmp", filename)
                 
-                # Return a message indicating fallback was used
-                return f"Figma rendering failed. Diagram generated using fallback method: {fallback_file}"
+                # Ensure /tmp directory exists and is writable
+                os.makedirs("/tmp", exist_ok=True)
+                
+                fallback_file = self.renderer.render(layout_graph, output_path, page_name, format_ext)
+                
+                # Extract just the filename for download URL
+                fallback_filename = os.path.basename(fallback_file)
+                
+                # Return the filename for download - let the calling code construct the full URL
+                return f"Figma rendering failed. Fallback diagram generated: {fallback_filename}"
             except Exception as fallback_error:
                 # If both methods fail, raise a comprehensive error
                 raise RuntimeError(
