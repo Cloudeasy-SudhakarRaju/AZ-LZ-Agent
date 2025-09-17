@@ -4,9 +4,13 @@
 
 The Azure Landing Zone Agent now supports **enterprise-style Azure architecture diagrams** with official Microsoft Azure icons and stencils, addressing the previous issue where diagrams used emoji icons instead of proper Azure architectural styling.
 
-## Diagram Generation Options
+# Azure Landing Zone Agent - Diagram Generation
 
-### 1. Python Diagrams with Official Azure Icons (NEW - RECOMMENDED) 
+## Overview
+
+The Azure Landing Zone Agent now supports **multiple diagram generation methods**:
+
+### 1. Python Diagrams with Official Azure Icons (RECOMMENDED) 
 
 **Endpoint:** `POST /generate-azure-diagram`
 
@@ -16,17 +20,29 @@ The Azure Landing Zone Agent now supports **enterprise-style Azure architecture 
 - ✅ **Industry-standard Azure Landing Zone visualization**
 - ✅ **Graphviz-powered professional rendering**
 
+### 2. **NEW: Figma API Integration** 🎨
+
+**Endpoint:** `POST /generate-figma-diagram`
+
+- ✅ **Create diagrams directly in Figma**
+- ✅ **Cloud-native collaborative editing**
+- ✅ **Real-time collaboration with team members** 
+- ✅ **Native Figma styling and components**
+- ✅ **Automatic Azure service layout and connections**
+- ✅ **Integration with existing Figma workflows**
+
 **Features:**
-- Uses the Python Diagrams library (https://diagrams.mingrammer.com)
-- Official Azure node components for all service categories
-- Professional clustering and visual hierarchy
-- Proper enterprise architectural styling
-- Base64 encoded response for web integration
-- File download support
+- Uses the Figma REST API to create diagram elements
+- Supports all major Azure services with proper styling
+- Intelligent layout calculation and positioning
+- Secure token-based authentication
+- Error handling and validation
 
-### 2. Legacy Options (Still Available)
+📖 **[Complete Figma Setup Guide → FIGMA_INTEGRATION.md](FIGMA_INTEGRATION.md)**
 
-**Mermaid Diagrams:** `POST /generate-diagram` - Text-based diagrams with emoji icons
+### 3. Legacy Options (Still Available)
+
+**Mermaid Diagrams:** `POST /generate-diagram` - Text-based diagrams with emoji icons  
 **Draw.io XML:** `POST /generate-drawio` - XML format for Draw.io editor
 
 ## API Usage

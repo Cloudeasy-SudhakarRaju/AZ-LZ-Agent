@@ -18,6 +18,7 @@ from scripts.arch_agent.schemas import Requirements, UserIntent
 from scripts.arch_agent.catalog import ServiceCatalog
 from scripts.arch_agent.layout import LayoutComposer
 from scripts.arch_agent.render import DiagramRenderer
+from scripts.arch_agent.figma_renderer import FigmaRenderer
 
 
 class ArchitectureDiagramAgent:
@@ -27,6 +28,7 @@ class ArchitectureDiagramAgent:
         self.catalog = ServiceCatalog()
         self.composer = LayoutComposer(self.catalog)
         self.renderer = DiagramRenderer()
+        self.figma_renderer = None  # Initialize on-demand when needed
     
     def generate_from_manifest(self, manifest_path: str, pattern: str = "ha-multiregion", output_path: str = None) -> str:
         """
@@ -56,6 +58,46 @@ class ArchitectureDiagramAgent:
             output_path = "docs/diagrams/architecture"
         
         return self.renderer.render(layout_graph, output_path, "Azure Architecture")
+    
+    def generate_figma_diagram(self, manifest_path: str = None, requirements: Requirements = None, 
+                              pattern: str = "ha-multiregion", figma_file_id: str = None, 
+                              page_name: str = "Azure Architecture") -> str:
+        """
+        Generate diagram using Figma API.
+        
+        Args:
+            manifest_path: Path to YAML manifest file (optional if requirements provided)
+            requirements: Direct requirements object (optional if manifest_path provided)
+            pattern: Layout pattern to use
+            figma_file_id: Existing Figma file ID (required)
+            page_name: Name for the diagram page
+            
+        Returns:
+            URL to the generated Figma file
+        """
+        # Initialize Figma renderer if not already done
+        if not self.figma_renderer:
+            self.figma_renderer = FigmaRenderer()
+        
+        # Get requirements from manifest or use provided requirements
+        if manifest_path:
+            requirements = self._load_manifest(manifest_path)
+        elif not requirements:
+            raise ValueError("Either manifest_path or requirements must be provided")
+        
+        # Validate requirements
+        validation_errors = self.composer.validate_requirements(requirements)
+        if validation_errors:
+            raise ValueError(f"Validation errors: {'; '.join(validation_errors)}")
+        
+        # Generate layout
+        layout_graph = self.composer.compose_layout(requirements, pattern)
+        
+        # Render using Figma
+        if not figma_file_id:
+            raise ValueError("figma_file_id is required for Figma rendering")
+        
+        return self.figma_renderer.render(layout_graph, figma_file_id, page_name)
     
     def generate_interactive(self, pattern: str = "ha-multiregion", output_path: str = None) -> str:
         """

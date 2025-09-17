@@ -14,7 +14,15 @@ import {
   Card,
   CardBody,
   Badge,
-  Spinner
+  Spinner,
+  Input,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  Select,
+  Alert,
+  AlertIcon,
+  Link
 } from "@chakra-ui/react";
 
 import Mermaid from "./components/Mermaid";
@@ -22,6 +30,10 @@ import InteractiveSVGViewer from "./components/InteractiveSVGViewer";
 
 interface SimplifiedFormData {
   user_requirements: string;
+  generation_method: 'standard' | 'figma';
+  figma_api_token?: string;
+  figma_file_id?: string;
+  figma_page_name?: string;
 }
 
 interface AIAnalysisResult {
@@ -37,10 +49,14 @@ interface AIAnalysisResult {
 
 interface Results {
   success: boolean;
-  mermaid: string;
+  mermaid?: string;
   drawio_xml?: string;
   svg_diagram?: string;
   svg_diagram_path?: string;
+  figma_url?: string;
+  figma_file_id?: string;
+  figma_page_name?: string;
+  user_info?: any;
   tsd: string;
   hld: string;
   lld: string;
@@ -56,7 +72,8 @@ interface Results {
 
 function SimplifiedApp() {
   const [formData, setFormData] = React.useState<SimplifiedFormData>({
-    user_requirements: ""
+    user_requirements: "",
+    generation_method: 'standard'
   });
   const [results, setResults] = React.useState<Results | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -104,8 +121,12 @@ function SimplifiedApp() {
       if (analysis.needs_confirmation || (analysis.follow_up_questions && analysis.follow_up_questions.length > 0)) {
         setAnalysisStage('clarifying');
       } else {
-        // Proceed directly to generation
-        generateArchitecture(analysis);
+        // Proceed directly to generation based on selected method
+        if (formData.generation_method === 'figma') {
+          generateFigmaDiagram(analysis);
+        } else {
+          generateArchitecture(analysis);
+        }
       }
       
     } catch (error) {
@@ -136,7 +157,12 @@ function SimplifiedApp() {
       follow_up_answers: followUpAnswers
     };
     
-    generateArchitecture(enhancedAnalysis);
+    // Choose generation method based on user selection
+    if (formData.generation_method === 'figma') {
+      generateFigmaDiagram(enhancedAnalysis);
+    } else {
+      generateArchitecture(enhancedAnalysis);
+    }
   };
 
   const generateArchitecture = async (analysis: AIAnalysisResult) => {
@@ -193,8 +219,83 @@ function SimplifiedApp() {
     }
   };
 
+  const generateFigmaDiagram = async (analysis: AIAnalysisResult) => {
+    setAnalysisStage('generating');
+    setLoading(true);
+    
+    try {
+      if (!formData.figma_api_token || !formData.figma_file_id) {
+        throw new Error("Figma API token and File ID are required for Figma generation");
+      }
+
+      // Convert analysis to customer inputs format
+      const customerInputs = {
+        business_objective: "Architecture Generation",
+        free_text_input: formData.user_requirements,
+        compute_services: analysis.services.filter(s => ['virtual_machines', 'app_services', 'function_apps', 'aks'].includes(s)),
+        network_services: analysis.services.filter(s => ['virtual_network', 'application_gateway', 'load_balancer', 'firewall'].includes(s)),
+        storage_services: analysis.services.filter(s => ['storage_accounts', 'blob_storage'].includes(s)),
+        database_services: analysis.services.filter(s => ['sql_database', 'cosmos_db', 'cache_for_redis'].includes(s)),
+        security_services: analysis.services.filter(s => ['key_vault', 'active_directory', 'security_center'].includes(s)),
+        security_posture: "standard"
+      };
+
+      const requestData = {
+        customer_inputs: customerInputs,
+        figma_api_token: formData.figma_api_token,
+        figma_file_id: formData.figma_file_id,
+        page_name: formData.figma_page_name || "Azure Architecture",
+        pattern: "ha-multiregion"
+      };
+
+      const response = await fetch("http://127.0.0.1:8001/generate-figma-diagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Figma generation failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setResults(data);
+        setAnalysisStage('complete');
+        
+        toast({
+          title: "Figma Diagram Generated!",
+          description: `Successfully created diagram in Figma. View it at the provided link.`,
+          status: "success",
+          duration: 8000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error("Failed to generate Figma diagram");
+      }
+      
+    } catch (error) {
+      console.error("Figma generation error:", error);
+      toast({
+        title: "Figma Generation Failed",
+        description: error instanceof Error ? error.message : "Error generating Figma diagram. Please try again.",
+        status: "error",
+        duration: 8000,
+        isClosable: true,
+      });
+      setAnalysisStage('input');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
-    setFormData({ user_requirements: "" });
+    setFormData({ 
+      user_requirements: "",
+      generation_method: 'standard'
+    });
     setResults(null);
     setAiAnalysis(null);
     setFollowUpAnswers({});
@@ -246,11 +347,96 @@ For example:
                     />
                   </Box>
 
+                  {/* Generation Method Selection */}
+                  <Box w="100%">
+                    <FormControl>
+                      <FormLabel fontSize="lg" fontWeight="semibold">
+                        Diagram Generation Method
+                      </FormLabel>
+                      <Select
+                        value={formData.generation_method}
+                        onChange={(e) => setFormData({...formData, generation_method: e.target.value as 'standard' | 'figma'})}
+                        size="lg"
+                      >
+                        <option value="standard">Standard (Python Diagrams)</option>
+                        <option value="figma">Figma API Integration</option>
+                      </Select>
+                      <FormHelperText>
+                        {formData.generation_method === 'standard' 
+                          ? "Generate PNG/SVG diagrams using Python diagrams library"
+                          : "Create diagrams directly in Figma using the Figma API"
+                        }
+                      </FormHelperText>
+                    </FormControl>
+                  </Box>
+
+                  {/* Figma Configuration (shown when Figma method selected) */}
+                  {formData.generation_method === 'figma' && (
+                    <Box w="100%" p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderLeftColor="blue.400">
+                      <VStack spacing={4} align="stretch">
+                        <Text fontSize="md" fontWeight="semibold" color="blue.700">
+                          Figma Configuration
+                        </Text>
+                        
+                        <FormControl isRequired>
+                          <FormLabel>Figma API Token</FormLabel>
+                          <Input
+                            type="password"
+                            placeholder="figd_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            value={formData.figma_api_token || ''}
+                            onChange={(e) => setFormData({...formData, figma_api_token: e.target.value})}
+                          />
+                          <FormHelperText>
+                            Get your token from{' '}
+                            <Link href="https://www.figma.com/developers/api#access-tokens" isExternal color="blue.600">
+                              Figma Settings → Personal Access Tokens
+                            </Link>
+                          </FormHelperText>
+                        </FormControl>
+
+                        <FormControl isRequired>
+                          <FormLabel>Figma File ID</FormLabel>
+                          <Input
+                            placeholder="e.g., abc123def456ghi789"
+                            value={formData.figma_file_id || ''}
+                            onChange={(e) => setFormData({...formData, figma_file_id: e.target.value})}
+                          />
+                          <FormHelperText>
+                            Found in the Figma file URL: figma.com/file/[FILE_ID]/file-name
+                          </FormHelperText>
+                        </FormControl>
+
+                        <FormControl>
+                          <FormLabel>Page Name (optional)</FormLabel>
+                          <Input
+                            placeholder="Azure Architecture"
+                            value={formData.figma_page_name || ''}
+                            onChange={(e) => setFormData({...formData, figma_page_name: e.target.value})}
+                          />
+                          <FormHelperText>
+                            Name for the diagram page in Figma (defaults to "Azure Architecture")
+                          </FormHelperText>
+                        </FormControl>
+
+                        <Alert status="info" size="sm">
+                          <AlertIcon />
+                          <Text fontSize="sm">
+                            Make sure you have edit access to the Figma file and that your API token has the necessary permissions.
+                          </Text>
+                        </Alert>
+                      </VStack>
+                    </Box>
+                  )}
+
                   <Button
                     colorScheme="blue"
                     size="lg"
                     onClick={analyzeRequirements}
-                    isDisabled={!formData.user_requirements.trim()}
+                    isDisabled={
+                      !formData.user_requirements.trim() || 
+                      (formData.generation_method === 'figma' && 
+                       (!formData.figma_api_token || !formData.figma_file_id))
+                    }
                     width="200px"
                   >
                     🤖 Analyze & Generate
@@ -370,6 +556,46 @@ For example:
                     </Button>
                   </HStack>
                   
+                  {/* Figma Results Display */}
+                  {results.figma_url && (
+                    <VStack spacing={4} align="stretch" mb={6}>
+                      <Alert status="success">
+                        <AlertIcon />
+                        <VStack align="start" spacing={2}>
+                          <Text fontWeight="semibold">
+                            Diagram created in Figma successfully! 🎨
+                          </Text>
+                          <Link 
+                            href={results.figma_url} 
+                            isExternal 
+                            color="blue.600" 
+                            fontWeight="semibold"
+                            fontSize="lg"
+                          >
+                            🔗 Open in Figma
+                          </Link>
+                        </VStack>
+                      </Alert>
+
+                      {results.user_info && (
+                        <Box p={3} bg="blue.50" borderRadius="md">
+                          <Text fontSize="sm" color="blue.700">
+                            <strong>File ID:</strong> {results.figma_file_id}
+                          </Text>
+                          <Text fontSize="sm" color="blue.700">
+                            <strong>Page:</strong> {results.figma_page_name || 'Azure Architecture'}
+                          </Text>
+                          {results.user_info.name && (
+                            <Text fontSize="sm" color="blue.700">
+                              <strong>Figma Account:</strong> {results.user_info.name}
+                            </Text>
+                          )}
+                        </Box>
+                      )}
+                    </VStack>
+                  )}
+                  
+                  {/* Standard diagram results */}
                   {results.svg_diagram && (
                     <Box mb={6}>
                       <InteractiveSVGViewer svgContent={results.svg_diagram} />
