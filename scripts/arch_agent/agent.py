@@ -61,7 +61,7 @@ class ArchitectureDiagramAgent:
     
     def generate_figma_diagram(self, manifest_path: str = None, requirements: Requirements = None, 
                               pattern: str = "ha-multiregion", figma_file_id: str = None, 
-                              page_name: str = "Azure Architecture") -> str:
+                              page_name: str = "Azure Architecture", figma_api_token: str = None) -> str:
         """
         Generate diagram using Figma API.
         
@@ -71,13 +71,30 @@ class ArchitectureDiagramAgent:
             pattern: Layout pattern to use
             figma_file_id: Existing Figma file ID (required)
             page_name: Name for the diagram page
+            figma_api_token: Figma API token for authentication (required)
             
         Returns:
             URL to the generated Figma file
         """
-        # Initialize Figma renderer if not already done
-        if not self.figma_renderer:
-            self.figma_renderer = FigmaRenderer()
+        # Validate that we have a Figma API token
+        if not figma_api_token:
+            raise ValueError(
+                "Figma API token is required for Figma rendering. "
+                "Please provide a valid Figma API token or use the standard diagram generation endpoint."
+            )
+        
+        # Import FigmaConfig for token validation
+        from .figma_renderer import FigmaConfig
+        
+        # Validate the Figma API token early - if invalid, we'll go straight to fallback
+        is_token_valid = FigmaConfig.validate_token(figma_api_token)
+        if not is_token_valid:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("Invalid Figma API token provided. Proceeding with fallback to Python Diagrams.")
+        
+        # Initialize Figma renderer with the provided API token
+        self.figma_renderer = FigmaRenderer(api_token=figma_api_token)
         
         # Get requirements from manifest or use provided requirements
         if manifest_path:
@@ -93,11 +110,42 @@ class ArchitectureDiagramAgent:
         # Generate layout
         layout_graph = self.composer.compose_layout(requirements, pattern)
         
-        # Render using Figma
+        # Render using Figma with fallback to Python Diagrams
         if not figma_file_id:
-            raise ValueError("figma_file_id is required for Figma rendering")
+            raise ValueError(
+                "Figma file ID is required for Figma rendering. "
+                "Please provide a valid Figma file ID where the diagram will be created."
+            )
         
-        return self.figma_renderer.render(layout_graph, figma_file_id, page_name)
+        try:
+            # Skip Figma rendering if token is invalid and go straight to fallback
+            if not is_token_valid:
+                raise RuntimeError("Invalid Figma API token - using fallback")
+                
+            # Attempt to render with Figma
+            return self.figma_renderer.render(layout_graph, figma_file_id, page_name)
+        except Exception as figma_error:
+            # Log the Figma error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Figma rendering failed: {str(figma_error)}. Falling back to Python Diagrams.")
+            
+            # Fallback to standard diagram rendering
+            try:
+                # Use a default output path if not provided
+                output_path = "docs/diagrams/architecture_fallback"
+                fallback_file = self.renderer.render(layout_graph, output_path, page_name)
+                
+                # Return a message indicating fallback was used
+                return f"Figma rendering failed. Diagram generated using fallback method: {fallback_file}"
+            except Exception as fallback_error:
+                # If both methods fail, raise a comprehensive error
+                raise RuntimeError(
+                    f"Failed to render diagram. "
+                    f"Figma error: {str(figma_error)}. "
+                    f"Fallback error: {str(fallback_error)}. "
+                    f"Please check the diagram syntax, Figma API token, file ID, and ensure Graphviz is installed."
+                )
     
     def generate_interactive(self, pattern: str = "ha-multiregion", output_path: str = None) -> str:
         """
