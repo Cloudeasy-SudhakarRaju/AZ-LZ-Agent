@@ -4720,8 +4720,8 @@ class FigmaGenerationRequest(BaseModel):
     customer_inputs: CustomerInputs
     
     # Figma-specific parameters
-    figma_api_token: str = Field(..., description="Figma API token for authentication")
-    figma_file_id: str = Field(..., description="Existing Figma file ID where diagram will be created")
+    figma_api_token: Optional[str] = Field(None, description="Figma API token for authentication (if None, will use fallback)")
+    figma_file_id: Optional[str] = Field(None, description="Existing Figma file ID where diagram will be created (required for Figma rendering)")
     page_name: Optional[str] = Field("Azure Architecture", description="Name for the diagram page")
     pattern: Optional[str] = Field("ha-multiregion", description="Architecture pattern to use")
     fallback_format: Optional[str] = Field("png", description="Format for fallback rendering (png or svg)")
@@ -4747,6 +4747,23 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
             raise HTTPException(
                 status_code=503, 
                 detail="Architecture agent is not available. Cannot generate Figma diagrams."
+            )
+        
+        # Validate Figma-specific parameters
+        if not request.figma_api_token and not request.figma_file_id:
+            # If both are missing, provide a helpful message about using fallback
+            logger.info("No Figma credentials provided, using fallback rendering only")
+            request.figma_api_token = "fallback_mode"
+            request.figma_file_id = "fallback_mode"
+        elif not request.figma_api_token:
+            raise HTTPException(
+                status_code=400,
+                detail="Figma API token is required for Figma rendering. Please provide a valid Figma API token or omit both token and file_id to use fallback rendering only."
+            )
+        elif not request.figma_file_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Figma file ID is required for Figma rendering. Please provide a valid Figma file ID where the diagram will be created or omit both token and file_id to use fallback rendering only."
             )
         
         # Note: Figma API token validation is now handled by the agent with fallback support
@@ -4831,7 +4848,7 @@ def _convert_customer_inputs_to_requirements(customer_inputs: CustomerInputs) ->
         # Network services
         "virtual_network": "vnet",
         "load_balancer": "load_balancer",
-        "application_gateway": "app_gateway",
+        "application_gateway": "application_gateway",
         "vpn_gateway": "vpn_gateway",
         
         # Storage services
