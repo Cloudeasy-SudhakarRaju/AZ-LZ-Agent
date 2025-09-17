@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response, HTTPException, UploadFile, File
+from fastapi import FastAPI, Response, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
@@ -4079,7 +4079,8 @@ def generate_azure_diagram_endpoint(inputs: CustomerInputs):
         raise HTTPException(status_code=500, detail=f"Error generating Azure diagram: {str(e)}")
 
 @app.get("/generate-azure-diagram/download/{filename}")
-def download_azure_diagram(filename: str):
+@app.head("/generate-azure-diagram/download/{filename}")
+def download_azure_diagram(filename: str, request: Request = None):
     """Download generated Azure architecture diagram (PNG or SVG)"""
     try:
         file_path = f"/tmp/{filename}"
@@ -4095,13 +4096,31 @@ def download_azure_diagram(filename: str):
             # Default to png for unknown extensions
             media_type = "image/png"
         
+        # Get file size for Content-Length header
+        file_size = os.path.getsize(file_path)
+        
+        # For HEAD requests, just return headers without content
+        if request and request.method == "HEAD":
+            return Response(
+                content="",
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f"attachment; filename={filename}",
+                    "Content-Length": str(file_size)
+                }
+            )
+        
+        # For GET requests, return the file content
         with open(file_path, "rb") as f:
             diagram_data = f.read()
         
         return Response(
             content=diagram_data,
             media_type=media_type, 
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(file_size)
+            }
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error downloading diagram: {str(e)}")
