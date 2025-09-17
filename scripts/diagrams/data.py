@@ -3,7 +3,7 @@ from diagrams.azure.storage import DataLakeStorage, BlobStorage
 from diagrams.azure.storage import QueuesStorage as Queue, TableStorage as Table
 from diagrams.azure.database import SQLDatabases as SQL, CosmosDb, CacheForRedis as Redis
 from diagrams.azure.analytics import SynapseAnalytics, DataFactories as ADF
-from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_DATA, step, primary, repl
+from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_DATA, step, primary, secondary
 
 with Diagram(
     "Azure - Data",
@@ -36,5 +36,5 @@ with Diagram(
     syn >> primary() >> cos
 
     # Caching / replication paths
-    sql >> repl() >> redis
-    cos >> repl() >> redis
+    sql >> secondary() >> redis
+    cos >> secondary() >> redis

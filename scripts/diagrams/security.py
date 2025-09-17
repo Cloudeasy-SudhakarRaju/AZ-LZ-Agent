@@ -3,7 +3,7 @@ from diagrams.azure.security import SecurityCenter, KeyVaults as KeyVault, Senti
 from diagrams.azure.identity import ActiveDirectory
 from diagrams.azure.network import Firewall, ApplicationGateway
 from diagrams.azure.analytics import LogAnalyticsWorkspaces
-from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_SECURITY, step, ctrl, primary
+from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_IDENTITY_SECURITY, step, ctrl, primary
 
 with Diagram(
     "Azure - Security",
@@ -13,7 +13,7 @@ with Diagram(
     graph_attr=GRAPH_ATTR,
     node_attr=NODE_ATTR,
 ):
-    with Cluster("Identity & Access", graph_attr={"bgcolor": FILL_SECURITY}):
+    with Cluster("Identity & Access", graph_attr={"bgcolor": FILL_IDENTITY_SECURITY}):
         aad = ActiveDirectory("Microsoft Entra ID")
         kv = KeyVault("Key Vault")
 

@@ -5,7 +5,7 @@ from diagrams.azure.web import AppServices
 from diagrams.azure.compute import FunctionApps
 from diagrams.azure.storage import StorageAccounts
 from diagrams.generic.place import Datacenter as Bus
-from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_INTEGRATION, step, primary, repl
+from scripts.diagrams.style import GRAPH_ATTR, NODE_ATTR, FILL_COMPUTE, step, primary, secondary
 
 with Diagram(
     "Azure - Integration",
@@ -20,7 +20,7 @@ with Diagram(
         app = AppServices("Web App")
         func = FunctionApps("Function App")
 
-    with Cluster("Integration Fabric", graph_attr={"bgcolor": FILL_INTEGRATION}):
+    with Cluster("Integration Fabric", graph_attr={"bgcolor": FILL_COMPUTE}):
         grid = EventGrid("Event Grid")
         hub = EventHubs("Event Hubs")
         sb = ServiceBus("Service Bus")
@@ -42,4 +42,4 @@ with Diagram(
     # Fan-out from integration services to sinks
     grid >> primary() >> sa
     hub >> primary() >> sa
-    sb >> repl() >> sa2
+    sb >> secondary() >> sa2
