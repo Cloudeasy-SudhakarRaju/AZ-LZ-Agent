@@ -4080,18 +4080,27 @@ def generate_azure_diagram_endpoint(inputs: CustomerInputs):
 
 @app.get("/generate-azure-diagram/download/{filename}")
 def download_azure_diagram(filename: str):
-    """Download generated Azure architecture diagram PNG file"""
+    """Download generated Azure architecture diagram (PNG or SVG)"""
     try:
         file_path = f"/tmp/{filename}"
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Diagram file not found")
+        
+        # Determine media type based on file extension
+        if filename.lower().endswith('.svg'):
+            media_type = "image/svg+xml"
+        elif filename.lower().endswith('.png'):
+            media_type = "image/png"
+        else:
+            # Default to png for unknown extensions
+            media_type = "image/png"
         
         with open(file_path, "rb") as f:
             diagram_data = f.read()
         
         return Response(
             content=diagram_data,
-            media_type="image/png", 
+            media_type=media_type, 
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
@@ -4715,6 +4724,7 @@ class FigmaGenerationRequest(BaseModel):
     figma_file_id: str = Field(..., description="Existing Figma file ID where diagram will be created")
     page_name: Optional[str] = Field("Azure Architecture", description="Name for the diagram page")
     pattern: Optional[str] = Field("ha-multiregion", description="Architecture pattern to use")
+    fallback_format: Optional[str] = Field("png", description="Format for fallback rendering (png or svg)")
 
 
 # Initialize the architecture agent (if available)
@@ -4751,27 +4761,50 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
             pattern=request.pattern,
             figma_file_id=request.figma_file_id,
             page_name=request.page_name,
-            figma_api_token=request.figma_api_token
+            figma_api_token=request.figma_api_token,
+            fallback_format=request.fallback_format
         )
         
-        # Get user info for the response
-        user_info = FigmaConfig.get_user_info(request.figma_api_token)
+        # Check if this is a fallback response and extract filename if present
+        is_fallback = "fallback" in figma_url.lower()
+        download_url = None
+        fallback_filename = None
+        
+        if is_fallback:
+            # Extract filename from fallback response
+            import re
+            filename_match = re.search(r'([^/\s]+\.(?:png|svg))(?:\s|$)', figma_url)
+            if filename_match:
+                fallback_filename = filename_match.group(1)
+                # Construct download URL
+                download_url = f"/generate-azure-diagram/download/{fallback_filename}"
+        
+        # Get user info for the response (may fail if token is invalid, which is okay for fallback)
+        user_info = None
+        try:
+            user_info = FigmaConfig.get_user_info(request.figma_api_token)
+        except Exception:
+            # User info not available for invalid tokens
+            pass
         
         return {
             "success": True,
-            "figma_url": figma_url,
+            "figma_url": figma_url if not is_fallback else None,
+            "download_url": download_url,
+            "fallback_filename": fallback_filename,
             "figma_file_id": request.figma_file_id,
             "page_name": request.page_name,
             "pattern": request.pattern,
             "user_info": user_info,
-            "is_fallback": "fallback" in figma_url.lower(),
-            "fallback_reason": "Figma API unavailable or invalid token" if "fallback" in figma_url.lower() else None,
+            "is_fallback": is_fallback,
+            "fallback_reason": "Figma API unavailable or invalid token" if is_fallback else None,
+            "message": figma_url if is_fallback else "Figma diagram generated successfully",
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "version": "1.0.0",
                 "agent": "Azure Landing Zone Agent - Figma Integration",
-                "diagram_format": "Figma native format" if "fallback" not in figma_url.lower() else "PNG fallback format",
-                "rendering_method": "Figma API" if "fallback" not in figma_url.lower() else "Python Diagrams (Fallback)"
+                "diagram_format": "Figma native format" if not is_fallback else f"{request.fallback_format.upper()} fallback format",
+                "rendering_method": "Figma API" if not is_fallback else "Python Diagrams (Fallback)"
             }
         }
     
