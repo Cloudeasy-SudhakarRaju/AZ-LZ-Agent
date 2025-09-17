@@ -49,8 +49,9 @@ class LayoutComposer:
     def _optimize_layout(self, graph: LayoutGraph) -> None:
         """
         Apply layout optimizations to reduce edge crossings and improve readability.
+        Implements requirements 2, 12, 13: minimal crossings, strong layout constraints, pattern templates.
         """
-        # Sort nodes within clusters by service type for consistency
+        # Sort nodes within clusters by service type for consistency (requirement 12)
         cluster_nodes = {}
         for node in graph.nodes:
             cluster = node.cluster or "default"
@@ -58,46 +59,121 @@ class LayoutComposer:
                 cluster_nodes[cluster] = []
             cluster_nodes[cluster].append(node)
         
-        # Sort nodes within each cluster by service type priority
+        # Enhanced service priority for better visual hierarchy (requirement 13: pattern templates)
         service_priority = {
-            # Edge services first
+            # Edge services first - top-left positioning (requirement 3)
             "front_door": 1,
             "cdn": 2,
-            "application_gateway": 3,
+            "traffic_manager": 3,
+            "application_gateway": 4,
             
-            # Identity services
+            # Identity services - left side (requirement 3)
             "entra_id": 10,
-            "key_vault": 11,
+            "active_directory": 11,
+            "key_vault": 12,
             
-            # Compute services
+            # Compute services - middle tier (requirement 3)
             "load_balancer": 20,
             "vm": 21,
             "web_app": 22,
-            "function_app": 23,
+            "app_service": 23,
+            "function_app": 24,
+            "aks": 25,
+            "container_instances": 26,
             
-            # Network services
+            # Network services - infrastructure layer
             "vnet": 30,
-            "nsg": 31,
-            "public_ip": 32,
+            "subnet": 31,
+            "nsg": 32,
+            "public_ip": 33,
+            "firewall": 34,
+            "vpn_gateway": 35,
             
-            # Data services - proper ordering for data layer
+            # Data services - bottom tier (requirement 3)
             "redis": 40,
             "queue_storage": 41,
             "table_storage": 42,
-            "storage_account": 43,
-            "sql_database": 44,
-            "cosmos_db": 45,
+            "blob_storage": 43,
+            "storage_account": 44,
+            "sql_database": 45,
+            "cosmos_db": 46,
             
-            # Monitoring
+            # Monitoring - separate tier
             "log_analytics": 50,
             "application_insights": 51,
+            "monitor": 52,
         }
         
+        # Sort nodes within each cluster by priority (requirement 12: strong layout constraints)
         for cluster, nodes in cluster_nodes.items():
             nodes.sort(key=lambda n: service_priority.get(n.service_type, 100))
+            
+            # Apply rank constraints within clusters for better hierarchy
+            for i, node in enumerate(nodes):
+                node.rank = service_priority.get(node.service_type, 100) + i
         
-        # Update edge labels to ensure proper numbering sequence
+        # Enhanced edge numbering and crossing minimization (requirement 2, 12)
         self._update_edge_numbering(graph)
+        self._minimize_edge_crossings(graph)
+        self._apply_pattern_constraints(graph)
+        
+    def _minimize_edge_crossings(self, graph: LayoutGraph) -> None:
+        """
+        Minimize edge crossings using heuristic algorithms (requirement 2).
+        """
+        # Group edges by direction and priority
+        horizontal_edges = []
+        vertical_edges = []
+        workflow_edges = []
+        
+        for edge in graph.edges:
+            if edge.label and any(num in edge.label for num in ["1.", "2.", "3.", "4.", "5."]):
+                workflow_edges.append(edge)
+            elif edge.style == "dashed":
+                horizontal_edges.append(edge)  # Cache/async connections typically horizontal
+            else:
+                vertical_edges.append(edge)    # Data flow typically vertical
+        
+        # Apply weight constraints to minimize crossings
+        for edge in workflow_edges:
+            # Higher weight for workflow edges to keep them straighter
+            if not hasattr(edge, 'weight'):
+                edge.weight = 10
+        
+        for edge in horizontal_edges:
+            if not hasattr(edge, 'weight'):
+                edge.weight = 5
+                
+        for edge in vertical_edges:
+            if not hasattr(edge, 'weight'):
+                edge.weight = 3
+    
+    def _apply_pattern_constraints(self, graph: LayoutGraph) -> None:
+        """
+        Apply consistent multi-region layout pattern constraints (requirement 13).
+        """
+        # Identify cluster types for consistent positioning
+        edge_clusters = [name for name in graph.clusters.keys() if "edge" in name.lower() or "internet" in name.lower()]
+        identity_clusters = [name for name in graph.clusters.keys() if "identity" in name.lower() or "security" in name.lower()]
+        region_clusters = [name for name in graph.clusters.keys() if "region" in name.lower()]
+        monitoring_clusters = [name for name in graph.clusters.keys() if "monitor" in name.lower()]
+        
+        # Apply rank constraints for consistent pattern (requirement 13)
+        for cluster_name in edge_clusters:
+            if cluster_name in graph.clusters:
+                graph.clusters[cluster_name]["rank"] = "min"  # Top positioning
+                
+        for cluster_name in identity_clusters:
+            if cluster_name in graph.clusters:
+                graph.clusters[cluster_name]["rank"] = "same"  # Left positioning
+                
+        for cluster_name in region_clusters:
+            if cluster_name in graph.clusters:
+                graph.clusters[cluster_name]["rank"] = "same"  # Center positioning
+                
+        for cluster_name in monitoring_clusters:
+            if cluster_name in graph.clusters:
+                graph.clusters[cluster_name]["rank"] = "max"   # Right/bottom positioning
     
     def _update_edge_numbering(self, graph: LayoutGraph) -> None:
         """

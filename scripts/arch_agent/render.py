@@ -98,13 +98,17 @@ class DiagramRenderer:
             # Requirements 12 & 13: Strong layout constraints and pattern templates
             "pack": "true",           # Efficient packing
             "packmode": "cluster",    # Cluster-based packing for logical grouping (req 8)
-            "maxiter": "2000",        # Better layout convergence for complex diagrams
-            "mclimit": "15.0",        # Enhanced memory cluster limit for complex diagrams
-            # Additional layout enhancements
+            "maxiter": "3000",        # Better layout convergence for complex diagrams
+            "mclimit": "20.0",        # Enhanced memory cluster limit for complex diagrams
+            # Advanced layout enhancements (requirement 2: minimal crossings)
             "clusterrank": "local",   # Local cluster ranking for better hierarchy (req 13)
             "newrank": "true",        # Use new ranking algorithm for better layout
             "mode": "hier",           # Hierarchical mode for clear layers (req 3)
-            "ratio": "auto"           # Automatic aspect ratio optimization
+            "ratio": "auto",          # Automatic aspect ratio optimization
+            "smoothing": "spring",    # Spring model for better edge routing
+            "levelsgap": "2.0",       # Gap between levels for clarity
+            "searchsize": "30",       # Enhanced search for crossing reduction
+            "mincross": "true"        # Enable minimal crossing algorithm
         })
         
         # Enhanced node attributes implementing requirements 6, 10, 11
@@ -345,7 +349,8 @@ class DiagramRenderer:
                 "arrowhead": "normal",
                 "color": "#1976D2",  # Strong blue for main flow
                 "style": "solid",
-                "minlen": "2"        # Minimum edge length for clarity
+                "minlen": "2",        # Minimum edge length for clarity
+                "weight": "10"        # Highest weight for workflow edges
             })
         elif edge.style == "dashed":
             # Requirement 14: Dashed lines for async/cache patterns
@@ -357,7 +362,8 @@ class DiagramRenderer:
                 "arrowhead": "vee",
                 "color": "#E53E3E",  # Red for async patterns
                 "style": "dashed",
-                "minlen": "1.5"
+                "minlen": "1.5",
+                "weight": "5"
             })
         elif edge.style == "dotted":
             # Requirement 14: Dotted lines for monitoring and control
@@ -369,7 +375,8 @@ class DiagramRenderer:
                 "arrowhead": "diamond",
                 "color": "#718096",  # Gray for monitoring
                 "style": "dotted",
-                "minlen": "1"
+                "minlen": "1",
+                "weight": "2"
             })
         elif any(word in (edge.label or "").lower() for word in ["auth", "secret", "cert", "identity", "key", "security"]):
             # Security connections - special styling for security flows
@@ -381,7 +388,8 @@ class DiagramRenderer:
                 "arrowhead": "box",
                 "color": "#D69E2E",  # Gold for security
                 "style": "solid",
-                "minlen": "1.5"
+                "minlen": "1.5",
+                "weight": "7"  # High weight for security
             })
         elif any(word in (edge.label or "").lower() for word in ["data", "query", "read", "write", "backup", "sync"]):
             # Data flow connections - requirement 15: directional clarity for data
@@ -393,19 +401,8 @@ class DiagramRenderer:
                 "arrowhead": "normal",
                 "color": "#38A169",  # Green for data flow
                 "style": "solid",
-                "minlen": "1.5"
-            })
-            })
-        elif any(word in (edge.label or "") for word in ["Data", "Storage", "Database", "Query"]):
-            # Data flow connections
-            attrs.update({
-                "penwidth": "2.8",
-                "fontsize": "10",
-                "fontcolor": "#22543D",
-                "arrowsize": "1.2",
-                "arrowhead": "normal",
-                "color": "#38A169",  # Green for data flow
-                "style": "solid"
+                "minlen": "1.5",
+                "weight": "5"  # Higher weight for data flow
             })
         else:
             # Standard service connections - requirement 15: directional clarity
@@ -416,12 +413,14 @@ class DiagramRenderer:
                 "arrowsize": "1.1",
                 "arrowhead": "normal",
                 "color": "#4A5568",  # Neutral gray for standard connections
-                "style": "solid"
+                "style": "solid",
+                "weight": "3"  # Standard weight
             })
         
         # Requirement 2 & 12: Add constraints to minimize edge crossings
         attrs["constraint"] = "true"
-        attrs["weight"] = "1"
+        if "weight" not in attrs:
+            attrs["weight"] = "1"
         
         # Requirement 15: Enhance directional clarity
         if "bidirectional" in (edge.label or "").lower():
