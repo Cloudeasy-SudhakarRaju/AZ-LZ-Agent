@@ -114,21 +114,24 @@ class DiagramRenderer:
         # Enhanced node attributes implementing requirements 6, 10, 11
         custom_node_attr = NODE_ATTR.copy()
         custom_node_attr.update({
-            # Requirement 11: Enhanced readability
-            "fontsize": "13",
-            "width": "3.0",            # Larger width for service names
-            "height": "2.0",           # Increased height for better visibility
+            # Requirement 11: Enhanced readability with optimized typography
+            "fontsize": "14",
+            "width": "3.5",            # Larger width for service names
+            "height": "2.2",           # Increased height for better visibility
             "fontname": "Segoe UI Bold",    # Professional bold font
             "shape": "box",
             "style": "rounded,filled,bold",
-            "margin": "0.2,0.2",
+            "margin": "0.25,0.25",     # Enhanced margins for text spacing
             # Requirement 6: Horizontal alignment with borders
-            "penwidth": "2.5",         # Enhanced borders
+            "penwidth": "3.0",         # Enhanced borders for clarity
             "color": "#1565C0",        # Professional blue border color
             "fillcolor": "#E3F2FD",    # Light blue background color
             # Requirement 10: Visual hierarchy with color coding
             "gradientangle": "90",     # Vertical gradient effect
-            "fontcolor": "#0D47A1"     # Professional dark blue text color
+            "fontcolor": "#0D47A1",    # Professional dark blue text color
+            # Additional readability enhancements (requirement 11)
+            "labeljust": "c",          # Center justify labels
+            "labelloc": "c",           # Center locate labels vertically
         })
         
         with Diagram(
@@ -161,55 +164,61 @@ class DiagramRenderer:
         # Sort clusters by dependency (parent clusters first)
         sorted_clusters = self._sort_clusters_by_dependency(graph.clusters)
         
-        # Define cluster styling for visual hierarchy (requirement 10)
+        # Define enhanced cluster styling for visual hierarchy and region separation (requirements 7, 10, 11)
         cluster_styles = {
             "internet_edge": {
-                "bgcolor": "#FFF5F5",     # Light red for edge/internet
-                "pencolor": "#E53E3E", 
-                "penwidth": "3",
-                "style": "rounded,filled",
-                "fontcolor": "#1A202C",
-                "fontsize": "14"
+                "bgcolor": "#FFF8F1",     # Enhanced light blue for edge/internet
+                "pencolor": "#1976D2", 
+                "penwidth": "4",          # Stronger borders for clear separation (req 7)
+                "style": "rounded,filled,bold",
+                "fontcolor": "#0D47A1",
+                "fontsize": "16",         # Larger fonts for better readability (req 11)
+                "margin": "30"            # Enhanced margins for separation (req 7)
             },
             "identity_security": {
-                "bgcolor": "#FFFAF0",     # Light orange for identity
-                "pencolor": "#DD6B20",
-                "penwidth": "3", 
-                "style": "rounded,filled",
-                "fontcolor": "#1A202C",
-                "fontsize": "14"
+                "bgcolor": "#FFF8E1",     # Enhanced light amber for identity
+                "pencolor": "#FF8F00",
+                "penwidth": "4",          # Stronger borders for clear separation (req 7) 
+                "style": "rounded,filled,bold",
+                "fontcolor": "#E65100",
+                "fontsize": "16",         # Larger fonts for better readability (req 11)
+                "margin": "30"            # Enhanced margins for separation (req 7)
             },
             "active_region": {
-                "bgcolor": "#F0FFF4",     # Light green for active regions
-                "pencolor": "#38A169",
-                "penwidth": "3",
-                "style": "rounded,filled", 
-                "fontcolor": "#1A202C",
-                "fontsize": "14"
+                "bgcolor": "#E8F8F5",     # Enhanced light green for active regions
+                "pencolor": "#2E7D32",
+                "penwidth": "5",          # Strongest borders for region separation (req 7)
+                "style": "rounded,filled,bold", 
+                "fontcolor": "#1B5E20",
+                "fontsize": "18",         # Largest fonts for region headers (req 11)
+                "margin": "40"            # Maximum margins for region separation (req 7)
             },
             "standby_region": {
-                "bgcolor": "#F7FAFC",     # Light gray for standby regions
-                "pencolor": "#4A5568",
-                "penwidth": "3",
-                "style": "rounded,filled",
-                "fontcolor": "#1A202C", 
-                "fontsize": "14"
+                "bgcolor": "#FAFAFA",     # Enhanced light gray for standby regions
+                "pencolor": "#9E9E9E",
+                "penwidth": "4",          # Strong borders with distinct style (req 7)
+                "style": "rounded,filled,dashed,bold",  # Dashed style for standby regions (req 7)
+                "fontcolor": "#616161", 
+                "fontsize": "16",         # Clear readability (req 11)
+                "margin": "35"            # Good separation for standby (req 7)
             },
             "monitoring": {
-                "bgcolor": "#EBF4FF",     # Light blue for monitoring
-                "pencolor": "#3182CE",
-                "penwidth": "3",
-                "style": "rounded,filled",
-                "fontcolor": "#1A202C",
-                "fontsize": "14"
+                "bgcolor": "#FFFDE7",     # Enhanced light yellow for monitoring
+                "pencolor": "#FBC02D",
+                "penwidth": "4",          # Strong borders for clear separation (req 7)
+                "style": "rounded,filled,bold",
+                "fontcolor": "#F57F17",
+                "fontsize": "16",         # Enhanced readability (req 11)
+                "margin": "30"            # Good separation for monitoring (req 7)
             },
             "default": {
                 "bgcolor": "#F8F9FA",     # Light gray for other clusters
                 "pencolor": "#6B73FF",
-                "penwidth": "2",
-                "style": "rounded,filled",
+                "penwidth": "3",          # Standard strong borders
+                "style": "rounded,filled,bold",
                 "fontcolor": "#1A202C",
-                "fontsize": "13"
+                "fontsize": "14",         # Good readability
+                "margin": "20"            # Standard separation
             }
         }
         

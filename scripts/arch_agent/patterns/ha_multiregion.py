@@ -451,6 +451,21 @@ class HAMultiRegionPattern:
                         color="#1976D2"
                     )
                     graph.edges.append(edge)
+                    step_counter += 1
+        
+        # Step 4: Web Apps -> Function Apps (if present, for serverless integration)
+        if "web_app" in service_to_nodes and "function_app" in service_to_nodes:
+            for wa_node in service_to_nodes["web_app"]:
+                for fa_node in service_to_nodes["function_app"]:
+                    edge = LayoutEdge(
+                        source=wa_node,
+                        target=fa_node,
+                        label=f"{step_counter}. Serverless Integration",
+                        style="solid",
+                        color="#1976D2"
+                    )
+                    graph.edges.append(edge)
+                    step_counter += 1
     
     def _create_data_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
         """Create data flow connections with proper styling (requirement 14, 15)."""
@@ -515,8 +530,8 @@ class HAMultiRegionPattern:
     def _create_security_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
         """Create security connections with clear labeling (requirement 4, 15)."""
         # Entra ID -> All compute services (single direction for authentication)
-        entra_nodes = service_to_nodes.get("entra_id", [])
-        compute_services = ["web_app", "function_app", "vm", "application_gateway"]
+        entra_nodes = service_to_nodes.get("entra_id", []) + service_to_nodes.get("active_directory", [])
+        compute_services = ["web_app", "app_service", "function_app", "vm", "application_gateway", "aks"]
         
         for entra_node in entra_nodes:
             for service_type in compute_services:
@@ -524,7 +539,7 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=entra_node,
                         target=service_node,
-                        label="Authentication",
+                        label="🔐 SSO Authentication",
                         style="dotted",
                         color="#795548"  # Brown for security
                     )
@@ -539,7 +554,20 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=kv_node,
                         target=service_node,
-                        label="Secrets/Certs",
+                        label="🔑 Secrets & Certificates",
+                        style="dashed",
+                        color="#795548"
+                    )
+                    graph.edges.append(edge)
+                    
+            # Key Vault -> Database services (for connection strings)
+            database_services = ["sql_database", "cosmos_db", "redis"]
+            for service_type in database_services:
+                for service_node in service_to_nodes.get(service_type, []):
+                    edge = LayoutEdge(
+                        source=kv_node,
+                        target=service_node,
+                        label="🔒 Connection Strings",
                         style="dashed",
                         color="#795548"
                     )
@@ -547,10 +575,10 @@ class HAMultiRegionPattern:
     
     def _create_monitoring_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
         """Create monitoring connections with dotted lines (requirement 14)."""
-        monitoring_nodes = service_to_nodes.get("application_insights", []) + service_to_nodes.get("log_analytics", [])
+        monitoring_nodes = service_to_nodes.get("application_insights", []) + service_to_nodes.get("log_analytics", []) + service_to_nodes.get("monitor", [])
         
         # All services send telemetry to monitoring (single direction, dotted)
-        all_services = ["web_app", "function_app", "vm", "sql_database", "redis", "storage_account", "application_gateway"]
+        all_services = ["web_app", "app_service", "function_app", "vm", "sql_database", "redis", "storage_account", "application_gateway", "aks", "front_door"]
         
         for monitoring_node in monitoring_nodes:
             for service_type in all_services:
@@ -558,7 +586,7 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=service_node,
                         target=monitoring_node,
-                        label="Telemetry",
+                        label="📊 Metrics & Logs",
                         style="dotted",
                         color="#607D8B"  # Blue-grey for monitoring
                     )
@@ -568,7 +596,7 @@ class HAMultiRegionPattern:
         """Create inter-region connections for HA scenarios (requirement 15)."""
         if requirements.ha_mode in ["multi-region", "active-active"]:
             # Storage replication between regions (bidirectional, dashed)
-            storage_services = ["storage_account", "sql_database"]
+            storage_services = ["storage_account", "sql_database", "cosmos_db"]
             
             for service_type in storage_services:
                 nodes = service_to_nodes.get(service_type, [])
@@ -579,11 +607,29 @@ class HAMultiRegionPattern:
                     edge = LayoutEdge(
                         source=primary_node,
                         target=secondary_node,
-                        label="Geo-Replication",
+                        label="🔄 Geo-Replication",
                         style="dashed",
                         color="#FF9800"  # Orange for replication
                     )
                     graph.edges.append(edge)
+                    
+            # Load balancer traffic distribution between regions
+            load_balancer_nodes = service_to_nodes.get("front_door", []) + service_to_nodes.get("traffic_manager", [])
+            compute_services = ["web_app", "app_service", "vm", "aks"]
+            
+            for lb_node in load_balancer_nodes:
+                for service_type in compute_services:
+                    nodes = service_to_nodes.get(service_type, [])
+                    if len(nodes) >= 2:  # Multiple instances across regions
+                        for i, service_node in enumerate(nodes):
+                            edge = LayoutEdge(
+                                source=lb_node,
+                                target=service_node,
+                                label=f"⚖️ Region {i+1} Traffic",
+                                style="solid",
+                                color="#2196F3"  # Blue for load balancing
+                            )
+                            graph.edges.append(edge)
     
     def _get_default_name(self, service_type: str) -> str:
         """Get default display name for a service type."""
