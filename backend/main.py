@@ -4765,11 +4765,13 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
             "pattern": request.pattern,
             "user_info": user_info,
             "is_fallback": "fallback" in figma_url.lower(),
+            "fallback_reason": "Figma API unavailable or invalid token" if "fallback" in figma_url.lower() else None,
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "version": "1.0.0",
                 "agent": "Azure Landing Zone Agent - Figma Integration",
-                "diagram_format": "Figma native format" if "fallback" not in figma_url.lower() else "PNG fallback format"
+                "diagram_format": "Figma native format" if "fallback" not in figma_url.lower() else "PNG fallback format",
+                "rendering_method": "Figma API" if "fallback" not in figma_url.lower() else "Python Diagrams (Fallback)"
             }
         }
     
