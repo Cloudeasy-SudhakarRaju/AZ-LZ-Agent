@@ -5,8 +5,12 @@ Provides an alternative to the existing DiagramRenderer for cloud-based diagram 
 import os
 import json
 import requests
+import logging
 from typing import Dict, Any, Optional, List, Tuple
 from .schemas import LayoutGraph, LayoutNode, LayoutEdge
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class FigmaRenderer:
@@ -66,27 +70,47 @@ class FigmaRenderer:
             URL to the generated Figma file
         """
         try:
+            logger.info(f"Starting Figma diagram render for file_id: {file_id}, page: {page_name}")
+            
+            # Validate inputs
+            if not graph or not graph.nodes:
+                raise ValueError("Graph is empty or has no nodes to render")
+            
             # Create or get the Figma file
             if file_id:
+                logger.info(f"Using existing Figma file: {file_id}")
                 figma_file_id = file_id
+                # Validate file access first
+                self._validate_file_access(figma_file_id)
             else:
+                logger.info("Creating new Figma file")
                 figma_file_id = self._create_figma_file(page_name)
             
             # Get the file structure to find the page
+            logger.info(f"Getting or creating page: {page_name}")
             page_id = self._get_or_create_page(figma_file_id, page_name)
             
             # Calculate layout positions for nodes
+            logger.info(f"Calculating layout for {len(graph.nodes)} nodes")
             node_positions = self._calculate_layout(graph)
             
             # Create the diagram elements
+            logger.info("Creating main frame")
             frame_id = self._create_main_frame(figma_file_id, page_id, page_name)
+            
+            logger.info("Creating nodes")
             node_map = self._create_nodes(figma_file_id, frame_id, graph.nodes, node_positions)
+            
+            logger.info(f"Creating {len(graph.edges)} connections")
             self._create_connections(figma_file_id, frame_id, graph.edges, node_map, node_positions)
             
             # Return the Figma file URL
-            return f"https://www.figma.com/file/{figma_file_id}"
+            figma_url = f"https://www.figma.com/file/{figma_file_id}"
+            logger.info(f"Figma diagram successfully created: {figma_url}")
+            return figma_url
             
         except Exception as e:
+            logger.error(f"Failed to render diagram in Figma: {str(e)}")
             raise RuntimeError(f"Failed to render diagram in Figma: {str(e)}")
     
     def _create_figma_file(self, name: str) -> str:
@@ -94,55 +118,122 @@ class FigmaRenderer:
         # Note: Figma API doesn't support creating files via API
         # This would require using Figma's file duplication or team file creation
         # For now, we'll raise an informative error
+        logger.error("Attempted to create new Figma file via API - not supported")
         raise NotImplementedError(
             "Creating new Figma files via API is not supported. "
             "Please provide an existing file_id or create a file manually in Figma."
         )
     
+    def _validate_file_access(self, file_id: str) -> bool:
+        """Validate that the file exists and is accessible with the current token."""
+        try:
+            logger.info(f"Validating access to Figma file: {file_id}")
+            response = requests.get(f"{self.base_url}/files/{file_id}", headers=self.headers, timeout=10)
+            
+            if response.status_code == 403:
+                logger.error(f"Access denied to Figma file {file_id} - check token permissions")
+                raise PermissionError(f"Access denied to Figma file {file_id}. Check that your Figma API token has access to this file.")
+            elif response.status_code == 404:
+                logger.error(f"Figma file {file_id} not found")
+                raise FileNotFoundError(f"Figma file {file_id} not found. Please check the file ID.")
+            elif response.status_code != 200:
+                logger.error(f"Figma API error: {response.status_code} - {response.text}")
+                raise ConnectionError(f"Figma API error {response.status_code}: {response.text}")
+            
+            file_data = response.json()
+            logger.info(f"File access validated. File name: {file_data.get('name', 'Unknown')}")
+            return True
+            
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while accessing Figma file")
+            raise TimeoutError("Timeout while accessing Figma file")
+        except requests.exceptions.ConnectionError:
+            logger.error("Network error while accessing Figma API")
+            raise ConnectionError("Network error while accessing Figma API")
+    
     def _get_or_create_page(self, file_id: str, page_name: str) -> str:
         """Get existing page or create a new one."""
-        # Get file structure
-        response = requests.get(f"{self.base_url}/files/{file_id}", headers=self.headers)
-        response.raise_for_status()
-        
-        file_data = response.json()
-        
-        # Look for existing page with the name
-        for page in file_data.get("document", {}).get("children", []):
-            if page.get("name") == page_name:
-                return page.get("id")
-        
-        # If no existing page found, use the first page and rename it
-        if file_data.get("document", {}).get("children"):
-            page_id = file_data["document"]["children"][0]["id"]
-            # Note: Renaming pages requires additional API calls
-            return page_id
-        
-        raise RuntimeError("No pages found in Figma file")
+        try:
+            logger.info(f"Getting file structure for {file_id}")
+            # Get file structure
+            response = requests.get(f"{self.base_url}/files/{file_id}", headers=self.headers, timeout=10)
+            response.raise_for_status()
+            
+            file_data = response.json()
+            logger.info(f"File retrieved successfully. Name: {file_data.get('name', 'Unknown')}")
+            
+            # Look for existing page with the name
+            pages = file_data.get("document", {}).get("children", [])
+            logger.info(f"Found {len(pages)} pages in file")
+            
+            for page in pages:
+                if page.get("name") == page_name:
+                    logger.info(f"Found existing page '{page_name}' with ID: {page.get('id')}")
+                    return page.get("id")
+            
+            # If no existing page found, use the first page and rename it
+            if pages:
+                page_id = pages[0]["id"]
+                logger.info(f"Using first page (ID: {page_id}) for diagram - page renaming not implemented")
+                # Note: Renaming pages requires additional API calls not implemented yet
+                return page_id
+            
+            logger.error("No pages found in Figma file")
+            raise RuntimeError("No pages found in Figma file - file may be corrupted or empty")
+            
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while getting Figma file structure")
+            raise TimeoutError("Timeout while getting Figma file structure")
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error while getting file structure: {e}")
+            raise RuntimeError(f"HTTP error while accessing Figma file: {e}")
     
     def _create_main_frame(self, file_id: str, page_id: str, title: str) -> str:
         """Create the main frame for the diagram."""
-        frame_data = {
-            "type": "FRAME",
-            "name": title,
-            "x": 0,
-            "y": 0,
-            "width": 1200,
-            "height": 800,
-            "fills": [{"type": "SOLID", "color": {"r": 0.98, "g": 0.98, "b": 0.98}}],
-            "children": []
-        }
-        
-        # Add the frame to the page
-        response = requests.post(
-            f"{self.base_url}/files/{file_id}/nodes/{page_id}/children",
-            headers=self.headers,
-            json={"nodes": [frame_data]}
-        )
-        response.raise_for_status()
-        
-        result = response.json()
-        return result.get("node_ids", [])[0] if result.get("node_ids") else None
+        try:
+            logger.info(f"Creating main frame '{title}' on page {page_id}")
+            frame_data = {
+                "type": "FRAME",
+                "name": title,
+                "x": 0,
+                "y": 0,
+                "width": 1200,
+                "height": 800,
+                "fills": [{"type": "SOLID", "color": {"r": 0.98, "g": 0.98, "b": 0.98}}],
+                "children": []
+            }
+            
+            # Add the frame to the page
+            response = requests.post(
+                f"{self.base_url}/files/{file_id}/nodes/{page_id}/children",
+                headers=self.headers,
+                json={"nodes": [frame_data]},
+                timeout=15
+            )
+            
+            if response.status_code == 403:
+                logger.error(f"Permission denied creating frame - check edit permissions")
+                raise PermissionError("Permission denied creating frame. Ensure your Figma API token has edit permissions for this file.")
+            
+            response.raise_for_status()
+            
+            result = response.json()
+            node_ids = result.get("node_ids", [])
+            
+            if not node_ids:
+                logger.error("No node IDs returned from frame creation")
+                raise RuntimeError("Failed to create main frame - no node ID returned")
+            
+            frame_id = node_ids[0]
+            logger.info(f"Main frame created successfully with ID: {frame_id}")
+            return frame_id
+            
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while creating main frame")
+            raise TimeoutError("Timeout while creating main frame")
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error while creating frame: {e}")
+            raise RuntimeError(f"HTTP error while creating frame: {e}")
     
     def _calculate_layout(self, graph: LayoutGraph) -> Dict[str, Tuple[float, float]]:
         """Calculate positions for all nodes in the graph."""
@@ -287,22 +378,64 @@ class FigmaConfig:
     def validate_token(token: str) -> bool:
         """Validate a Figma API token."""
         if not token:
+            logger.warning("No Figma API token provided")
             return False
+        
+        if not token.startswith('figd_'):
+            logger.warning("Figma API token does not start with 'figd_' - may be invalid format")
         
         headers = {"X-Figma-Token": token}
         try:
-            response = requests.get("https://api.figma.com/v1/me", headers=headers)
-            return response.status_code == 200
-        except Exception:
+            logger.info("Validating Figma API token")
+            response = requests.get("https://api.figma.com/v1/me", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                logger.info(f"Token validated successfully for user: {user_data.get('name', 'Unknown')}")
+                return True
+            elif response.status_code == 403:
+                logger.warning("Figma API token is invalid or expired")
+                return False
+            else:
+                logger.warning(f"Figma API token validation failed with status {response.status_code}")
+                return False
+                
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while validating Figma API token")
+            return False
+        except requests.exceptions.ConnectionError:
+            logger.error("Network error while validating Figma API token")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error validating Figma API token: {e}")
             return False
     
     @staticmethod
     def get_user_info(token: str) -> Optional[Dict[str, Any]]:
         """Get user information for the provided token."""
+        if not token:
+            logger.warning("No token provided for user info")
+            return None
+            
         headers = {"X-Figma-Token": token}
         try:
-            response = requests.get("https://api.figma.com/v1/me", headers=headers)
-            response.raise_for_status()
-            return response.json()
-        except Exception:
+            logger.info("Getting Figma user info")
+            response = requests.get("https://api.figma.com/v1/me", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                logger.info(f"User info retrieved for: {user_data.get('name', 'Unknown')}")
+                return user_data
+            else:
+                logger.warning(f"Failed to get user info: {response.status_code}")
+                return None
+                
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while getting Figma user info")
+            return None
+        except requests.exceptions.ConnectionError:
+            logger.error("Network error while getting Figma user info")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error getting Figma user info: {e}")
             return None

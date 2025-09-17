@@ -82,24 +82,25 @@ class ArchitectureDiagramAgent:
             URL to the generated Figma file
         """
         # Validate that we have a Figma API token
-        if not figma_api_token:
-            raise ValueError(
-                "Figma API token is required for Figma rendering. "
-                "Please provide a valid Figma API token or use the standard diagram generation endpoint."
-            )
-        
-        # Import FigmaConfig for token validation
-        from .figma_renderer import FigmaConfig
-        
-        # Validate the Figma API token early - if invalid, we'll go straight to fallback
-        is_token_valid = FigmaConfig.validate_token(figma_api_token)
-        if not is_token_valid:
+        if not figma_api_token or figma_api_token == "fallback_mode":
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning("Invalid Figma API token provided. Proceeding with fallback to Python Diagrams.")
+            logger.info("Fallback mode requested - skipping Figma rendering, going directly to Python Diagrams")
+            is_token_valid = False
+        else:
+            # Import FigmaConfig for token validation
+            from .figma_renderer import FigmaConfig
+            
+            # Validate the Figma API token early - if invalid, we'll go straight to fallback
+            is_token_valid = FigmaConfig.validate_token(figma_api_token)
+            if not is_token_valid:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning("Invalid Figma API token provided. Proceeding with fallback to Python Diagrams.")
         
-        # Initialize Figma renderer with the provided API token
-        self.figma_renderer = FigmaRenderer(api_token=figma_api_token)
+        # Initialize Figma renderer only if we have a valid token
+        if is_token_valid:
+            self.figma_renderer = FigmaRenderer(api_token=figma_api_token)
         
         # Get requirements from manifest or use provided requirements
         if manifest_path:
@@ -116,16 +117,16 @@ class ArchitectureDiagramAgent:
         layout_graph = self.composer.compose_layout(requirements, pattern)
         
         # Render using Figma with fallback to Python Diagrams
-        if not figma_file_id:
-            raise ValueError(
-                "Figma file ID is required for Figma rendering. "
-                "Please provide a valid Figma file ID where the diagram will be created."
-            )
+        if not figma_file_id or figma_file_id == "fallback_mode":
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info("No Figma file ID provided or fallback mode - skipping Figma rendering")
+            is_token_valid = False  # Force fallback
         
         try:
-            # Skip Figma rendering if token is invalid and go straight to fallback
+            # Skip Figma rendering if token is invalid or fallback mode requested
             if not is_token_valid:
-                raise RuntimeError("Invalid Figma API token - using fallback")
+                raise RuntimeError("Figma rendering skipped - using fallback")
                 
             # Attempt to render with Figma
             return self.figma_renderer.render(layout_graph, figma_file_id, page_name)
