@@ -4739,14 +4739,8 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
                 detail="Architecture agent is not available. Cannot generate Figma diagrams."
             )
         
-        logger.info("Starting Figma diagram generation")
-        
-        # Validate Figma API token
-        if not FigmaConfig.validate_token(request.figma_api_token):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Figma API token. Please check your token and try again."
-            )
+        # Note: Figma API token validation is now handled by the agent with fallback support
+        logger.info("Starting Figma diagram generation with fallback support")
         
         # Convert CustomerInputs to Requirements format for the agent
         requirements = _convert_customer_inputs_to_requirements(request.customer_inputs)
@@ -4756,7 +4750,8 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
             requirements=requirements,
             pattern=request.pattern,
             figma_file_id=request.figma_file_id,
-            page_name=request.page_name
+            page_name=request.page_name,
+            figma_api_token=request.figma_api_token
         )
         
         # Get user info for the response
@@ -4769,11 +4764,12 @@ def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
             "page_name": request.page_name,
             "pattern": request.pattern,
             "user_info": user_info,
+            "is_fallback": "fallback" in figma_url.lower(),
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "version": "1.0.0",
                 "agent": "Azure Landing Zone Agent - Figma Integration",
-                "diagram_format": "Figma native format"
+                "diagram_format": "Figma native format" if "fallback" not in figma_url.lower() else "PNG fallback format"
             }
         }
     
@@ -4790,64 +4786,100 @@ def _convert_customer_inputs_to_requirements(customer_inputs: CustomerInputs) ->
     # This is a simplified conversion - in practice, you might want more sophisticated mapping
     from scripts.arch_agent.schemas import Requirements, UserIntent
     
+    # Service name mapping from customer inputs to catalog names
+    service_mapping = {
+        # Compute services
+        "virtual_machines": "vm",
+        "app_services": "web_app",
+        "function_apps": "function_app",
+        
+        # Network services
+        "virtual_network": "vnet",
+        "load_balancer": "load_balancer",
+        "application_gateway": "app_gateway",
+        "vpn_gateway": "vpn_gateway",
+        
+        # Storage services
+        "storage_accounts": "storage_account",
+        "blob_storage": "blob_storage",
+        "file_shares": "file_storage",
+        
+        # Database services
+        "sql_database": "sql_database",
+        "cosmos_db": "cosmos_db",
+        "mysql_database": "mysql_database",
+        "postgresql_database": "postgresql_database",
+        
+        # Security services
+        "key_vault": "key_vault",
+        "active_directory": "active_directory",
+        "security_center": "security_center",
+    }
+    
+    def map_service_name(service_name: str) -> str:
+        """Map customer input service name to catalog service name."""
+        return service_mapping.get(service_name, service_name)
+    
     # Create user intents based on selected services
     intents = []
     
     # Add compute service intents
     if customer_inputs.compute_services:
         for service in customer_inputs.compute_services:
+            mapped_service = map_service_name(service)
             intents.append(UserIntent(
-                service_type=service,
-                quantity=1,
+                kind=mapped_service,
+                name=mapped_service,
                 properties={}
             ))
     
     # Add network service intents
     if customer_inputs.network_services:
         for service in customer_inputs.network_services:
+            mapped_service = map_service_name(service)
             intents.append(UserIntent(
-                service_type=service,
-                quantity=1,
+                kind=mapped_service,
+                name=mapped_service,
                 properties={}
             ))
     
     # Add storage service intents
     if customer_inputs.storage_services:
         for service in customer_inputs.storage_services:
+            mapped_service = map_service_name(service)
             intents.append(UserIntent(
-                service_type=service,
-                quantity=1,
+                kind=mapped_service,
+                name=mapped_service,
                 properties={}
             ))
     
     # Add database service intents
     if customer_inputs.database_services:
         for service in customer_inputs.database_services:
+            mapped_service = map_service_name(service)
             intents.append(UserIntent(
-                service_type=service,
-                quantity=1,
+                kind=mapped_service,
+                name=mapped_service,
                 properties={}
             ))
     
     # Add security service intents
     if customer_inputs.security_services:
         for service in customer_inputs.security_services:
+            mapped_service = map_service_name(service)
             intents.append(UserIntent(
-                service_type=service,
-                quantity=1,
+                kind=mapped_service,
+                name=mapped_service,
                 properties={}
             ))
     
     # Create requirements object
     requirements = Requirements(
-        user_intents=intents,
-        business_tier=customer_inputs.business_objective or "Standard",
-        region_count=1,  # Default to single region
-        availability_requirements="Standard",  # Default availability
-        security_requirements=customer_inputs.security_posture or "standard",
-        compliance_requirements=[],
-        budget_constraints="None specified",
-        special_requirements=customer_inputs.free_text_input or ""
+        services=intents,
+        project_name=customer_inputs.business_objective or "Azure Architecture",
+        environment="prod",
+        regions=["East US 2"],
+        ha_mode="single-region"
     )
     
     return requirements
