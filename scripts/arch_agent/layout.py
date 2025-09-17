@@ -58,37 +58,38 @@ class LayoutComposer:
                 cluster_nodes[cluster] = []
             cluster_nodes[cluster].append(node)
         
-        # Sort nodes within each cluster by service type priority
+        # Requirement 3 & 10: Service priority for proper visual hierarchy (identity/edge → compute → data)
         service_priority = {
-            # Edge services first
+            # Edge services (top tier - requirement 3)
             "front_door": 1,
             "cdn": 2,
             "application_gateway": 3,
             
-            # Identity services
+            # Identity services (left side - requirement 3)
             "entra_id": 10,
             "key_vault": 11,
             
-            # Compute services
+            # Compute services (middle tier - requirement 3)
             "load_balancer": 20,
             "vm": 21,
             "web_app": 22,
             "function_app": 23,
+            "aks": 24,
             
-            # Network services
+            # Network services (infrastructure)
             "vnet": 30,
             "nsg": 31,
             "public_ip": 32,
             
-            # Data services - proper ordering for data layer
-            "redis": 40,
-            "queue_storage": 41,
-            "table_storage": 42,
-            "storage_account": 43,
-            "sql_database": 44,
-            "cosmos_db": 45,
+            # Requirement 5 & 3: Data services (bottom tier) - Add specified components with proper ordering
+            "redis": 40,           # Cache tier - specified component
+            "queue_storage": 41,   # Messaging tier - specified component
+            "table_storage": 42,   # NoSQL tier - specified component  
+            "storage_account": 43, # Blob storage tier
+            "sql_database": 44,    # Relational database tier
+            "cosmos_db": 45,       # Global database tier
             
-            # Monitoring
+            # Monitoring services (observability layer)
             "log_analytics": 50,
             "application_insights": 51,
         }
@@ -101,24 +102,38 @@ class LayoutComposer:
     
     def _update_edge_numbering(self, graph: LayoutGraph) -> None:
         """
-        Update edge numbering to ensure a logical flow sequence.
+        Update edge numbering to ensure a logical flow sequence (requirements 4, 9).
         """
         # Find edges with numeric labels (workflow steps)
         workflow_edges = []
         other_edges = []
         
         for edge in graph.edges:
-            if edge.label and edge.label.isdigit():
+            # Check if edge label starts with a number (workflow step)
+            if edge.label and any(edge.label.startswith(f"{i}.") for i in range(1, 20)):
                 workflow_edges.append(edge)
             else:
                 other_edges.append(edge)
         
-        # Sort workflow edges by current label number
-        workflow_edges.sort(key=lambda e: int(e.label))
+        # Sort workflow edges by current step number
+        def get_step_number(edge):
+            if edge.label:
+                for i in range(1, 20):
+                    if edge.label.startswith(f"{i}."):
+                        return i
+            return 999
         
-        # Renumber workflow edges sequentially
+        workflow_edges.sort(key=get_step_number)
+        
+        # Renumber workflow edges sequentially for clear workflow (requirement 9)
         for i, edge in enumerate(workflow_edges, 1):
-            edge.label = str(i)
+            if edge.label:
+                # Preserve the description part after the number
+                parts = edge.label.split(".", 1)
+                if len(parts) > 1:
+                    edge.label = f"{i}.{parts[1]}"
+                else:
+                    edge.label = f"{i}. {edge.label}"
     
     def validate_requirements(self, requirements: Requirements) -> List[str]:
         """

@@ -110,101 +110,128 @@ class HAMultiRegionPattern:
     def _create_clusters(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
         """Create cluster definitions with improved logical separation and visual hierarchy."""
         
-        # Internet/Edge Layer (Top-Left) - Entry points
+        # Requirement 1: Clear containers/swimlanes - Internet/Edge Layer (Top-Left) - Entry points
         if len(service_groups["edge"]) > 0:
             graph.clusters["internet_edge"] = {
                 "label": "Internet & Edge Services",
-                "bgcolor": "#E3F2FD",  # Light blue for internet/edge
-                "style": "bold,rounded",
+                "bgcolor": "#FFF5F5",  # Light red for edge/internet per requirement 10
+                "style": "bold,rounded,filled",
                 "rank": "min",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontcolor": "#1A202C",
+                "fontsize": "14",
+                "pencolor": "#E53E3E"
             }
         
-        # Identity Layer (Left side, below edge) - Security and Identity
+        # Requirement 1 & 8: Identity Layer (Left side, below edge) - Security and Identity
         if len(service_groups["identity"]) > 0:
             graph.clusters["identity_security"] = {
                 "label": "Identity & Security",
-                "bgcolor": "#FFF3E0",  # Light orange for security
-                "style": "bold,rounded", 
+                "bgcolor": "#FFFAF0",  # Light orange for identity per requirement 10
+                "style": "bold,rounded,filled", 
                 "rank": "min",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontcolor": "#1A202C",
+                "fontsize": "14",
+                "pencolor": "#DD6B20"
             }
         
-        # Active Regions - Horizontal layout for better visibility
+        # Requirement 1 & 7: Active Regions - Clear region separation with horizontal alignment
         active_regions = requirements.regions[:2] if requirements.ha_mode in ["multi-region", "active-active"] else requirements.regions[:1]
         
         for i, region in enumerate(active_regions):
             cluster_name = f"active_region_{i+1}_{region.lower().replace(' ', '_')}"
             
-            # Main region cluster with enhanced styling
+            # Requirement 6 & 10: Main region cluster with enhanced styling and horizontal alignment
             graph.clusters[cluster_name] = {
                 "label": f"Active Region {i+1}: {region}",
-                "bgcolor": "#E8F5E8" if i == 0 else "#F3E5F5",  # Green for primary, purple for secondary
-                "style": "bold,rounded",
+                "bgcolor": "#F0FFF4" if i == 0 else "#F3E5F5",  # Green for primary, purple for secondary per requirement 10
+                "style": "bold,rounded,filled",
                 "rank": "same" if len(active_regions) > 1 else "same",
-                "penwidth": "3"
+                "penwidth": "3",
+                "fontcolor": "#1A202C",
+                "fontsize": "14",
+                "pencolor": "#38A169" if i == 0 else "#9F7AEA"
             }
             
-            # Network Layer (Top of region) - Following requirement 3
+            # Requirement 3 & 8: Network Layer (Top of region) - Proper visual hierarchy
             if any(intent.kind in ["vnet", "subnet", "nsg", "public_ip", "load_balancer", "application_gateway"] 
                    for intent in service_groups["region_network"]):
                 graph.clusters[f"{cluster_name}_network"] = {
                     "label": "Network Layer",
                     "bgcolor": "#FFFFFF",
-                    "style": "dashed,rounded",
+                    "style": "dashed,rounded,filled",
                     "parent": cluster_name,
-                    "rank": "min"
+                    "rank": "min",
+                    "penwidth": "2",
+                    "fontcolor": "#2D3748",
+                    "pencolor": "#4A5568"
                 }
             
-            # Application/Compute Layer (Middle of region) - Following requirement 3
+            # Requirement 3 & 8: Application/Compute Layer (Middle of region) - Following visual hierarchy
             if len(service_groups["region_compute"]) > 0:
                 graph.clusters[f"{cluster_name}_compute"] = {
                     "label": "Application & Compute",
                     "bgcolor": "#FFFFFF", 
-                    "style": "dashed,rounded",
+                    "style": "dashed,rounded,filled",
                     "parent": cluster_name,
-                    "rank": "same"
+                    "rank": "same",
+                    "penwidth": "2",
+                    "fontcolor": "#2D3748",
+                    "pencolor": "#4A5568"
                 }
             
-            # Data Layer (Bottom of region) - Following requirement 3
+            # Requirement 3 & 8: Data Layer (Bottom of region) - Following visual hierarchy
             if len(service_groups["region_storage"]) > 0 or len(service_groups["region_database"]) > 0:
                 graph.clusters[f"{cluster_name}_data"] = {
                     "label": "Data & Storage",
                     "bgcolor": "#FFFFFF",
-                    "style": "dashed,rounded",
+                    "style": "dashed,rounded,filled",
                     "parent": cluster_name,
-                    "rank": "max"
+                    "rank": "max",
+                    "penwidth": "2",
+                    "fontcolor": "#2D3748",
+                    "pencolor": "#4A5568"
                 }
         
-        # Standby Region (Bottom) - Separate from active regions for clear distinction
+        # Requirement 7 & 13: Standby Region (Bottom) - Clear region separation with pattern templates
         if len(requirements.regions) > 2 or requirements.ha_mode == "active-passive":
             standby_region = requirements.regions[-1] if len(requirements.regions) > 2 else requirements.regions[1]
             cluster_name = f"standby_region_{standby_region.lower().replace(' ', '_')}"
             
             graph.clusters[cluster_name] = {
                 "label": f"Standby Region: {standby_region}",
-                "bgcolor": "#F5F5F5",  # Gray for standby
-                "style": "bold,rounded,dashed",
+                "bgcolor": "#F7FAFC",  # Light gray for standby per requirement 10
+                "style": "bold,rounded,filled,dashed",
                 "rank": "max",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontcolor": "#2D3748",
+                "fontsize": "13",
+                "pencolor": "#718096"
             }
             
-            # Simplified standby components
+            # Requirement 8: Simplified standby components - logical grouping
             graph.clusters[f"{cluster_name}_backup"] = {
                 "label": "Backup & DR",
                 "bgcolor": "#FFFFFF",
-                "style": "dashed,rounded",
-                "parent": cluster_name
+                "style": "dashed,rounded,filled",
+                "parent": cluster_name,
+                "penwidth": "2",
+                "fontcolor": "#2D3748",
+                "pencolor": "#718096"
             }
         
-        # Monitoring & Observability (Right side) - Separate from operational clusters
+        # Requirement 1 & 8: Monitoring & Observability (Right side) - Logical grouping
         if len(service_groups["monitoring"]) > 0:
             graph.clusters["monitoring_observability"] = {
                 "label": "Monitoring & Observability",
-                "bgcolor": "#FFF8DC",  # Light yellow for monitoring
-                "style": "bold,rounded",
+                "bgcolor": "#FFFBF0",  # Light yellow for monitoring per requirement 10
+                "style": "bold,rounded,filled",
                 "rank": "same",
-                "penwidth": "2"
+                "penwidth": "3",
+                "fontcolor": "#1A202C",
+                "fontsize": "14",
+                "pencolor": "#F6AD55"
             }
     
     def _place_nodes(self, graph: LayoutGraph, service_groups: Dict[str, List[UserIntent]], requirements: Requirements) -> None:
@@ -348,8 +375,10 @@ class HAMultiRegionPattern:
         self._create_inter_region_connections(graph, service_to_nodes, requirements)
     
     def _create_primary_traffic_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create primary traffic flow with clear numbering and minimal crossings (requirement 2, 4)."""
-        # Step 1: Internet -> Front Door (straight line, solid)
+        """Create primary traffic flow with clear numbering and minimal crossings (requirements 2, 4, 9)."""
+        step = 1
+        
+        # Step 1: Internet -> Front Door (solid line for primary traffic per requirement 14)
         if "front_door" in service_to_nodes:
             for fd_node in service_to_nodes["front_door"]:
                 # Connect to Application Gateway if available
@@ -358,12 +387,12 @@ class HAMultiRegionPattern:
                         edge = LayoutEdge(
                             source=fd_node,
                             target=ag_node,
-                            label="1. HTTPS Traffic",
+                            label=f"{step}. HTTPS Traffic",
                             style="solid",
-                            color="#1976D2"  # Strong blue for primary traffic
+                            color="#1976D2"  # Strong blue for primary traffic per requirement 14
                         )
                         graph.edges.append(edge)
-                        self.edge_step_counter += 1
+                        step += 1
                 
                 # Direct connection to Web App if no App Gateway
                 elif "web_app" in service_to_nodes:
@@ -371,79 +400,80 @@ class HAMultiRegionPattern:
                         edge = LayoutEdge(
                             source=fd_node,
                             target=wa_node,
-                            label="1. HTTPS Traffic",
+                            label=f"{step}. Direct HTTPS",
                             style="solid",
                             color="#1976D2"
                         )
                         graph.edges.append(edge)
-                        self.edge_step_counter += 1
+                        step += 1
         
-        # Step 2: Application Gateway -> Web Apps (straight line, solid)
+        # Step N: Application Gateway -> Web Apps (solid line for primary flow)
         if "application_gateway" in service_to_nodes and "web_app" in service_to_nodes:
             for ag_node in service_to_nodes["application_gateway"]:
                 for wa_node in service_to_nodes["web_app"]:
                     edge = LayoutEdge(
                         source=ag_node,
                         target=wa_node,
-                        label="2. Load Balanced",
+                        label=f"{step}. Load Balanced",
                         style="solid",
                         color="#1976D2"
                     )
                     graph.edges.append(edge)
-                    self.edge_step_counter += 1
+                    step += 1
         
-        # Step 3: Load Balancer -> VMs (if present)
+        # Step N+1: Load Balancer -> VMs (solid line for infrastructure traffic)
         if "load_balancer" in service_to_nodes and "vm" in service_to_nodes:
             for lb_node in service_to_nodes["load_balancer"]:
                 for vm_node in service_to_nodes["vm"]:
                     edge = LayoutEdge(
                         source=lb_node,
                         target=vm_node,
-                        label="3. VM Traffic",
+                        label=f"{step}. VM Traffic",
                         style="solid",
                         color="#1976D2"
                     )
                     graph.edges.append(edge)
+                    step += 1
     
     def _create_data_flow(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create data flow connections with proper styling (requirement 14, 15)."""
+        """Create data flow connections with proper styling and line type distinctions (requirements 14, 15)."""
         app_services = service_to_nodes.get("web_app", []) + service_to_nodes.get("function_app", []) + service_to_nodes.get("vm", [])
         
         for app_node in app_services:
-            # Cache connections (bidirectional, dashed for cache pattern)
+            # Requirement 14: Cache connections (dashed for cache pattern, bidirectional per requirement 15)
             for redis_node in service_to_nodes.get("redis", []):
                 edge = LayoutEdge(
                     source=app_node,
                     target=redis_node,
                     label="Cache (R/W)",
-                    style="dashed",
+                    style="dashed",  # Dashed for cache pattern per requirement 14
                     color="#FF6B35"  # Orange for cache traffic
                 )
                 graph.edges.append(edge)
             
-            # Queue Storage connections (single direction for async patterns)
+            # Requirement 14: Queue Storage connections (solid, single direction for async patterns per requirement 15)
             for queue_node in service_to_nodes.get("queue_storage", []):
                 edge = LayoutEdge(
                     source=app_node,
                     target=queue_node,
                     label="Enqueue Messages",
-                    style="solid",
+                    style="solid",  # Solid for direct data operations per requirement 14
                     color="#4CAF50"  # Green for messaging
                 )
                 graph.edges.append(edge)
             
-            # Table Storage connections (bidirectional for CRUD operations)
+            # Requirement 14: Table Storage connections (solid, bidirectional for CRUD operations per requirement 15)
             for table_node in service_to_nodes.get("table_storage", []):
                 edge = LayoutEdge(
                     source=app_node,
                     target=table_node,
                     label="Table Operations",
-                    style="solid",
-                    color="#4CAF50"
+                    style="solid",  # Solid for direct data operations per requirement 14
+                    color="#4CAF50"  # Green for storage operations
                 )
                 graph.edges.append(edge)
             
-            # Storage Account connections (bidirectional for file operations)
+            # Storage Account connections (solid for direct file operations)
             for storage_node in service_to_nodes.get("storage_account", []):
                 edge = LayoutEdge(
                     source=app_node,
@@ -454,7 +484,7 @@ class HAMultiRegionPattern:
                 )
                 graph.edges.append(edge)
             
-            # Database connections (bidirectional for CRUD operations)
+            # Database connections (solid, bidirectional for CRUD operations per requirement 15)
             for db_node in service_to_nodes.get("sql_database", []):
                 edge = LayoutEdge(
                     source=app_node,
@@ -466,35 +496,36 @@ class HAMultiRegionPattern:
                 graph.edges.append(edge)
     
     def _create_security_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]]) -> None:
-        """Create security connections with clear labeling (requirement 4, 15)."""
-        # Entra ID -> All compute services (single direction for authentication)
+        """Create security connections with clear labeling and dotted lines (requirements 4, 14, 15)."""
+        # Requirement 14: Entra ID -> All compute services (dotted for control/management per requirement 14)
         entra_nodes = service_to_nodes.get("entra_id", [])
         compute_services = ["web_app", "function_app", "vm", "application_gateway"]
         
         for entra_node in entra_nodes:
             for service_type in compute_services:
-                for service_node in service_to_nodes.get(service_type, []):
+                for compute_node in service_to_nodes.get(service_type, []):
                     edge = LayoutEdge(
                         source=entra_node,
-                        target=service_node,
-                        label="Authentication",
-                        style="dotted",
-                        color="#795548"  # Brown for security
+                        target=compute_node,
+                        label="Auth/Identity",
+                        style="dotted",  # Dotted for control/management connections per requirement 14
+                        color="#FF9800"  # Orange for security connections
                     )
                     graph.edges.append(edge)
         
-        # Key Vault -> Compute services (single direction for secrets)
-        key_vault_nodes = service_to_nodes.get("key_vault", [])
+        # Requirement 14: Key Vault -> All services needing secrets (dotted for management)
+        kv_nodes = service_to_nodes.get("key_vault", [])
+        secret_consumers = ["web_app", "function_app", "vm", "sql_database"]
         
-        for kv_node in key_vault_nodes:
-            for service_type in compute_services:
-                for service_node in service_to_nodes.get(service_type, []):
+        for kv_node in kv_nodes:
+            for service_type in secret_consumers:
+                for consumer_node in service_to_nodes.get(service_type, []):
                     edge = LayoutEdge(
                         source=kv_node,
-                        target=service_node,
-                        label="Secrets/Certs",
-                        style="dashed",
-                        color="#795548"
+                        target=consumer_node,
+                        label="Secrets/Keys",
+                        style="dotted",  # Dotted for management connections per requirement 14
+                        color="#9C27B0"  # Purple for key management
                     )
                     graph.edges.append(edge)
     
@@ -502,8 +533,9 @@ class HAMultiRegionPattern:
         """Create monitoring connections with dotted lines (requirement 14)."""
         monitoring_nodes = service_to_nodes.get("application_insights", []) + service_to_nodes.get("log_analytics", [])
         
-        # All services send telemetry to monitoring (single direction, dotted)
-        all_services = ["web_app", "function_app", "vm", "sql_database", "redis", "storage_account", "application_gateway"]
+        # Requirement 14: All services send telemetry to monitoring (dotted for telemetry/control)
+        all_services = ["web_app", "function_app", "vm", "sql_database", "redis", "storage_account", 
+                       "queue_storage", "table_storage", "application_gateway", "front_door"]
         
         for monitoring_node in monitoring_nodes:
             for service_type in all_services:
@@ -512,16 +544,16 @@ class HAMultiRegionPattern:
                         source=service_node,
                         target=monitoring_node,
                         label="Telemetry",
-                        style="dotted",
+                        style="dotted",  # Dotted for telemetry/monitoring per requirement 14
                         color="#607D8B"  # Blue-grey for monitoring
                     )
                     graph.edges.append(edge)
     
     def _create_inter_region_connections(self, graph: LayoutGraph, service_to_nodes: Dict[str, List[str]], requirements: Requirements) -> None:
-        """Create inter-region connections for HA scenarios (requirement 15)."""
+        """Create inter-region connections for HA scenarios with proper styling (requirements 15, 13)."""
         if requirements.ha_mode in ["multi-region", "active-active"]:
-            # Storage replication between regions (bidirectional, dashed)
-            storage_services = ["storage_account", "sql_database"]
+            # Requirement 15: Storage replication between regions (dashed for replication patterns)
+            storage_services = ["storage_account", "sql_database", "queue_storage", "table_storage"]
             
             for service_type in storage_services:
                 nodes = service_to_nodes.get(service_type, [])
@@ -533,10 +565,22 @@ class HAMultiRegionPattern:
                         source=primary_node,
                         target=secondary_node,
                         label="Geo-Replication",
-                        style="dashed",
+                        style="dashed",  # Dashed for replication per requirement 14
                         color="#FF9800"  # Orange for replication
                     )
                     graph.edges.append(edge)
+                    
+            # Cache synchronization between regions if Redis is present
+            redis_nodes = service_to_nodes.get("redis", [])
+            if len(redis_nodes) >= 2:
+                edge = LayoutEdge(
+                    source=redis_nodes[0],
+                    target=redis_nodes[1],
+                    label="Cache Sync",
+                    style="dashed",  # Dashed for cache sync pattern
+                    color="#FF6B35"  # Orange for cache traffic
+                )
+                graph.edges.append(edge)
     
     def _get_default_name(self, service_type: str) -> str:
         """Get default display name for a service type."""
