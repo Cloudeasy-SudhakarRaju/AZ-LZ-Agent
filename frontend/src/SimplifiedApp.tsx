@@ -34,6 +34,7 @@ interface SimplifiedFormData {
   figma_api_token?: string;
   figma_file_id?: string;
   figma_page_name?: string;
+  fallback_format?: 'png' | 'svg';
 }
 
 interface AIAnalysisResult {
@@ -68,12 +69,18 @@ interface Results {
     stencils_list: string[];
   };
   ai_analysis?: AIAnalysisResult;
+  // Figma fallback fields
+  download_url?: string;
+  is_fallback?: boolean;
+  fallback_filename?: string;
+  fallback_reason?: string;
 }
 
 function SimplifiedApp() {
   const [formData, setFormData] = React.useState<SimplifiedFormData>({
     user_requirements: "",
-    generation_method: 'standard'
+    generation_method: 'standard',
+    fallback_format: 'png'
   });
   const [results, setResults] = React.useState<Results | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -245,7 +252,8 @@ function SimplifiedApp() {
         figma_api_token: formData.figma_api_token,
         figma_file_id: formData.figma_file_id,
         page_name: formData.figma_page_name || "Azure Architecture",
-        pattern: "ha-multiregion"
+        pattern: "ha-multiregion",
+        fallback_format: formData.fallback_format || "png"
       };
 
       const response = await fetch("http://127.0.0.1:8001/generate-figma-diagram", {
@@ -418,6 +426,20 @@ For example:
                           </FormHelperText>
                         </FormControl>
 
+                        <FormControl>
+                          <FormLabel>Fallback Format</FormLabel>
+                          <Select
+                            value={formData.fallback_format || 'png'}
+                            onChange={(e) => setFormData({...formData, fallback_format: e.target.value as 'png' | 'svg'})}
+                          >
+                            <option value="png">PNG (recommended)</option>
+                            <option value="svg">SVG (vector format)</option>
+                          </Select>
+                          <FormHelperText>
+                            Format used if Figma is unavailable and fallback diagram is generated
+                          </FormHelperText>
+                        </FormControl>
+
                         <Alert status="info" size="sm">
                           <AlertIcon />
                           <Text fontSize="sm">
@@ -557,25 +579,56 @@ For example:
                   </HStack>
                   
                   {/* Figma Results Display */}
-                  {results.figma_url && (
+                  {(results.figma_url || results.is_fallback) && (
                     <VStack spacing={4} align="stretch" mb={6}>
-                      <Alert status="success">
-                        <AlertIcon />
-                        <VStack align="start" spacing={2}>
-                          <Text fontWeight="semibold">
-                            Diagram created in Figma successfully! 🎨
-                          </Text>
-                          <Link 
-                            href={results.figma_url} 
-                            isExternal 
-                            color="blue.600" 
-                            fontWeight="semibold"
-                            fontSize="lg"
-                          >
-                            🔗 Open in Figma
-                          </Link>
-                        </VStack>
-                      </Alert>
+                      {results.figma_url ? (
+                        <Alert status="success">
+                          <AlertIcon />
+                          <VStack align="start" spacing={2}>
+                            <Text fontWeight="semibold">
+                              Diagram created in Figma successfully! 🎨
+                            </Text>
+                            <Link 
+                              href={results.figma_url} 
+                              isExternal 
+                              color="blue.600" 
+                              fontWeight="semibold"
+                              fontSize="lg"
+                            >
+                              🔗 Open in Figma
+                            </Link>
+                          </VStack>
+                        </Alert>
+                      ) : results.is_fallback ? (
+                        <Alert status="warning">
+                          <AlertIcon />
+                          <VStack align="start" spacing={3} w="100%">
+                            <Text fontWeight="semibold">
+                              Figma unavailable - generated downloadable diagram instead! 📊
+                            </Text>
+                            <Text fontSize="sm" color="orange.700">
+                              {results.fallback_reason || "Figma API was not available, but we've created a downloadable diagram for you."}
+                            </Text>
+                            {results.download_url && (
+                              <HStack spacing={3}>
+                                <Button
+                                  as="a"
+                                  href={`http://127.0.0.1:8001${results.download_url}`}
+                                  download={results.fallback_filename}
+                                  colorScheme="blue"
+                                  size="sm"
+                                  leftIcon={<span>📥</span>}
+                                >
+                                  Download {results.fallback_filename?.endsWith('.svg') ? 'SVG' : 'PNG'} Diagram
+                                </Button>
+                                <Text fontSize="xs" color="gray.600">
+                                  Format: {results.fallback_filename?.endsWith('.svg') ? 'SVG' : 'PNG'}
+                                </Text>
+                              </HStack>
+                            )}
+                          </VStack>
+                        </Alert>
+                      ) : null}
 
                       {results.user_info && (
                         <Box p={3} bg="blue.50" borderRadius="md">
