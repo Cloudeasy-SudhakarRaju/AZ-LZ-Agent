@@ -89,7 +89,7 @@ class ServiceCatalog:
                     "What message TTL? (default: 7 days)",
                     "Do you need encryption at rest? (yes/no)"
                 ],
-                diagram_class="QueueStorage"
+                diagram_class="QueuesStorage"
             ),
             
             "table_storage": ServiceDefinition(
@@ -119,6 +119,18 @@ class ServiceCatalog:
                     "Do you need VNet integration? (yes/no)"
                 ],
                 diagram_class="RedisCaches"
+            ),
+            
+            "cosmosdb": ServiceDefinition(
+                name="Azure Cosmos DB",
+                category="database",
+                dependencies=[],
+                prompts=[
+                    "What API? (SQL, MongoDB, Cassandra, Gremlin, Table)",
+                    "What consistency level? (Strong, Bounded Staleness, Session, Consistent Prefix, Eventual)",
+                    "Do you need multi-region writes? (yes/no)"
+                ],
+                diagram_class="CosmosDb"
             ),
             
             # Database Services
@@ -207,6 +219,63 @@ class ServiceCatalog:
                 diagram_class="ApplicationGateway"
             ),
             
+            "azure_firewall": ServiceDefinition(
+                name="Azure Firewall",
+                category="security",
+                dependencies=[
+                    ServiceDependency(service_type="vnet", required=True),
+                    ServiceDependency(service_type="public_ip", required=True),
+                ],
+                prompts=[
+                    "What SKU? (Standard, Premium)",
+                    "Do you need threat intelligence? (yes/no)",
+                    "What firewall policy rules needed?"
+                ],
+                diagram_class="Firewall"
+            ),
+            
+            "expressroute": ServiceDefinition(
+                name="ExpressRoute",
+                category="network",
+                dependencies=[
+                    ServiceDependency(service_type="vnet", required=True),
+                ],
+                prompts=[
+                    "What bandwidth? (50Mbps, 100Mbps, 200Mbps, 500Mbps, 1Gbps, 2Gbps, 5Gbps, 10Gbps)",
+                    "What peering type? (Microsoft, Private, Public)",
+                    "Do you need redundancy? (yes/no)"
+                ],
+                diagram_class="ExpressrouteCircuits"
+            ),
+            
+            "vpn_gateway": ServiceDefinition(
+                name="VPN Gateway",
+                category="network",
+                dependencies=[
+                    ServiceDependency(service_type="vnet", required=True),
+                    ServiceDependency(service_type="public_ip", required=True),
+                ],
+                prompts=[
+                    "What VPN type? (Route-based, Policy-based)",
+                    "What SKU? (Basic, VpnGw1, VpnGw2, VpnGw3, VpnGw4, VpnGw5)",
+                    "Do you need active-active configuration? (yes/no)"
+                ],
+                diagram_class="VirtualNetworkGateways"
+            ),
+            
+            "vnet_peering": ServiceDefinition(
+                name="VNet Peering",
+                category="network",
+                dependencies=[
+                    ServiceDependency(service_type="vnet", required=True),
+                ],
+                prompts=[
+                    "What peering type? (Regional, Global)",
+                    "Do you need gateway transit? (yes/no)"
+                ],
+                diagram_class=None  # Represented as connections
+            ),
+            
             # Edge Services
             "front_door": ServiceDefinition(
                 name="Azure Front Door",
@@ -256,7 +325,7 @@ class ServiceCatalog:
                 diagram_class="KeyVaults"
             ),
             
-            # Monitoring Services
+            # Monitoring Services - Enhanced for observability requirements (req 11)
             "log_analytics": ServiceDefinition(
                 name="Log Analytics Workspace",
                 category="monitoring",
@@ -279,6 +348,32 @@ class ServiceCatalog:
                     "What ingestion method? (workspace-based, classic)"
                 ],
                 diagram_class="ApplicationInsights"
+            ),
+            
+            "azure_monitor": ServiceDefinition(
+                name="Azure Monitor",
+                category="monitoring",
+                dependencies=[
+                    ServiceDependency(service_type="log_analytics", required=True),
+                ],
+                prompts=[
+                    "What monitoring scope? (subscription, resource group, resource)",
+                    "Do you need action groups? (yes/no)"
+                ],
+                diagram_class="Monitor"
+            ),
+            
+            "sentinel": ServiceDefinition(
+                name="Microsoft Sentinel",
+                category="security",
+                dependencies=[
+                    ServiceDependency(service_type="log_analytics", required=True),
+                ],
+                prompts=[
+                    "What data connectors needed? (Azure AD, Office 365, AWS, etc.)",
+                    "Do you need threat intelligence? (yes/no)"
+                ],
+                diagram_class="Sentinel"
             ),
             
             # Internal components (auto-created)
