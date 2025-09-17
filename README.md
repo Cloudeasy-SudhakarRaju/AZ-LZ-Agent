@@ -2,6 +2,43 @@
 
 Professional Azure Landing Zone Architecture Generator that creates comprehensive diagrams and documentation.
 
+## 🚀 Quick Start
+
+### 1. Start the System
+```bash
+# Automated setup (recommended)
+./start_server.sh
+
+# Manual setup
+pip install -r backend/requirements.txt
+sudo apt-get install -y graphviz
+cd backend && uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+### 2. Validate Everything Works
+```bash
+# Run comprehensive test suite
+python test_issue58_comprehensive.py
+
+# Run demo
+python final_solution_demo.py
+
+# Access API documentation
+# Open http://127.0.0.1:8001/docs in your browser
+```
+
+### 3. Generate Your First Diagram
+```bash
+curl -X POST http://127.0.0.1:8001/generate-interactive-azure-architecture \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "My first Azure architecture",
+    "compute_services": ["virtual_machines"],
+    "network_services": ["virtual_network"],
+    "database_services": ["sql_database"]
+  }'
+```
+
 ## Features
 
 - **Enterprise-Grade Diagrams**: Generate Azure architecture diagrams with official Microsoft Azure icons
