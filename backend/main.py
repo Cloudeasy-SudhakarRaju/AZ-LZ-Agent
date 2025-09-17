@@ -101,6 +101,19 @@ gemini_model = None
 #     gemini_model = None
 logger.info("Gemini API disabled for demo (API key suspended)")
 
+# Add imports for the architecture agent
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from scripts.arch_agent.agent import ArchitectureDiagramAgent
+    from scripts.arch_agent.schemas import Requirements, UserIntent
+    from scripts.arch_agent.figma_renderer import FigmaConfig
+    ARCH_AGENT_AVAILABLE = True
+except ImportError as e:
+    ARCH_AGENT_AVAILABLE = False
+    logger.warning(f"Architecture agent not available: {e}")
+
 
 class CustomerInputs(BaseModel):
     # Business Requirements
@@ -3914,6 +3927,7 @@ def root():
             "/docs - API Documentation",
             "/generate-diagram - Generate architecture diagram (Mermaid + Draw.io)",
             "/generate-azure-diagram - Generate Azure architecture diagram with official Azure icons (Python Diagrams)",
+            "/generate-figma-diagram - Generate Azure architecture diagram using Figma API",
             "/generate-drawio - Generate Draw.io XML",
             "/health - Health check"
         ]
@@ -4689,6 +4703,155 @@ class SimplifiedGenerationRequest(BaseModel):
     free_text_input: str
     ai_analysis: Optional[Dict[str, Any]] = None
     follow_up_answers: Optional[Dict[str, str]] = None
+
+
+class FigmaGenerationRequest(BaseModel):
+    """Request model for Figma diagram generation."""
+    # Standard customer inputs for architecture requirements  
+    customer_inputs: CustomerInputs
+    
+    # Figma-specific parameters
+    figma_api_token: str = Field(..., description="Figma API token for authentication")
+    figma_file_id: str = Field(..., description="Existing Figma file ID where diagram will be created")
+    page_name: Optional[str] = Field("Azure Architecture", description="Name for the diagram page")
+    pattern: Optional[str] = Field("ha-multiregion", description="Architecture pattern to use")
+
+
+# Initialize the architecture agent (if available)
+if ARCH_AGENT_AVAILABLE:
+    try:
+        arch_agent = ArchitectureDiagramAgent()
+        logger.info("Architecture agent initialized successfully")
+    except Exception as e:
+        arch_agent = None
+        logger.error(f"Failed to initialize architecture agent: {e}")
+else:
+    arch_agent = None
+
+
+@app.post("/generate-figma-diagram")
+def generate_figma_diagram_endpoint(request: FigmaGenerationRequest):
+    """Generate Azure architecture diagram using Figma API"""
+    try:
+        if not ARCH_AGENT_AVAILABLE or not arch_agent:
+            raise HTTPException(
+                status_code=503, 
+                detail="Architecture agent is not available. Cannot generate Figma diagrams."
+            )
+        
+        logger.info("Starting Figma diagram generation")
+        
+        # Validate Figma API token
+        if not FigmaConfig.validate_token(request.figma_api_token):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Figma API token. Please check your token and try again."
+            )
+        
+        # Convert CustomerInputs to Requirements format for the agent
+        requirements = _convert_customer_inputs_to_requirements(request.customer_inputs)
+        
+        # Generate Figma diagram using the architecture agent
+        figma_url = arch_agent.generate_figma_diagram(
+            requirements=requirements,
+            pattern=request.pattern,
+            figma_file_id=request.figma_file_id,
+            page_name=request.page_name
+        )
+        
+        # Get user info for the response
+        user_info = FigmaConfig.get_user_info(request.figma_api_token)
+        
+        return {
+            "success": True,
+            "figma_url": figma_url,
+            "figma_file_id": request.figma_file_id,
+            "page_name": request.page_name,
+            "pattern": request.pattern,
+            "user_info": user_info,
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0.0",
+                "agent": "Azure Landing Zone Agent - Figma Integration",
+                "diagram_format": "Figma native format"
+            }
+        }
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"Error generating Figma diagram: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating Figma diagram: {str(e)}")
+
+
+def _convert_customer_inputs_to_requirements(customer_inputs: CustomerInputs) -> Requirements:
+    """Convert CustomerInputs to Requirements format for the architecture agent."""
+    # This is a simplified conversion - in practice, you might want more sophisticated mapping
+    from scripts.arch_agent.schemas import Requirements, UserIntent
+    
+    # Create user intents based on selected services
+    intents = []
+    
+    # Add compute service intents
+    if customer_inputs.compute_services:
+        for service in customer_inputs.compute_services:
+            intents.append(UserIntent(
+                service_type=service,
+                quantity=1,
+                properties={}
+            ))
+    
+    # Add network service intents
+    if customer_inputs.network_services:
+        for service in customer_inputs.network_services:
+            intents.append(UserIntent(
+                service_type=service,
+                quantity=1,
+                properties={}
+            ))
+    
+    # Add storage service intents
+    if customer_inputs.storage_services:
+        for service in customer_inputs.storage_services:
+            intents.append(UserIntent(
+                service_type=service,
+                quantity=1,
+                properties={}
+            ))
+    
+    # Add database service intents
+    if customer_inputs.database_services:
+        for service in customer_inputs.database_services:
+            intents.append(UserIntent(
+                service_type=service,
+                quantity=1,
+                properties={}
+            ))
+    
+    # Add security service intents
+    if customer_inputs.security_services:
+        for service in customer_inputs.security_services:
+            intents.append(UserIntent(
+                service_type=service,
+                quantity=1,
+                properties={}
+            ))
+    
+    # Create requirements object
+    requirements = Requirements(
+        user_intents=intents,
+        business_tier=customer_inputs.business_objective or "Standard",
+        region_count=1,  # Default to single region
+        availability_requirements="Standard",  # Default availability
+        security_requirements=customer_inputs.security_posture or "standard",
+        compliance_requirements=[],
+        budget_constraints="None specified",
+        special_requirements=customer_inputs.free_text_input or ""
+    )
+    
+    return requirements
+
 
 @app.post("/analyze-requirements")
 def analyze_requirements_endpoint(request: SimplifiedAnalysisRequest):
