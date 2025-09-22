@@ -35,6 +35,9 @@ from diagrams.azure.devops import Devops, Pipelines
 from diagrams.azure.general import Subscriptions, Resourcegroups
 from diagrams.azure.web import AppServices as WebApps
 
+# Import intelligent diagram generator
+from intelligent_diagram_generator import IntelligentArchitectureDiagramGenerator, DiagramGenerationResult
+
 app = FastAPI(
     title="Azure Landing Zone Agent",
     description="Professional Azure Landing Zone Architecture Generator",
@@ -67,6 +70,16 @@ try:
 except Exception as e:
     logger.error(f"Failed to configure Gemini API: {e}")
     gemini_model = None
+
+# Initialize intelligent diagram generator
+try:
+    # Try to get OpenAI API key from environment, fallback to intelligent mock mode
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    intelligent_generator = IntelligentArchitectureDiagramGenerator(openai_api_key)
+    logger.info("Intelligent Architecture Diagram Generator initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize intelligent generator: {e}")
+    intelligent_generator = None
 
 
 class CustomerInputs(BaseModel):
@@ -2407,6 +2420,188 @@ def get_templates():
         "templates": AZURE_TEMPLATES,
         "azure_services": AZURE_SERVICES_MAPPING
     }
+
+@app.post("/generate-intelligent-diagram")
+def generate_intelligent_diagram(request: Dict[str, str]):
+    """Generate intelligent Azure architecture diagram from natural language requirements"""
+    logger.info("Starting intelligent diagram generation")
+    
+    try:
+        # Get requirements text from request
+        requirements_text = request.get("requirements")
+        if not requirements_text:
+            raise HTTPException(status_code=400, detail="Requirements text is required")
+        
+        # Validate requirements text length
+        if len(requirements_text) < 10:
+            raise HTTPException(status_code=400, detail="Requirements text too short (minimum 10 characters)")
+        
+        if len(requirements_text) > 5000:
+            raise HTTPException(status_code=400, detail="Requirements text too long (maximum 5000 characters)")
+        
+        logger.info(f"Processing requirements: {requirements_text[:100]}...")
+        
+        # Check if intelligent generator is available
+        if not intelligent_generator:
+            raise HTTPException(status_code=503, detail="Intelligent diagram generator not available")
+        
+        # Generate diagram from natural language
+        result = intelligent_generator.generate_from_natural_language(requirements_text)
+        
+        # Execute the generated Python code to create the actual diagram
+        diagram_path = None
+        diagram_base64 = None
+        execution_error = None
+        
+        try:
+            # Execute the Python code in a safe environment
+            logger.info("Executing generated diagram code...")
+            
+            # Create a safe execution environment
+            exec_globals = {
+                '__builtins__': {},
+                'Diagram': Diagram,
+                'Cluster': Cluster,
+                'Edge': Edge,
+                'VM': VM,
+                'AKS': AKS,
+                'AppServices': AppServices,
+                'VirtualNetworks': VirtualNetworks,
+                'ApplicationGateway': ApplicationGateway,
+                'LoadBalancers': LoadBalancers,
+                'Firewall': Firewall,
+                'StorageAccounts': StorageAccounts,
+                'SQLDatabases': SQLDatabases,
+                'CosmosDb': CosmosDb,
+                'KeyVaults': KeyVaults,
+                'ActiveDirectory': ActiveDirectory,
+                'SynapseAnalytics': SynapseAnalytics,
+                'DataFactories': DataFactories,
+                'Databricks': Databricks,
+                'LogicApps': LogicApps,
+                'ServiceBus': ServiceBus,
+                'APIManagement': APIManagement,
+                'Devops': Devops,
+                'SecurityCenter': SecurityCenter,
+                'Sentinel': Sentinel
+            }
+            
+            # Set output directory for diagram
+            output_dir = get_safe_output_directory()
+            exec_globals['output_dir'] = output_dir
+            
+            # Modify the code to save to our output directory
+            modified_code = result.python_code.replace(
+                'filename="azure_architecture_intelligent"',
+                f'filename="{output_dir}/azure_architecture_intelligent"'
+            )
+            
+            # Execute the code
+            exec(modified_code, exec_globals)
+            
+            # Find the generated diagram file
+            possible_paths = [
+                f"{output_dir}/azure_architecture_intelligent.png",
+                f"{output_dir}/azure_architecture_intelligent.svg"
+            ]
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    diagram_path = path
+                    break
+            
+            if diagram_path:
+                # Read and encode the diagram
+                with open(diagram_path, "rb") as f:
+                    diagram_data = f.read()
+                diagram_base64 = base64.b64encode(diagram_data).decode('utf-8')
+                logger.info(f"Diagram generated successfully: {diagram_path}")
+            else:
+                execution_error = "Generated diagram file not found"
+                logger.warning("Generated diagram file not found")
+                
+        except Exception as e:
+            execution_error = f"Error executing diagram code: {str(e)}"
+            logger.error(f"Error executing diagram code: {e}")
+        
+        # Return comprehensive result
+        response = {
+            "success": True,
+            "requirements_processed": requirements_text,
+            "generated_code": result.python_code,
+            "description": result.description,
+            "review_comments": result.review_comments,
+            "enterprise_compliance_score": result.enterprise_compliance_score,
+            "diagram_path": diagram_path,
+            "diagram_base64": diagram_base64,
+            "execution_error": execution_error,
+            "intelligent_features": {
+                "natural_language_parsing": True,
+                "enterprise_review": True,
+                "code_generation": True,
+                "compliance_scoring": True
+            },
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0.0",
+                "agent": "Intelligent Azure Architecture Generator",
+                "llm_mode": "mock" if intelligent_generator.llm_orchestrator.mock_mode else "openai"
+            }
+        }
+        
+        logger.info("Intelligent diagram generation completed successfully")
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = f"Error generating intelligent diagram: {str(e)}"
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_msg)
+
+@app.post("/enhance-diagram")
+def enhance_diagram(request: Dict[str, str]):
+    """Enhance existing diagram with new requirements"""
+    logger.info("Starting diagram enhancement")
+    
+    try:
+        # Get parameters from request
+        existing_code = request.get("existing_code")
+        enhancement_requirements = request.get("enhancement_requirements")
+        
+        if not existing_code:
+            raise HTTPException(status_code=400, detail="Existing code is required")
+        if not enhancement_requirements:
+            raise HTTPException(status_code=400, detail="Enhancement requirements are required")
+        
+        # Check if intelligent generator is available
+        if not intelligent_generator:
+            raise HTTPException(status_code=503, detail="Intelligent diagram generator not available")
+        
+        # Enhance the diagram
+        result = intelligent_generator.enhance_existing_diagram(existing_code, enhancement_requirements)
+        
+        return {
+            "success": True,
+            "original_code": existing_code,
+            "enhancement_requirements": enhancement_requirements,
+            "enhanced_code": result.python_code,
+            "description": result.description,
+            "review_comments": result.review_comments,
+            "enterprise_compliance_score": result.enterprise_compliance_score,
+            "metadata": {
+                "enhanced_at": datetime.now().isoformat(),
+                "version": "1.0.0"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = f"Error enhancing diagram: {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/services")
 def get_services():
