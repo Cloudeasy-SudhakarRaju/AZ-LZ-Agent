@@ -24,7 +24,7 @@ from pptx import Presentation
 # Import diagrams for Azure architecture generation
 from diagrams import Diagram, Cluster, Edge
 from diagrams.azure.compute import VM, AKS, AppServices, FunctionApps, ContainerInstances, ServiceFabricClusters, BatchAccounts
-from diagrams.azure.network import VirtualNetworks, ApplicationGateway, LoadBalancers, Firewall, ExpressrouteCircuits, VirtualNetworkGateways
+from diagrams.azure.network import VirtualNetworks, ApplicationGateway, LoadBalancers, Firewall, ExpressrouteCircuits, VirtualNetworkGateways, Bastion
 from diagrams.azure.storage import StorageAccounts, BlobStorage, DataLakeStorage
 from diagrams.azure.database import SQLDatabases, CosmosDb, DatabaseForMysqlServers, DatabaseForPostgresqlServers
 from diagrams.azure.security import KeyVaults, SecurityCenter, Sentinel
@@ -34,6 +34,7 @@ from diagrams.azure.integration import LogicApps, ServiceBus, EventGridTopics, A
 from diagrams.azure.devops import Devops, Pipelines
 from diagrams.azure.general import Subscriptions, Resourcegroups
 from diagrams.azure.web import AppServices as WebApps
+from diagrams.azure.management import Monitor
 
 # Import intelligent diagram generator
 from intelligent_diagram_generator import IntelligentArchitectureDiagramGenerator, DiagramGenerationResult
@@ -234,7 +235,8 @@ AZURE_SERVICES_MAPPING = {
     "information_protection": {"name": "Azure Information Protection", "icon": "🔒", "drawio_shape": "information_protection", "diagram_class": None, "category": "security"},
     
     # Monitoring & Management
-    "monitor": {"name": "Azure Monitor", "icon": "📊", "drawio_shape": "monitor", "diagram_class": None, "category": "monitoring"},
+    "monitor": {"name": "Azure Monitor", "icon": "📊", "drawio_shape": "monitor", "diagram_class": Monitor, "category": "monitoring"},
+    "bastion": {"name": "Azure Bastion", "icon": "🔐", "drawio_shape": "bastion", "diagram_class": Bastion, "category": "network"},
     "log_analytics": {"name": "Log Analytics", "icon": "📋", "drawio_shape": "log_analytics_workspaces", "diagram_class": None, "category": "monitoring"},
     "application_insights": {"name": "Application Insights", "icon": "📈", "drawio_shape": "application_insights", "diagram_class": None, "category": "monitoring"},
     "service_health": {"name": "Service Health", "icon": "❤️", "drawio_shape": "service_health", "diagram_class": None, "category": "monitoring"},
@@ -613,88 +615,225 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 outformat=output_format,
                 graph_attr={
                     "fontsize": "16",
-                    "fontname": "Arial",
+                    "fontname": "Segoe UI, Arial, sans-serif",
                     "rankdir": "TB",
-                    "nodesep": "1.0",
-                    "ranksep": "1.5",
+                    "nodesep": "1.2",
+                    "ranksep": "2.0",
                     "bgcolor": "#ffffff",
-                    "margin": "0.5"
+                    "margin": "0.8",
+                    "splines": "ortho",
+                    "concentrate": "true"
                 },
                 node_attr={
-                    "fontsize": "12",
-                    "fontname": "Arial"
+                    "fontsize": "11",
+                    "fontname": "Segoe UI, Arial, sans-serif",
+                    "style": "filled",
+                    "fillcolor": "#ffffff",
+                    "color": "#0078d4"
                 },
                 edge_attr={
-                    "fontsize": "10",
-                    "fontname": "Arial"
+                    "fontsize": "9",
+                    "fontname": "Segoe UI, Arial, sans-serif",
+                    "color": "#605e5c"
                 }
             ):
                 
-                logger.info("Creating diagram structure...")
+                logger.info("Creating professional Azure Landing Zone architecture...")
                 
-                # Core Identity and Security Services
-                with Cluster("Identity & Security", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
-                    aad = ActiveDirectory("Azure Active Directory")
-                    key_vault = KeyVaults("Key Vault")
-                    if inputs.security_services and "security_center" in inputs.security_services:
-                        sec_center = SecurityCenter("Security Center")
-                    if inputs.security_services and "sentinel" in inputs.security_services:
-                        sentinel = Sentinel("Sentinel")
+                # Professional Azure Hub-Spoke Architecture
                 
-                # Management Groups and Subscriptions Structure
-                with Cluster("Management & Governance", graph_attr={"bgcolor": "#f0f8ff", "style": "rounded"}):
-                    root_mg = Subscriptions("Root Management Group")
-                    if template['template']['name'] == "Enterprise Scale Landing Zone":
-                        platform_mg = Subscriptions("Platform MG")
-                        workloads_mg = Subscriptions("Landing Zones MG")
-                        root_mg >> [platform_mg, workloads_mg]
-                    else:
-                        platform_mg = Subscriptions("Platform MG")
-                        workloads_mg = Subscriptions("Workloads MG")
-                        root_mg >> [platform_mg, workloads_mg]
-                
-                # Networking Architecture
-                with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
-                    # Hub VNet
-                    hub_vnet = VirtualNetworks("Hub VNet\n(Shared Services)")
-                    
-                    # Network services based on selections
-                    network_services = []
-                    if inputs.network_services:
-                        for service in inputs.network_services:
-                            if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
-                                diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
-                                service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                                network_services.append(diagram_class(service_name))
-                    
-                    # Default network services if none specified
-                    if not network_services:
-                        firewall = Firewall("Azure Firewall")
+                # 1. Cross-premises Network Section
+                with Cluster("Cross-premises Network", graph_attr={
+                    "bgcolor": "#fff3cd", 
+                    "style": "rounded,filled", 
+                    "color": "#856404",
+                    "penwidth": "2",
+                    "label": "Cross-premises Network",
+                    "fontsize": "14",
+                    "fontcolor": "#856404"
+                }):
+                    # Connectivity options based on input
+                    connectivity_components = []
+                    if inputs.network_services and "vpn_gateway" in inputs.network_services:
                         vpn_gw = VirtualNetworkGateways("VPN Gateway")
-                        network_services = [firewall, vpn_gw]
+                        connectivity_components.append(vpn_gw)
+                    if inputs.network_services and "expressroute" in inputs.network_services:
+                        er_circuit = ExpressrouteCircuits("ExpressRoute")
+                        connectivity_components.append(er_circuit)
                     
-                    # Spoke VNets
-                    prod_vnet = VirtualNetworks("Production VNet")
-                    dev_vnet = VirtualNetworks("Development VNet")
-                    
-                    # Connect hub to spokes
-                    hub_vnet >> [prod_vnet, dev_vnet]
-                    
-                    # Connect platform subscription to hub
-                    platform_mg >> hub_vnet
-                    
-                    # Connect network services to hub
-                    for ns in network_services:
-                        hub_vnet >> ns
+                    # Default connectivity if none specified
+                    if not connectivity_components:
+                        vpn_gw = VirtualNetworkGateways("VPN Gateway")
+                        connectivity_components.append(vpn_gw)
                 
-                # Add other service clusters based on input...
-                _add_service_clusters(inputs, prod_vnet, workloads_mg)
+                # 2. Hub Virtual Network Section
+                with Cluster("Hub Virtual Network", graph_attr={
+                    "bgcolor": "#d1ecf1", 
+                    "style": "rounded,filled", 
+                    "color": "#0c5460",
+                    "penwidth": "2",
+                    "label": "Hub Virtual Network (Shared Services)",
+                    "fontsize": "14",
+                    "fontcolor": "#0c5460"
+                }):
+                    hub_vnet = VirtualNetworks("Hub VNet\n10.0.0.0/16")
+                    
+                    # Azure Bastion for secure access
+                    bastion = None
+                    if inputs.network_services and "bastion" in inputs.network_services:
+                        bastion = Bastion("Azure Bastion")
+                    else:
+                        # Always include Bastion in professional Azure architecture
+                        bastion = Bastion("Azure Bastion")
+                    
+                    # Azure Firewall for security
+                    firewall = None
+                    if inputs.network_services and "firewall" in inputs.network_services:
+                        firewall = Firewall("Azure Firewall")
+                    else:
+                        firewall = Firewall("Azure Firewall")
+                    
+                    # Azure Monitor for diagnostics
+                    monitor = None
+                    if inputs.monitoring_services and "monitor" in inputs.monitoring_services:
+                        monitor = Monitor("Azure Monitor")
+                    else:
+                        # Always include monitoring in professional architecture
+                        monitor = Monitor("Azure Monitor")
                 
-                # Core security connections
-                aad >> key_vault
-                platform_mg >> [aad, key_vault]
+                # 3. Spoke Virtual Networks Section
+                with Cluster("Spoke Virtual Networks", graph_attr={
+                    "bgcolor": "#d4edda", 
+                    "style": "rounded,filled", 
+                    "color": "#155724",
+                    "penwidth": "2",
+                    "label": "Spoke Virtual Networks",
+                    "fontsize": "14",
+                    "fontcolor": "#155724"
+                }):
+                    # Production Spoke
+                    with Cluster("Production", graph_attr={
+                        "bgcolor": "#f8d7da", 
+                        "style": "rounded,filled", 
+                        "color": "#721c24",
+                        "penwidth": "1",
+                        "label": "Production VNet",
+                        "fontsize": "12",
+                        "fontcolor": "#721c24"
+                    }):
+                        prod_vnet = VirtualNetworks("Production VNet\n10.1.0.0/16")
+                        
+                        # Add production workloads
+                        prod_workloads = []
+                        if inputs.compute_services:
+                            for service in inputs.compute_services[:3]:  # Limit to 3 for clean layout
+                                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                                    prod_workloads.append(diagram_class(f"Prod {service_name}"))
+                    
+                    # Non-Production Spoke
+                    with Cluster("Non-Production", graph_attr={
+                        "bgcolor": "#fff3cd", 
+                        "style": "rounded,filled", 
+                        "color": "#856404",
+                        "penwidth": "1",
+                        "label": "Non-Production VNet",
+                        "fontsize": "12",
+                        "fontcolor": "#856404"
+                    }):
+                        nonprod_vnet = VirtualNetworks("Development VNet\n10.2.0.0/16")
+                        
+                        # Add non-production workloads
+                        nonprod_workloads = []
+                        if inputs.compute_services:
+                            for service in inputs.compute_services[:2]:  # Limit to 2 for clean layout
+                                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                                    nonprod_workloads.append(diagram_class(f"Dev {service_name}"))
                 
-                logger.info("Diagram structure created successfully")
+                # 4. Management and Governance
+                with Cluster("Management & Governance", graph_attr={
+                    "bgcolor": "#e2e3e5", 
+                    "style": "rounded,filled", 
+                    "color": "#383d41",
+                    "penwidth": "2",
+                    "label": "Management & Governance",
+                    "fontsize": "14",
+                    "fontcolor": "#383d41"
+                }):
+                    root_mg = Subscriptions("Root Management Group")
+                    platform_mg = Subscriptions("Platform Subscription")
+                    workloads_mg = Subscriptions("Landing Zones Subscription")
+                
+                # 5. Identity & Security
+                with Cluster("Identity & Security", graph_attr={
+                    "bgcolor": "#f4cccc", 
+                    "style": "rounded,filled", 
+                    "color": "#a61e1e",
+                    "penwidth": "2",
+                    "label": "Identity & Security",
+                    "fontsize": "14",
+                    "fontcolor": "#a61e1e"
+                }):
+                    aad = ActiveDirectory("Azure Active Directory")
+                    key_vault = KeyVaults("Azure Key Vault")
+                    
+                    # Additional security services
+                    security_services = []
+                    if inputs.security_services:
+                        for service in inputs.security_services:
+                            if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                                if service not in ["active_directory", "key_vault"]:  # Already added
+                                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                                    security_services.append(diagram_class(service_name))
+                
+                # Professional connection patterns with different line styles
+                
+                # VNet Peering connections (dotted lines)
+                hub_vnet >> Edge(style="dotted", color="#0078d4", penwidth="2", label="VNet Peering") >> prod_vnet
+                hub_vnet >> Edge(style="dotted", color="#0078d4", penwidth="2", label="VNet Peering") >> nonprod_vnet
+                
+                # Direct connections (solid lines)
+                for conn_comp in connectivity_components:
+                    conn_comp >> Edge(style="solid", color="#d83b01", penwidth="3", label="Site-to-Site") >> hub_vnet
+                
+                # Hub network services connections
+                if bastion:
+                    hub_vnet >> Edge(style="solid", color="#107c10", penwidth="2") >> bastion
+                if firewall:
+                    hub_vnet >> Edge(style="solid", color="#d83b01", penwidth="2") >> firewall
+                
+                # Monitoring connections (colored for diagnostics)
+                if monitor:
+                    monitor >> Edge(style="dashed", color="#ffaa44", penwidth="2", label="Diagnostics") >> hub_vnet
+                    monitor >> Edge(style="dashed", color="#ffaa44", penwidth="2", label="Diagnostics") >> prod_vnet
+                    monitor >> Edge(style="dashed", color="#ffaa44", penwidth="2", label="Diagnostics") >> nonprod_vnet
+                
+                # Management connections
+                root_mg >> Edge(style="solid", color="#323130", penwidth="2") >> [platform_mg, workloads_mg]
+                platform_mg >> Edge(style="solid", color="#323130", penwidth="2") >> hub_vnet
+                workloads_mg >> Edge(style="solid", color="#323130", penwidth="2") >> [prod_vnet, nonprod_vnet]
+                
+                # Security connections
+                aad >> Edge(style="solid", color="#a61e1e", penwidth="2") >> key_vault
+                platform_mg >> Edge(style="solid", color="#a61e1e", penwidth="2") >> [aad, key_vault]
+                
+                # Connect workloads to their respective VNets
+                if prod_workloads:
+                    for workload in prod_workloads:
+                        prod_vnet >> Edge(style="solid", color="#107c10", penwidth="1") >> workload
+                
+                if nonprod_workloads:
+                    for workload in nonprod_workloads:
+                        nonprod_vnet >> Edge(style="solid", color="#107c10", penwidth="1") >> workload
+                
+                # Add other service clusters based on input
+                _add_professional_service_clusters(inputs, platform_mg, workloads_mg)
+                
+                logger.info("Professional Azure Landing Zone architecture created successfully")
         
         except Exception as e:
             logger.error(f"Error during diagram creation: {str(e)}")
@@ -1004,6 +1143,86 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                     
     except Exception as e:
         logger.warning(f"Error adding service clusters: {str(e)}")
+        # Don't fail the entire diagram generation for service cluster issues
+
+def _add_professional_service_clusters(inputs: CustomerInputs, platform_mg, workloads_mg):
+    """Helper method to add professional service clusters with Azure styling"""
+    try:
+        # Data & Storage Services (if any)
+        data_services = []
+        if inputs.storage_services:
+            for service in inputs.storage_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                    data_services.append(diagram_class(service_name))
+        
+        if inputs.database_services:
+            for service in inputs.database_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                    data_services.append(diagram_class(service_name))
+        
+        if data_services:
+            with Cluster("Data & Storage Services", graph_attr={
+                "bgcolor": "#cfe2ff", 
+                "style": "rounded,filled", 
+                "color": "#0a58ca",
+                "penwidth": "2",
+                "label": "Data & Storage Services",
+                "fontsize": "12",
+                "fontcolor": "#0a58ca"
+            }):
+                for service in data_services[:4]:  # Limit for clean layout
+                    workloads_mg >> Edge(style="solid", color="#0078d4", penwidth="1") >> service
+        
+        # Analytics & AI Services (if any)
+        analytics_services = []
+        if inputs.analytics_services:
+            for service in inputs.analytics_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                    analytics_services.append(diagram_class(service_name))
+        
+        if analytics_services:
+            with Cluster("Analytics & AI", graph_attr={
+                "bgcolor": "#e7f3ff", 
+                "style": "rounded,filled", 
+                "color": "#0969da",
+                "penwidth": "2",
+                "label": "Analytics & AI Services",
+                "fontsize": "12",
+                "fontcolor": "#0969da"
+            }):
+                for service in analytics_services[:3]:  # Limit for clean layout
+                    platform_mg >> Edge(style="solid", color="#0078d4", penwidth="1") >> service
+        
+        # Integration Services (if any)
+        integration_services = []
+        if inputs.integration_services:
+            for service in inputs.integration_services:
+                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                    integration_services.append(diagram_class(service_name))
+        
+        if integration_services:
+            with Cluster("Integration Services", graph_attr={
+                "bgcolor": "#fff8e7", 
+                "style": "rounded,filled", 
+                "color": "#bf8700",
+                "penwidth": "2",
+                "label": "Integration Services",
+                "fontsize": "12",
+                "fontcolor": "#bf8700"
+            }):
+                for service in integration_services[:3]:  # Limit for clean layout
+                    platform_mg >> Edge(style="solid", color="#0078d4", penwidth="1") >> service
+                    
+    except Exception as e:
+        logger.warning(f"Error adding professional service clusters: {str(e)}")
         # Don't fail the entire diagram generation for service cluster issues
 
 
