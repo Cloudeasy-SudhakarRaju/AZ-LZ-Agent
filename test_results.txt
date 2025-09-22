@@ -1,0 +1,40 @@
+🧪 Starting comprehensive download functionality tests
+Test started at: 2025-09-17 09:43:08.133123
+============================================================
+🔍 Testing backend availability...
+✅ Backend is available
+
+🔍 Testing standard PNG generation...
+✅ PNG generated: azure_landing_zone_20250917_094308_ba7ac2d5.png
+✅ PNG download successful: 54288 bytes, content-type: image/png
+
+🔍 Testing standard SVG generation...
+✅ SVG generated: azure_landing_zone_20250917_094308_d051cb7b.svg
+✅ SVG download successful: 4790 bytes, content-type: image/svg+xml
+
+🔍 Testing Figma PNG fallback...
+✅ PNG fallback triggered: azure_fallback_diagram_20250917_094308_1ed108f0.png
+✅ PNG fallback download successful: 69414 bytes, content-type: image/png
+
+🔍 Testing Figma SVG fallback...
+✅ SVG fallback triggered: azure_fallback_diagram_20250917_094308_ab2ff3d0.svg
+✅ SVG fallback download successful: 5563 bytes, content-type: image/svg+xml
+
+============================================================
+📊 Test Results Summary:
+============================================================
+✅ PASS - Backend Availability
+✅ PASS - Standard PNG Generation
+✅ PASS - Standard SVG Generation
+✅ PASS - Figma PNG Fallback
+✅ PASS - Figma SVG Fallback
+
+============================================================
+🎯 Overall Result: 5/5 tests passed
+🎉 All tests passed! SVG/PNG download functionality is working correctly.
+
+✅ Issues fixed:
+   - Download endpoint now serves files from correct location (/tmp/)
+   - Both PNG and SVG files download with correct MIME types
+   - Figma fallback generates files in accessible location
+   - Fallback supports both PNG and SVG formats

@@ -2,13 +2,111 @@
 
 Professional Azure Landing Zone Architecture Generator that creates comprehensive diagrams and documentation.
 
+## 🚀 Quick Start
+
+### 1. Start the System
+```bash
+# Automated setup (recommended)
+./start_server.sh
+
+# Manual setup
+pip install -r backend/requirements.txt
+sudo apt-get install -y graphviz
+cd backend && uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+### 2. Validate Everything Works
+```bash
+# Run comprehensive test suite
+python test_issue58_comprehensive.py
+
+# Run demo
+python final_solution_demo.py
+
+# Access API documentation
+# Open http://127.0.0.1:8001/docs in your browser
+```
+
+### 3. Generate Your First Diagram
+```bash
+curl -X POST http://127.0.0.1:8001/generate-interactive-azure-architecture \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "My first Azure architecture",
+    "compute_services": ["virtual_machines"],
+    "network_services": ["virtual_network"],
+    "database_services": ["sql_database"]
+  }'
+```
+
 ## Features
 
 - **Enterprise-Grade Diagrams**: Generate Azure architecture diagrams with official Microsoft Azure icons
+- **Architecture Diagram Agent**: Prompt-driven agent that generates organized Azure diagrams with dependency inference
 - **Multiple Output Formats**: PNG diagrams with Python Diagrams library and Draw.io XML
 - **Professional Documentation**: Technical Specification Document (TSD), High-Level Design (HLD), and Low-Level Design (LLD)
 - **Azure Architecture Templates**: Support for multiple Azure Landing Zone patterns
 - **API-Driven**: RESTful API with comprehensive endpoints
+
+## Architecture Diagram Agent
+
+The Architecture Diagram Agent is a new command-line tool that generates organized Azure diagrams following clean, story-first layouts with dynamic service selection and dependency inference.
+
+### Key Features
+
+- **Pattern-Constrained Layout**: Left-to-right flow with orthogonal edges and minimal crossings
+- **Dynamic Service Selection**: Parse user intent and automatically infer dependencies
+- **Interactive & Non-Interactive Modes**: CLI prompts or YAML manifest input
+- **Dependency Inference**: Automatically adds required services (e.g., VM → VNet/Subnet/NIC/NSG)
+
+### Usage
+
+#### Non-Interactive Mode (Recommended for CI/CD)
+```bash
+python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --pattern ha-multiregion
+```
+
+#### Interactive Mode
+```bash
+python scripts/arch_agent/agent.py --interactive
+```
+
+#### Custom Output Path
+```bash
+python scripts/arch_agent/agent.py --manifest examples/sample_ha.yaml --out docs/diagrams/my_architecture
+```
+
+### Example YAML Manifest
+
+```yaml
+project_name: "Sample HA Application"
+environment: "prod"
+regions:
+  - "East US 2"
+  - "West US 2"
+ha_mode: "active-active"
+
+services:
+  - kind: "web_app"
+    name: "Frontend Web App"
+    properties:
+      runtime: ".NET 8"
+      tier: "P1v2"
+  
+  - kind: "function_app" 
+    name: "API Functions"
+    properties:
+      runtime: ".NET 8"
+      hosting_plan: "Premium"
+  
+  - kind: "redis"
+    name: "App Cache"
+    properties:
+      tier: "Standard"
+      size: "C1"
+```
+
+The agent automatically infers dependencies and generates clean, organized diagrams with proper clustering and workflow numbering.
 
 ## System Requirements
 
