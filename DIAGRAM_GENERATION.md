@@ -1,33 +1,35 @@
-# Azure Landing Zone Agent - Diagram Generation
+# Azure Landing Zone Agent - Professional Diagram Generation
 
 ## Overview
 
-The Azure Landing Zone Agent now supports **enterprise-style Azure architecture diagrams** with official Microsoft Azure icons and stencils, addressing the previous issue where diagrams used emoji icons instead of proper Azure architectural styling.
+The Azure Landing Zone Agent now supports **enterprise-style Azure architecture diagrams** with official Microsoft Azure icons and professional styling, addressing all requirements for professional Azure architectural visualization.
 
-## Diagram Generation Options
-
-### 1. Python Diagrams with Official Azure Icons (NEW - RECOMMENDED) 
+## Professional Diagram Generation (ENHANCED - RECOMMENDED) 
 
 **Endpoint:** `POST /generate-azure-diagram`
 
 - ✅ **Official Microsoft Azure icons and stencils**
-- ✅ **Enterprise-style architectural diagrams**
-- ✅ **High-quality PNG output with proper color coding**
+- ✅ **Professional Hub-Spoke architecture with proper sections**
+- ✅ **Azure Bastion, Azure Firewall, VPN Gateway, and Azure Monitor integration**
+- ✅ **Professional line styles** (dotted for VNet peering, solid for direct connections, colored for diagnostics)
+- ✅ **Official Azure color scheme and Segoe UI typography**
+- ✅ **Clear section organization** (Hub VNet, Spoke VNets, Cross-premises Network)
+- ✅ **Azure branding and professional labels**
 - ✅ **Industry-standard Azure Landing Zone visualization**
-- ✅ **Graphviz-powered professional rendering**
 
-**Features:**
-- Uses the Python Diagrams library (https://diagrams.mingrammer.com)
-- Official Azure node components for all service categories
-- Professional clustering and visual hierarchy
-- Proper enterprise architectural styling
-- Base64 encoded response for web integration
-- File download support
+**Key Architectural Sections:**
+- **Cross-premises Network**: VPN Gateway/ExpressRoute connectivity
+- **Hub Virtual Network**: Shared services with Azure Bastion and Firewall
+- **Spoke Virtual Networks**: Production and Non-Production environments
+- **Management & Governance**: Subscription and management group hierarchy
+- **Identity & Security**: Azure AD and Key Vault integration
 
-### 2. Legacy Options (Still Available)
-
-**Mermaid Diagrams:** `POST /generate-diagram` - Text-based diagrams with emoji icons
-**Draw.io XML:** `POST /generate-drawio` - XML format for Draw.io editor
+**Professional Styling Features:**
+- Official Azure color palette (#0078d4, #005a9e, #d83b01, etc.)
+- Microsoft Segoe UI typography
+- Orthogonal line routing with proper spacing
+- Professional clustering with Azure-branded backgrounds
+- Enhanced visual hierarchy with proper margins and spacing
 
 ## API Usage
 
@@ -96,16 +98,35 @@ The system supports official Azure icons for:
 ## Visual Improvements
 
 **Before (Old Approach):**
-- Emoji icons: 🖥️ ☸️ 🌐 🛡️ 🔐
-- Basic text-based diagrams
-- Limited visual hierarchy
+- Basic clustering without proper Azure sections
+- Limited visual hierarchy and generic styling
+- Missing key Azure network components
+- Basic connection patterns without professional line styles
 
-**After (New Approach):**
-- Official Microsoft Azure icons
-- Professional enterprise styling
-- Proper color coding and visual hierarchy
-- Industry-standard architectural diagrams
-- High-quality PNG rendering
+**After (Enhanced Professional Approach):**
+- **Professional Azure Hub-Spoke Architecture**:
+  - Cross-premises Network section with VPN Gateway/ExpressRoute
+  - Hub Virtual Network with Azure Bastion and Firewall
+  - Separate Production and Non-Production Spoke VNets
+  - Management & Governance with proper subscription hierarchy
+  - Identity & Security dedicated section
+- **Official Microsoft Azure styling**:
+  - Azure color palette (#0078d4, #005a9e, #d83b01, #107c10)
+  - Segoe UI typography (Microsoft standard)
+  - Professional clustering with Azure-branded backgrounds
+- **Professional connection patterns**:
+  - Dotted lines for VNet peering connections
+  - Solid lines for direct connections (color-coded by type)
+  - Dashed lines for monitoring and diagnostics
+- **Enhanced network components**:
+  - Azure Bastion for secure access
+  - Azure Firewall for centralized security
+  - Azure Monitor for comprehensive diagnostics
+  - Proper cross-premises connectivity options
+- **Industry-standard architectural clarity**:
+  - Orthogonal line routing for clean appearance
+  - Optimized spacing and visual hierarchy
+  - Professional labeling and Azure branding
 
 ## File Output
 
