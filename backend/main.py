@@ -1032,290 +1032,265 @@ def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
     return components
 
 def generate_professional_mermaid(inputs: CustomerInputs) -> str:
-    """Generate professional Mermaid diagram for Azure Landing Zone"""
+    """Generate professional Mermaid diagram for Azure Landing Zone with Hub-and-Spoke architecture"""
     
     template = generate_architecture_template(inputs)
     network_model = inputs.network_model or "hub-spoke"
     
     lines = [
-        "graph TB",
-        "    subgraph \"Azure Tenant\"",
-        "        subgraph \"Management Groups\"",
-        "            ROOT[\"🏢 Root Management Group\"]"
+        "graph TD",
+        "    %% Professional Hub-and-Spoke Azure Landing Zone Architecture",
+        "    subgraph \"Azure Landing Zone Architecture\"",
+        "",
+        "        %% Cross-Premises Connectivity",
+        "        subgraph \"Cross-Premises\" [\"🏢 Cross-Premises Connectivity\"]",
+        "            ONPREM[\"🏢 On-Premises<br/>Data Center\"]",
+        "            INTERNET[\"🌐 Internet<br/>Users\"]"
     ]
     
-    # Add management group hierarchy
-    if template["template"]["name"] == "Enterprise Scale Landing Zone":
-        lines.extend([
-            "            PLATFORM[\"🏗️ Platform\"]",
-            "            LANDINGZONES[\"🚀 Landing Zones\"]", 
-            "            SANDBOX[\"🧪 Sandbox\"]",
-            "            DECOM[\"🗑️ Decommissioned\"]",
-            "            ROOT --> PLATFORM",
-            "            ROOT --> LANDINGZONES",
-            "            ROOT --> SANDBOX", 
-            "            ROOT --> DECOM"
-        ])
-    else:
-        lines.extend([
-            "            PLATFORM[\"🏗️ Platform\"]",
-            "            WORKLOADS[\"💼 Workloads\"]",
-            "            ROOT --> PLATFORM",
-            "            ROOT --> WORKLOADS"
-        ])
+    # Add ExpressRoute or VPN if specified
+    if inputs.network_services and any(svc in ["expressroute", "vpn_gateway"] for svc in inputs.network_services):
+        if "expressroute" in inputs.network_services:
+            lines.append("            ER[\"⚡ ExpressRoute<br/>Private Connection\"]")
+        if "vpn_gateway" in inputs.network_services:
+            lines.append("            VPN[\"🔒 VPN Gateway<br/>Site-to-Site\"]")
     
-    lines.append("        end")
-    
-    # Add subscription structure
     lines.extend([
-        "        subgraph \"Subscriptions\"",
-        "            CONN[\"🌐 Connectivity\"]",
-        "            IDENTITY[\"🔐 Identity\"]",
-        "            MGMT[\"📊 Management\"]",
-        "            PROD[\"🏭 Production\"]",
-        "            DEV[\"👩‍💻 Development\"]"
+        "        end",
+        "",
+        "        %% Hub Virtual Network (Central Hub)",
+        "        subgraph \"Hub\" [\"🏛️ Hub Virtual Network\"]",
+        "            direction TB",
+        "",
+        "            %% Network Security & Monitoring in Hub",
+        "            subgraph \"HubSecurity\" [\"🛡️ Network Security\"]",
+        "                FIREWALL[\"🛡️ Azure Firewall<br/>Central Security\"]"
     ])
     
-    if template["template"]["name"] == "Enterprise Scale Landing Zone":
-        lines.extend([
-            "            PLATFORM --> CONN",
-            "            PLATFORM --> IDENTITY", 
-            "            PLATFORM --> MGMT",
-            "            LANDINGZONES --> PROD",
-            "            LANDINGZONES --> DEV"
-        ])
-    else:
-        lines.extend([
-            "            PLATFORM --> CONN",
-            "            PLATFORM --> IDENTITY",
-            "            WORKLOADS --> PROD",
-            "            WORKLOADS --> DEV"
-        ])
-    
-    lines.append("        end")
-    
-    # Add networking services based on selections
-    if inputs.network_services:
-        lines.extend([
-            "        subgraph \"Networking Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.network_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            CONN --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add compute services based on selections
-    if inputs.compute_services:
-        lines.extend([
-            "        subgraph \"Compute Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.compute_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add storage services based on selections
-    if inputs.storage_services:
-        lines.extend([
-            "        subgraph \"Storage Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.storage_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add database services based on selections
-    if inputs.database_services:
-        lines.extend([
-            "        subgraph \"Database Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.database_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
-    
-    # Add security services based on selections
+    # Add network security services in hub
     if inputs.security_services:
-        lines.extend([
-            "        subgraph \"Security & Identity\""
-        ])
-        
-        service_connections = []
         for service in inputs.security_services:
-            if service in AZURE_SERVICES_MAPPING:
+            if service in AZURE_SERVICES_MAPPING and service in ["security_center", "sentinel", "defender"]:
                 service_info = AZURE_SERVICES_MAPPING[service]
                 service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            IDENTITY --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+                lines.append(f"                {service_id}[\"{service_info['icon']} {service_info['name']}<br/>Security Monitoring\"]")
     
-    # Add monitoring services based on selections
+    lines.extend([
+        "            end",
+        "",
+        "            %% Shared Services in Hub",
+        "            subgraph \"SharedServices\" [\"⚙️ Shared Services\"]",
+        "                DNS[\"🌐 Private DNS<br/>Name Resolution\"]",
+        "                BASTION[\"🔐 Azure Bastion<br/>Secure Access\"]"
+    ])
+    
+    # Add monitoring services in hub
     if inputs.monitoring_services:
-        lines.extend([
-            "        subgraph \"Monitoring & Management\""
-        ])
-        
-        service_connections = []
         for service in inputs.monitoring_services:
             if service in AZURE_SERVICES_MAPPING:
                 service_info = AZURE_SERVICES_MAPPING[service]
                 service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+                lines.append(f"                {service_id}[\"{service_info['icon']} {service_info['name']}<br/>Centralized Monitoring\"]")
     
-    # Add AI/ML services based on selections  
-    if inputs.ai_services:
-        lines.extend([
-            "        subgraph \"AI & Machine Learning\""
-        ])
-        
-        service_connections = []
-        for service in inputs.ai_services:
-            if service in AZURE_SERVICES_MAPPING:
+    lines.extend([
+        "            end",
+        "",
+        "            %% Gateway Services",
+        "            subgraph \"Gateways\" [\"🚪 Gateway Services\"]"
+    ])
+    
+    # Add gateways based on network services
+    if inputs.network_services:
+        for service in inputs.network_services:
+            if service in ["application_gateway", "load_balancer", "vpn_gateway"]:
                 service_info = AZURE_SERVICES_MAPPING[service]
                 service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+                lines.append(f"                {service_id}[\"{service_info['icon']} {service_info['name']}<br/>Traffic Management\"]")
     
-    # Add analytics services based on selections
-    if inputs.analytics_services:
-        lines.extend([
-            "        subgraph \"Data & Analytics\""
-        ])
-        
-        service_connections = []
-        for service in inputs.analytics_services:
+    lines.extend([
+        "            end",
+        "        end",
+        "",
+        "        %% Production Spoke",
+        "        subgraph \"ProdSpoke\" [\"🏭 Production Spoke\"]",
+        "            direction TB",
+        "            PRODVNET[\"🌐 Production VNet<br/>Workload Network\"]",
+        "",
+        "            %% Production Workloads",
+        "            subgraph \"ProdWorkloads\" [\"💼 Production Workloads\"]"
+    ])
+    
+    # Add compute services in production spoke
+    if inputs.compute_services:
+        for service in inputs.compute_services:
             if service in AZURE_SERVICES_MAPPING:
                 service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+                service_id = f"PROD_{service.upper().replace('_', '')}"
+                lines.append(f"                {service_id}[\"{service_info['icon']} {service_info['name']}<br/>Production\"]")
     
-    # Add integration services based on selections
-    if inputs.integration_services:
-        lines.extend([
-            "        subgraph \"Integration Services\""
-        ])
-        
-        service_connections = []
-        for service in inputs.integration_services:
+    # Add database services in production spoke
+    if inputs.database_services:
+        lines.append("            end")
+        lines.append("")
+        lines.append("            %% Production Data Services")
+        lines.append("            subgraph \"ProdData\" [\"🗄️ Data Services\"]")
+        for service in inputs.database_services:
             if service in AZURE_SERVICES_MAPPING:
                 service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            PROD --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+                service_id = f"PROD_{service.upper().replace('_', '')}"
+                lines.append(f"                {service_id}[\"{service_info['icon']} {service_info['name']}<br/>Production Data\"]")
     
-    # Add DevOps services based on selections
-    if inputs.devops_services:
-        lines.extend([
-            "        subgraph \"DevOps & Governance\""
-        ])
-        
-        service_connections = []
-        for service in inputs.devops_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+    lines.extend([
+        "            end",
+        "        end",
+        "",
+        "        %% Development Spoke",
+        "        subgraph \"DevSpoke\" [\"👩‍💻 Development Spoke\"]",
+        "            direction TB", 
+        "            DEVVNET[\"🌐 Development VNet<br/>Dev/Test Network\"]",
+        "",
+        "            %% Development Workloads", 
+        "            subgraph \"DevWorkloads\" [\"🧪 Development Workloads\"]"
+    ])
     
-    # Add backup services based on selections
-    if inputs.backup_services:
-        lines.extend([
-            "        subgraph \"Backup & Recovery\""
-        ])
-        
-        service_connections = []
-        for service in inputs.backup_services:
-            if service in AZURE_SERVICES_MAPPING:
-                service_info = AZURE_SERVICES_MAPPING[service]
-                service_id = service.upper().replace("_", "")
-                lines.append(f"            {service_id}[\"{service_info['icon']} {service_info['name']}\"]")
-                service_connections.append(f"            MGMT --> {service_id}")
-        
-        lines.extend(service_connections)
-        lines.append("        end")
+    # Add simplified dev services
+    if inputs.compute_services:
+        # Just show primary compute service for dev to avoid clutter
+        primary_compute = inputs.compute_services[0] if inputs.compute_services else "app_services"
+        if primary_compute in AZURE_SERVICES_MAPPING:
+            service_info = AZURE_SERVICES_MAPPING[primary_compute]
+            lines.append(f"                DEV_COMPUTE[\"{service_info['icon']} Dev/Test<br/>{service_info['name']}\"]")
     
-    # Fallback for legacy workload field
-    if not any([inputs.compute_services, inputs.network_services, inputs.storage_services, 
-               inputs.database_services, inputs.security_services, inputs.monitoring_services,
-               inputs.ai_services, inputs.analytics_services, inputs.integration_services,
-               inputs.devops_services, inputs.backup_services]) and inputs.workload:
-        workload_name = AZURE_SERVICES_MAPPING.get(inputs.workload, {"name": inputs.workload, "icon": "⚙️"})["name"]
+    lines.extend([
+        "            end",
+        "        end",
+        "",
+        "        %% Identity & Management Layer",
+        "        subgraph \"Identity\" [\"🔐 Identity & Management\"]",
+        "            AAD[\"👤 Azure Active Directory<br/>Identity Provider\"]",
+        "            KEYVAULT[\"🔐 Azure Key Vault<br/>Secrets Management\"]"
+    ])
+    
+    # Add governance and management services
+    if template["template"]["name"] == "Enterprise Scale Landing Zone":
         lines.extend([
-            "        subgraph \"Workloads\"",
-            f"            WORKLOAD[\"{workload_name}\"]",
-            "            PROD --> WORKLOAD",
-            "        end"
+            "            POLICY[\"📋 Azure Policy<br/>Governance\"]",
+            "            MGMTGROUPS[\"🏢 Management Groups<br/>Hierarchy\"]"
         ])
     
-    lines.append("    end")
+    lines.extend([
+        "        end",
+        "",
+        "        %% Define Hub-and-Spoke Connections",
+        "        %% Cross-premises to Hub",
+        "        ONPREM -.->|\"Private Connection\"| FIREWALL",
+        "        INTERNET -->|\"Public Access\"| FIREWALL"
+    ])
     
-    # Add styling
+    # Add specific gateway connections
+    if inputs.network_services:
+        if "expressroute" in inputs.network_services:
+            lines.append("        ER -.->|\"Private Peering\"| FIREWALL")
+        if "vpn_gateway" in inputs.network_services:
+            lines.append("        VPN -.->|\"Site-to-Site\"| FIREWALL")
+    
     lines.extend([
         "",
-        "    classDef mgmtGroup fill:#e1f5fe,stroke:#01579b,stroke-width:2px;",
-        "    classDef subscription fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;", 
-        "    classDef compute fill:#fff3e0,stroke:#e65100,stroke-width:2px;",
-        "    classDef network fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px;",
-        "    classDef storage fill:#fce4ec,stroke:#880e4f,stroke-width:2px;",
-        "    classDef database fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px;",
-        "    classDef security fill:#ffebee,stroke:#b71c1c,stroke-width:2px;",
-        "    classDef monitoring fill:#f1f8e9,stroke:#33691e,stroke-width:2px;",
-        "    classDef ai fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;",
-        "    classDef analytics fill:#e8eaf6,stroke:#1a237e,stroke-width:2px;",
-        "    classDef integration fill:#fff8e1,stroke:#f57f17,stroke-width:2px;",
-        "    classDef devops fill:#fafafa,stroke:#424242,stroke-width:2px;",
-        "    classDef backup fill:#e0f2f1,stroke:#00695c,stroke-width:2px;",
+        "        %% Hub to Spokes (Hub-and-Spoke Topology)",
+        "        FIREWALL -->|\"Secure Routing\"| PRODVNET",
+        "        FIREWALL -->|\"Secure Routing\"| DEVVNET",
         "",
-        "    class ROOT,PLATFORM,LANDINGZONES,SANDBOX,DECOM,WORKLOADS mgmtGroup;",
-        "    class CONN,IDENTITY,MGMT,PROD,DEV subscription;"
+        "        %% Shared Services Connections",
+        "        DNS -.->|\"Name Resolution\"| PRODVNET",
+        "        DNS -.->|\"Name Resolution\"| DEVVNET",
+        "        BASTION -.->|\"Secure Access\"| PRODVNET",
+        "        BASTION -.->|\"Secure Access\"| DEVVNET",
+        "",
+        "        %% Identity Integration",
+        "        AAD -.->|\"Authentication\"| PRODVNET",
+        "        AAD -.->|\"Authentication\"| DEVVNET",
+        "        KEYVAULT -.->|\"Secrets\"| PRODVNET",
+        "",
+        "        %% Security Monitoring",
     ])
+    
+    # Add security monitoring connections if services exist
+    if inputs.security_services:
+        for service in inputs.security_services:
+            if service in ["security_center", "sentinel", "defender"]:
+                service_id = service.upper().replace("_", "")
+                lines.extend([
+                    f"        {service_id} -.->|\"Monitor\"| PRODVNET",
+                    f"        {service_id} -.->|\"Monitor\"| DEVVNET"
+                ])
+    
+    # Add monitoring connections if services exist
+    if inputs.monitoring_services:
+        for service in inputs.monitoring_services:
+            service_id = service.upper().replace("_", "")
+            lines.extend([
+                f"        {service_id} -.->|\"Telemetry\"| PRODVNET",
+                f"        {service_id} -.->|\"Telemetry\"| DEVVNET"
+            ])
+    
+    lines.extend([
+        "",
+        "    end",
+        "",
+        "    %% Professional Styling",
+        "    classDef hubStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,font-weight:bold;",
+        "    classDef spokeStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;",
+        "    classDef securityStyle fill:#ffebee,stroke:#c62828,stroke-width:2px;",
+        "    classDef networkStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px;",
+        "    classDef identityStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;",
+        "    classDef workloadStyle fill:#f1f8e9,stroke:#558b2f,stroke-width:2px;",
+        "    classDef crossPremStyle fill:#fafafa,stroke:#616161,stroke-width:2px;",
+        "",
+        "    %% Apply Styles",
+        "    class FIREWALL,DNS,BASTION securityStyle;",
+        "    class PRODVNET,DEVVNET networkStyle;",
+        "    class AAD,KEYVAULT,POLICY,MGMTGROUPS identityStyle;",
+        "    class ONPREM,INTERNET,ER,VPN crossPremStyle;"
+    ])
+    
+    # Apply workload styles
+    if inputs.compute_services or inputs.database_services:
+        workload_ids = []
+        if inputs.compute_services:
+            for service in inputs.compute_services:
+                workload_ids.append(f"PROD_{service.upper().replace('_', '')}")
+        if inputs.database_services:
+            for service in inputs.database_services:
+                workload_ids.append(f"PROD_{service.upper().replace('_', '')}")
+        if "DEV_COMPUTE" in "\n".join(lines):
+            workload_ids.append("DEV_COMPUTE")
+        
+        if workload_ids:
+            lines.append(f"    class {','.join(workload_ids)} workloadStyle;")
+    
+    # Apply security and monitoring styles
+    if inputs.security_services:
+        security_ids = []
+        for service in inputs.security_services:
+            if service in ["security_center", "sentinel", "defender"]:
+                security_ids.append(service.upper().replace("_", ""))
+        if security_ids:
+            lines.append(f"    class {','.join(security_ids)} securityStyle;")
+    
+    if inputs.monitoring_services:
+        monitoring_ids = []
+        for service in inputs.monitoring_services:
+            monitoring_ids.append(service.upper().replace("_", ""))
+        if monitoring_ids:
+            lines.append(f"    class {','.join(monitoring_ids)} networkStyle;")
+    
+    if inputs.network_services:
+        gateway_ids = []
+        for service in inputs.network_services:
+            if service in ["application_gateway", "load_balancer", "vpn_gateway"]:
+                gateway_ids.append(service.upper().replace("_", ""))
+        if gateway_ids:
+            lines.append(f"    class {','.join(gateway_ids)} networkStyle;")
     
     return "\n".join(lines)
 
