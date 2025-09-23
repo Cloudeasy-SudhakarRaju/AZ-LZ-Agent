@@ -11,9 +11,11 @@ openpyxl==3.1.2
 python-pptx==0.6.23
 openpyxl>=3.1.2
 # LangChain and OpenAI dependencies (compatible versions)
-langchain==0.1.0
-langchain-openai==0.0.8
-openai==1.10.0
+langchain==0.1.20
+langchain-openai==0.1.1
+openai==1.12.0
+# LangGraph for agent orchestration
+langgraph==0.0.40
 # Additional dependencies for enhanced functionality
 python-dotenv==1.0.0
 

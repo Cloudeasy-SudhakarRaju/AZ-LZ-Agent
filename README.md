@@ -51,6 +51,31 @@ npm run dev
 
 ## 🧠 Intelligent Diagram Generation
 
+### 🚀 **NEW: LangGraph Hub-Spoke Orchestration**
+Advanced multi-agent workflow for Azure Landing Zone architecture that clearly separates hub and spoke components:
+
+```bash
+curl -X POST "http://127.0.0.1:8001/generate-hub-spoke-diagram" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "Enterprise e-commerce platform",
+    "network_services": ["azure_firewall", "bastion", "vpn_gateway"],
+    "compute_services": ["app_services", "aks"],
+    "database_services": ["sql_database", "cosmos_db"],
+    "security_services": ["security_center", "key_vault"],
+    "scalability": "high",
+    "security_posture": "zero_trust"
+  }'
+```
+
+**Key Features:**
+- **Hub Agent**: Manages shared services (firewall, bastion, DNS, security center, monitoring)
+- **Spoke Agent**: Manages workload services (app services, databases, storage, compute)
+- **Sequential Execution**: Hub → Spoke → Merge with intelligent context passing
+- **Network Topology**: Automated VNet design with proper CIDR allocation
+- **Service Categorization**: Intelligent classification of Azure services
+- **Enhanced Diagrams**: Clear visual separation in Mermaid and Draw.io outputs
+
 ### Simple Usage
 ```bash
 curl -X POST "http://127.0.0.1:8001/generate-intelligent-diagram" \
@@ -97,6 +122,11 @@ Every generated diagram is automatically reviewed against enterprise standards:
 - **Missing Elements**: Identifies gaps and provides recommendations
 
 ## 🛠️ API Endpoints
+
+### **NEW: LangGraph Orchestration**
+| Endpoint | Description |
+|----------|-------------|
+| `POST /generate-hub-spoke-diagram` | **Multi-agent hub-spoke architecture generation** |
 
 ### Intelligent Generation
 | Endpoint | Description |
