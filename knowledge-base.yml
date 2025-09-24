@@ -1,0 +1,21 @@
+# Azure Architecture Agent Knowledge Base
+
+## Overview
+This knowledge base contains essential information for working with the Azure Architecture Agent.
+
+## Components
+- **Compute**: Describe the compute resources used in the architecture (e.g., Virtual Machines, Azure Functions).
+- **Storage**: Define the storage solutions (e.g., Azure Blob Storage, Azure SQL Database).
+- **Networking**: Outline the networking components (e.g., Virtual Networks, Load Balancers).
+
+## Best Practices
+- Ensure that all resources are tagged properly for management and cost tracking.
+- Use Azure Monitor for monitoring and alerts.
+- Implement security best practices, such as using Network Security Groups (NSGs).
+
+## Reference Links
+- [Azure Documentation](https://docs.microsoft.com/en-us/azure/)
+- [Azure Architecture Center](https://docs.microsoft.com/en-us/azure/architecture/)
+
+## Conclusion
+This template serves as a starting point for documenting your Azure Architecture Agent knowledge base. Customize it as needed to fit your specific requirements.
