@@ -1,21 +1,183 @@
 # Azure Architecture Agent Knowledge Base
 
-## Overview
-This knowledge base contains essential information for working with the Azure Architecture Agent.
+patterns:
+  - scenario: "Secure Multi-Region Web App"
+    description: "Highly available web application deployed across multiple Azure regions with enhanced security."
+    inputs:
+      app_type: "web"
+      security: "high"
+      regions: ["eastus", "westus"]
+      workload: "stateless"
+      database: "sql"
+    components:
+      - name: vnet
+        config:
+          address_space: "10.0.0.0/16"
+      - name: app_gateway
+        config:
+          tier: "WAF_v2"
+          autoscale: true
+      - name: web_app
+        config:
+          sku: "PremiumV3"
+          region: "eastus"
+      - name: sql_db
+        config:
+          tier: "BusinessCritical"
+          geo_replication: true
+      - name: firewall
+        config:
+          threat_intelligence: "Alert"
+    relationships:
+      - from: app_gateway
+        to: web_app
+        type: "routes traffic"
+      - from: web_app
+        to: sql_db
+        type: "connects"
+      - from: firewall
+        to: vnet
+        type: "secures"
+    diagram: "https://link/to/sample-diagram"
+    bicep_template: "https://link/to/bicep-file"
+    arm_template: "https://link/to/arm-template"
+    notes: "Uses Azure Front Door for global routing and failover."
 
-## Components
-- **Compute**: Describe the compute resources used in the architecture (e.g., Virtual Machines, Azure Functions).
-- **Storage**: Define the storage solutions (e.g., Azure Blob Storage, Azure SQL Database).
-- **Networking**: Outline the networking components (e.g., Virtual Networks, Load Balancers).
+  - scenario: "Data Platform with Secure Ingestion"
+    description: "Data platform architecture with secure data ingestion and analytics."
+    inputs:
+      app_type: "data_platform"
+      security: "medium"
+      regions: ["centralus"]
+      ingestion: "batch"
+    components:
+      - name: data_factory
+      - name: storage_account
+        config:
+          access_tier: "Hot"
+          replication: "GZRS"
+          private_endpoint: true
+      - name: databricks
+        config:
+          node_type: "Standard_DS3_v2"
+          autoscale: true
+      - name: key_vault
+        config:
+          access_policy: "restricted"
+    relationships:
+      - from: data_factory
+        to: storage_account
+        type: "writes data"
+      - from: databricks
+        to: storage_account
+        type: "reads data"
+      - from: key_vault
+        to: databricks
+        type: "provides secrets"
+    diagram: "https://link/to/sample-data-platform-diagram"
+    bicep_template: "https://link/to/data-platform-bicep"
+    arm_template: "https://link/to/data-platform-arm"
+    notes: "Use private endpoints for all storage access."
 
-## Best Practices
-- Ensure that all resources are tagged properly for management and cost tracking.
-- Use Azure Monitor for monitoring and alerts.
-- Implement security best practices, such as using Network Security Groups (NSGs).
+input_to_pattern_mapping:
+  - input: "web app with SQL backend in two regions"
+    pattern: "Secure Multi-Region Web App"
+  - input: "data platform for batch ingestion and analytics"
+    pattern: "Data Platform with Secure Ingestion"
 
-## Reference Links
-- [Azure Documentation](https://docs.microsoft.com/en-us/azure/)
-- [Azure Architecture Center](https://docs.microsoft.com/en-us/azure/architecture/)
+components:
+  vnet:
+    description: "Virtual Network for Azure resources."
+    parameters:
+      - address_space
+      - subnets
+      - ddos_protection
+  app_gateway:
+    description: "Application Gateway with WAF."
+    parameters:
+      - tier
+      - autoscale
+      - ssl_certificates
+  web_app:
+    description: "Azure App Service."
+    parameters:
+      - sku
+      - region
+      - scaling
+  sql_db:
+    description: "Azure SQL Database."
+    parameters:
+      - tier
+      - geo_replication
+      - backup_policy
+  firewall:
+    description: "Azure Firewall."
+    parameters:
+      - threat_intelligence
+      - rules
+  data_factory:
+    description: "Azure Data Factory."
+    parameters:
+      - integration_runtime
+      - triggers
+  storage_account:
+    description: "Azure Storage Account."
+    parameters:
+      - access_tier
+      - replication
+      - private_endpoint
+  databricks:
+    description: "Azure Databricks."
+    parameters:
+      - node_type
+      - autoscale
+  key_vault:
+    description: "Azure Key Vault."
+    parameters:
+      - access_policy
+      - secrets
 
-## Conclusion
-This template serves as a starting point for documenting your Azure Architecture Agent knowledge base. Customize it as needed to fit your specific requirements.
+decision_logic:
+  - if: "app_type == web and security == high"
+    then: "Use pattern: Secure Multi-Region Web App"
+  - if: "app_type == data_platform and ingestion == batch"
+    then: "Use pattern: Data Platform with Secure Ingestion"
+
+diagrams_and_templates:
+  - tool: "Draw.io"
+    url: "https://github.com/jgraph/drawio"
+  - tool: "PlantUML"
+    url: "https://plantuml.com/azure"
+  - tool: "Visio"
+    notes: "Use Visio for compliance diagrams"
+  - tool: "Bicep"
+    url: "https://github.com/Azure/bicep"
+  - tool: "ARM"
+    url: "https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/"
+
+feedback:
+  - pattern: "Secure Multi-Region Web App"
+    reviews:
+      - by: "architect1"
+        date: "2025-09-22"
+        rating: 5
+        comments: "Meets HA and DR requirements."
+      - by: "architect2"
+        date: "2025-09-23"
+        rating: 4
+        comments: "Add more monitoring details."
+  - pattern: "Data Platform with Secure Ingestion"
+    reviews:
+      - by: "architect3"
+        date: "2025-09-22"
+        rating: 5
+        comments: "Secure ingestion well supported."
+
+resources:
+  architecture_center: "https://learn.microsoft.com/en-us/azure/architecture/"
+  reference_architectures: "https://learn.microsoft.com/en-us/azure/architecture/reference-architectures/"
+  bicep_templates: "https://github.com/Azure/bicep"
+  drawio_automations: "https://github.com/jgraph/drawio"
+  plantuml_for_azure: "https://plantuml.com/azure"
+
+# Extensible: Add more patterns, components, decision logic, and feedback as your knowledge base grows.
