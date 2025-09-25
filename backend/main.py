@@ -1036,39 +1036,59 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                         workloads_mg = Subscriptions("Workloads MG")
                         root_mg >> [platform_mg, workloads_mg]
                 
-                # Networking Architecture
+                # Hub-Spoke Network Architecture with Enhanced Visualization
                 with Cluster("Network Architecture", graph_attr={"bgcolor": "#f0fff0", "style": "rounded"}):
-                    # Hub VNet
-                    hub_vnet = VirtualNetworks("Hub VNet\n(Shared Services)")
+                    # Hub VNet with dashed border to indicate central hub
+                    with Cluster("Hub VNet", graph_attr={
+                        "bgcolor": "#e6f7ff", 
+                        "style": "dashed", 
+                        "color": "#0078d4",
+                        "penwidth": "2"
+                    }):
+                        hub_vnet = VirtualNetworks("Hub VNet\n(Shared Services)")
+                        
+                        # Network services based on selections - these go in the hub
+                        network_services = []
+                        if inputs.network_services:
+                            for service in inputs.network_services:
+                                if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                                    diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                                    service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                                    network_services.append(diagram_class(service_name))
+                        
+                        # Default network services if none specified
+                        if not network_services:
+                            firewall = Firewall("Azure Firewall")
+                            vpn_gw = VirtualNetworkGateways("VPN Gateway")
+                            network_services = [firewall, vpn_gw]
+                        
+                        # Connect network services within hub
+                        for ns in network_services:
+                            hub_vnet >> Edge(style="solid", color="#0078d4") >> ns
                     
-                    # Network services based on selections
-                    network_services = []
-                    if inputs.network_services:
-                        for service in inputs.network_services:
-                            if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
-                                diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
-                                service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                                network_services.append(diagram_class(service_name))
+                    # Spoke VNets with dashed borders to indicate spokes
+                    with Cluster("Production Spoke", graph_attr={
+                        "bgcolor": "#fff7e6", 
+                        "style": "dashed", 
+                        "color": "#d83b01",
+                        "penwidth": "2"
+                    }):
+                        prod_vnet = VirtualNetworks("Production VNet")
                     
-                    # Default network services if none specified
-                    if not network_services:
-                        firewall = Firewall("Azure Firewall")
-                        vpn_gw = VirtualNetworkGateways("VPN Gateway")
-                        network_services = [firewall, vpn_gw]
+                    with Cluster("Development Spoke", graph_attr={
+                        "bgcolor": "#f0f8e6", 
+                        "style": "dashed", 
+                        "color": "#107c10",
+                        "penwidth": "2"
+                    }):
+                        dev_vnet = VirtualNetworks("Development VNet")
                     
-                    # Spoke VNets
-                    prod_vnet = VirtualNetworks("Production VNet")
-                    dev_vnet = VirtualNetworks("Development VNet")
-                    
-                    # Connect hub to spokes
-                    hub_vnet >> [prod_vnet, dev_vnet]
+                    # Connect hub to spokes with dashed lines to show hub-spoke topology
+                    hub_vnet >> Edge(style="dashed", color="#666666", label="Hub-Spoke\nConnection") >> prod_vnet
+                    hub_vnet >> Edge(style="dashed", color="#666666", label="Hub-Spoke\nConnection") >> dev_vnet
                     
                     # Connect platform subscription to hub
                     platform_mg >> hub_vnet
-                    
-                    # Connect network services to hub
-                    for ns in network_services:
-                        hub_vnet >> ns
                 
                 # Add other service clusters based on input...
                 _add_service_clusters(inputs, prod_vnet, workloads_mg)
@@ -1283,9 +1303,15 @@ def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
 def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
     """Helper method to add service clusters to avoid code duplication"""
     try:
-        # Compute and Application Services
+        # Compute and Application Services - These go in the spoke with enhanced visualization
         if inputs.compute_services or inputs.workload:
-            with Cluster("Compute & Applications", graph_attr={"bgcolor": "#fff8dc", "style": "rounded"}):
+            with Cluster("Compute & Applications (Spoke)", graph_attr={
+                "bgcolor": "#fff8dc", 
+                "style": "dashed", 
+                "color": "#d83b01",
+                "penwidth": "2",
+                "label": "Spoke Workloads"
+            }):
                 compute_services = []
                 
                 # Add selected compute services
@@ -1307,14 +1333,19 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 if not compute_services:
                     compute_services.append(AppServices("Azure App Services"))
                 
-                # Connect compute services to production VNet
+                # Connect compute services to production VNet with dashed lines (spoke connection)
                 for cs in compute_services:
-                    prod_vnet >> cs
-                    workloads_mg >> cs
+                    prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nWorkload") >> cs
+                    workloads_mg >> Edge(style="dotted", color="#666666") >> cs
         
-        # Storage Services
+        # Storage Services - Also in spoke
         if inputs.storage_services:
-            with Cluster("Storage & Data", graph_attr={"bgcolor": "#f5f5dc", "style": "rounded"}):
+            with Cluster("Storage & Data (Spoke)", graph_attr={
+                "bgcolor": "#f5f5dc", 
+                "style": "dashed", 
+                "color": "#d83b01",
+                "penwidth": "2"
+            }):
                 storage_services = []
                 for service in inputs.storage_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
@@ -1325,14 +1356,19 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 if not storage_services:
                     storage_services.append(StorageAccounts("Storage Accounts"))
                 
-                # Connect storage to production VNet and workloads
+                # Connect storage to production VNet with dashed lines (spoke connection)
                 for ss in storage_services:
-                    prod_vnet >> ss
-                    workloads_mg >> ss
+                    prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nData") >> ss
+                    workloads_mg >> Edge(style="dotted", color="#666666") >> ss
         
-        # Database Services
+        # Database Services - Also in spoke
         if inputs.database_services:
-            with Cluster("Databases", graph_attr={"bgcolor": "#e6f3ff", "style": "rounded"}):
+            with Cluster("Databases (Spoke)", graph_attr={
+                "bgcolor": "#e6f3ff", 
+                "style": "dashed", 
+                "color": "#d83b01",
+                "penwidth": "2"
+            }):
                 database_services = []
                 for service in inputs.database_services:
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
@@ -1340,10 +1376,10 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
                         database_services.append(diagram_class(service_name))
                 
-                # Connect databases to production VNet and workloads
+                # Connect databases to production VNet with dashed lines (spoke connection)
                 for ds in database_services:
-                    prod_vnet >> ds
-                    workloads_mg >> ds
+                    prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nDatabase") >> ds
+                    workloads_mg >> Edge(style="dotted", color="#666666") >> ds
         
         # Analytics Services
         if inputs.analytics_services:
@@ -2488,10 +2524,19 @@ def root():
             "/validate-and-generate-diagram - Validate and generate diagrams with feedback",
             "/generate-diagram - Generate architecture diagram (Mermaid + Draw.io)",
             "/generate-azure-diagram - Generate Azure architecture diagram with official Azure icons (Python Diagrams)",
+            "/generate-hub-spoke-vm-firewall - Enhanced hub-spoke diagram with VM in spoke and Firewall in hub (with dashed lines)",
             "/generate-drawio - Generate Draw.io XML",
             "/generate-comprehensive-azure-architecture - Full architecture generation",
             "/generate-intelligent-diagram - AI-powered diagram generation",
             "/health - Health check"
+        ],
+        "enhanced_features": [
+            "Hub-spoke architecture with visual distinction using dashed boxes",
+            "VM placement in spoke VNets with enhanced borders",
+            "Network services (Firewall) placement in hub with solid connections",
+            "Dashed line connections showing hub-spoke topology",
+            "Azure stencils using mingrammer Python library",
+            "Enhanced enterprise resource visualization"
         ]
     }
 
@@ -2862,6 +2907,66 @@ def download_azure_diagram(filename: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error downloading diagram: {str(e)}")
+
+@app.post("/generate-hub-spoke-vm-firewall")
+def generate_hub_spoke_vm_firewall_diagram(inputs: CustomerInputs):
+    """Generate enhanced hub-spoke diagram specifically showing VM in spoke connected to Firewall in hub with dashed lines"""
+    try:
+        logger.info("Starting enhanced hub-spoke VM-Firewall diagram generation")
+        
+        # Force the configuration to show VM in spoke and Firewall in hub for demonstration
+        enhanced_inputs = CustomerInputs(
+            business_objective=inputs.business_objective or "Hub-Spoke Architecture with VM and Firewall",
+            compute_services=["virtual_machines"],  # VM goes to spoke
+            network_services=["firewall"],  # Firewall goes to hub
+            scalability=inputs.scalability or "medium",
+            security_posture=inputs.security_posture or "standard",
+            show_enterprise_connections=True,  # Enhanced visualization
+            enterprise_resources_mode="enabled"  # Show all enterprise features
+        )
+        
+        diagram_path = generate_azure_architecture_diagram(enhanced_inputs)
+        
+        if not os.path.exists(diagram_path):
+            raise HTTPException(status_code=500, detail="Failed to generate hub-spoke diagram file")
+        
+        # Read the generated PNG file
+        with open(diagram_path, "rb") as f:
+            diagram_data = f.read()
+        
+        # Encode the diagram as base64 for JSON response
+        import base64
+        diagram_base64 = base64.b64encode(diagram_data).decode('utf-8')
+        
+        filename = os.path.basename(diagram_path)
+        
+        return {
+            "success": True,
+            "message": "Enhanced hub-spoke diagram with VM and Firewall generated successfully",
+            "description": "VM placed in spoke VNet with dashed box, Firewall in hub, connected with dashed lines",
+            "diagram_path": diagram_path,
+            "diagram_base64": diagram_base64,
+            "filename": filename,
+            "download_url": f"/generate-azure-diagram/download/{filename}",
+            "file_size": os.path.getsize(diagram_path),
+            "features": [
+                "VM placed in Production Spoke with dashed border",
+                "Azure Firewall placed in Hub with solid border", 
+                "Dashed line connections showing hub-spoke topology",
+                "Enhanced visual distinction between hub and spoke resources",
+                "Proper Azure stencils using mingrammer python library"
+            ],
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0.0",
+                "agent": "Azure Landing Zone Agent - Enhanced Hub-Spoke",
+                "diagram_type": "Hub-Spoke VM-Firewall with Dashed Lines"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate hub-spoke VM-Firewall diagram: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to generate hub-spoke diagram: {str(e)}")
 
 @app.post("/generate-drawio", response_class=Response)
 def generate_drawio_endpoint(inputs: CustomerInputs):
