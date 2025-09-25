@@ -3263,9 +3263,45 @@ def generate_intelligent_diagram(request: Dict[str, str]):
             # Execute the Python code in a safe environment
             logger.info("Executing generated diagram code...")
             
-            # Create a safe execution environment
+            # Create a safe execution environment with necessary built-ins
+            # Include essential built-ins that are needed for diagram generation
+            import builtins
+            safe_builtins = {
+                '__import__': builtins.__import__,
+                '__build_class__': builtins.__build_class__,
+                'len': len,
+                'str': str,
+                'dict': dict,
+                'list': list,
+                'tuple': tuple,
+                'set': set,
+                'bool': bool,
+                'int': int,
+                'float': float,
+                'range': range,
+                'enumerate': enumerate,
+                'zip': zip,
+                'abs': abs,
+                'min': min,
+                'max': max,
+                'sum': sum,
+                'sorted': sorted,
+                'reversed': reversed,
+                'getattr': getattr,
+                'setattr': setattr,
+                'hasattr': hasattr,
+                'isinstance': isinstance,
+                'issubclass': issubclass,
+                'type': type,
+                'repr': repr,
+                'format': format,
+                # Note: Deliberately excluding potentially dangerous functions like:
+                # - open, exec, eval, compile, __import__ with custom hooks
+                # - file system operations, network operations, etc.
+            }
+            
             exec_globals = {
-                '__builtins__': {},
+                '__builtins__': safe_builtins,
                 'Diagram': Diagram,
                 'Cluster': Cluster,
                 'Edge': Edge,
