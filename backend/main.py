@@ -890,49 +890,169 @@ def _get_user_prompt_for_enterprise_resources() -> str:
             "Should connections between these resources and VM/VNet be explicitly shown?")
 
 def _add_enterprise_resource_connections(inputs: CustomerInputs, hub_vnet, prod_vnet, dev_vnet, aad, key_vault, network_services):
-    """Add explicit connections between enterprise resources and infrastructure components"""
+    """Add comprehensive connections between enterprise resources and infrastructure components"""
     logger.info("Adding enhanced enterprise resource connections")
     
-    # Find the firewall in network services
+    # Find specific network services
     firewall_service = None
-    for ns in network_services:
-        if hasattr(ns, '_name') and 'Firewall' in ns._name:
-            firewall_service = ns
-            break
+    vpn_gateway = None
+    app_gateway = None
+    load_balancer = None
     
-    # Connect Key Vault to VNets (for VM access)
+    for ns in network_services:
+        if hasattr(ns, '_name'):
+            if 'Firewall' in ns._name:
+                firewall_service = ns
+            elif 'VPN' in ns._name or 'Gateway' in ns._name:
+                vpn_gateway = ns
+            elif 'Application' in ns._name or 'AppGateway' in ns._name:
+                app_gateway = ns
+            elif 'LoadBalancer' in ns._name or 'Balancer' in ns._name:
+                load_balancer = ns
+    
+    # 1. Core Security Connections - Key Vault to all environments
     try:
-        key_vault >> prod_vnet
-        key_vault >> dev_vnet
-        logger.debug("Connected Key Vault to VNets")
+        key_vault >> Edge(label="Secrets", style="bold", color="orange") >> prod_vnet
+        key_vault >> Edge(label="Secrets", style="bold", color="orange") >> dev_vnet
+        if hub_vnet:
+            key_vault >> Edge(label="Hub Secrets", style="bold", color="orange") >> hub_vnet
+        logger.debug("Connected Key Vault to all VNets with labeled connections")
     except Exception as e:
         logger.debug(f"Key Vault connection to VNets: {e}")
     
-    # Connect Active Directory to VNets (for authentication)
+    # 2. Identity Connections - Azure AD to all environments
     try:
-        aad >> prod_vnet
-        aad >> dev_vnet
-        logger.debug("Connected Active Directory to VNets")
+        aad >> Edge(label="Authentication", style="bold", color="blue") >> prod_vnet
+        aad >> Edge(label="Authentication", style="bold", color="blue") >> dev_vnet
+        if hub_vnet:
+            aad >> Edge(label="Hub Identity", style="bold", color="blue") >> hub_vnet
+        logger.debug("Connected Active Directory to all VNets with authentication labels")
     except Exception as e:
         logger.debug(f"Active Directory connection to VNets: {e}")
     
-    # Connect Firewall to VNets (for security)
+    # 3. Enhanced Firewall Connections - Security traffic routing
     if firewall_service:
         try:
-            firewall_service >> prod_vnet
-            firewall_service >> dev_vnet
-            logger.debug("Connected Firewall to VNets")
+            # Firewall as central security gateway
+            firewall_service >> Edge(label="Secure Routing", style="bold", color="red") >> prod_vnet
+            firewall_service >> Edge(label="Secure Routing", style="bold", color="red") >> dev_vnet
+            
+            # Bi-directional traffic flow indication
+            prod_vnet >> Edge(label="Return Traffic", style="dashed", color="red") >> firewall_service
+            dev_vnet >> Edge(label="Return Traffic", style="dashed", color="red") >> firewall_service
+            logger.debug("Connected Firewall with bi-directional traffic flow")
         except Exception as e:
             logger.debug(f"Firewall connection to VNets: {e}")
     
-    # Connect security services to each other for integrated security
+    # 4. Security Services Integration - Central security orchestration
     if firewall_service:
         try:
-            aad >> firewall_service
-            key_vault >> firewall_service
-            logger.debug("Connected security services together")
+            # Identity-driven security policies
+            aad >> Edge(label="Security Policies", style="dotted", color="purple") >> firewall_service
+            # Key management for firewall
+            key_vault >> Edge(label="Certificates", style="dotted", color="orange") >> firewall_service
+            logger.debug("Connected security services with policy and certificate flows")
         except Exception as e:
             logger.debug(f"Security services interconnection: {e}")
+    
+    # 5. Gateway Connections - Hybrid connectivity
+    if vpn_gateway:
+        try:
+            vpn_gateway >> Edge(label="Hybrid Access", style="bold", color="green") >> hub_vnet
+            # Connect gateway to security services
+            aad >> Edge(label="VPN Auth", style="dotted", color="blue") >> vpn_gateway
+            if firewall_service:
+                vpn_gateway >> Edge(label="Gateway Traffic", style="solid", color="green") >> firewall_service
+            logger.debug("Connected VPN Gateway with hybrid access patterns")
+        except Exception as e:
+            logger.debug(f"VPN Gateway connections: {e}")
+    
+    # 6. Application Gateway Connections - Web application delivery
+    if app_gateway:
+        try:
+            app_gateway >> Edge(label="Web Traffic", style="bold", color="cyan") >> prod_vnet
+            key_vault >> Edge(label="SSL Certs", style="dotted", color="orange") >> app_gateway
+            if firewall_service:
+                app_gateway >> Edge(label="Security Scanning", style="dashed", color="red") >> firewall_service
+            logger.debug("Connected Application Gateway with web delivery patterns")
+        except Exception as e:
+            logger.debug(f"Application Gateway connections: {e}")
+    
+    # 7. Load Balancer Connections - Traffic distribution
+    if load_balancer:
+        try:
+            load_balancer >> Edge(label="Load Distribution", style="bold", color="navy") >> prod_vnet
+            load_balancer >> Edge(label="Health Checks", style="dotted", color="navy") >> dev_vnet
+            logger.debug("Connected Load Balancer with traffic distribution patterns")
+        except Exception as e:
+            logger.debug(f"Load Balancer connections: {e}")
+    
+    logger.info("Enhanced enterprise resource connections completed")
+
+def _add_service_to_service_connections(inputs: CustomerInputs, compute_services, storage_services, database_services, aad, key_vault):
+    """Add intelligent connections between different service tiers"""
+    logger.info("Adding service-to-service connections")
+    
+    try:
+        # 1. Compute to Storage Connections - Data persistence patterns
+        if compute_services and storage_services:
+            for compute in compute_services:
+                for storage in storage_services:
+                    compute >> Edge(label="Data Storage", style="solid", color="darkgreen") >> storage
+                    logger.debug(f"Connected {compute} to {storage} for data persistence")
+        
+        # 2. Compute to Database Connections - Application data patterns
+        if compute_services and database_services:
+            for compute in compute_services:
+                for database in database_services:
+                    compute >> Edge(label="Database Access", style="bold", color="darkblue") >> database
+                    logger.debug(f"Connected {compute} to {database} for application data")
+        
+        # 3. Identity Integration - All services need authentication
+        if aad:
+            # Connect identity to compute services
+            if compute_services:
+                for compute in compute_services:
+                    aad >> Edge(label="Service Identity", style="dotted", color="blue") >> compute
+            
+            # Connect identity to data services for access control
+            if database_services:
+                for database in database_services:
+                    aad >> Edge(label="Data Access Control", style="dotted", color="blue") >> database
+            
+            if storage_services:
+                for storage in storage_services:
+                    aad >> Edge(label="Storage Access Control", style="dotted", color="blue") >> storage
+        
+        # 4. Key Vault Integration - Secrets management for all services
+        if key_vault:
+            # Connect Key Vault to compute services for application secrets
+            if compute_services:
+                for compute in compute_services:
+                    key_vault >> Edge(label="App Secrets", style="dashed", color="orange") >> compute
+            
+            # Connect Key Vault to databases for connection strings and keys
+            if database_services:
+                for database in database_services:
+                    key_vault >> Edge(label="DB Connection Strings", style="dashed", color="orange") >> database
+            
+            # Connect Key Vault to storage for access keys
+            if storage_services:
+                for storage in storage_services:
+                    key_vault >> Edge(label="Storage Keys", style="dashed", color="orange") >> storage
+        
+        # 5. Data Flow Patterns - Storage to Analytics
+        if storage_services and inputs.analytics_services:
+            for storage in storage_services:
+                # Indicate data flow from storage to analytics
+                # Note: analytics_services would need to be passed to this function or accessed globally
+                logger.debug(f"Data flow pattern identified from {storage} to analytics services")
+        
+        logger.info("Service-to-service connections completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error adding service-to-service connections: {e}")
+        logger.debug(traceback.format_exc())
 
 def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str = None, format: str = "png") -> str:
     """Generate Azure architecture diagram using the Python Diagrams library with proper Azure icons"""
@@ -1090,8 +1210,8 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                     # Connect platform subscription to hub
                     platform_mg >> hub_vnet
                 
-                # Add other service clusters based on input...
-                _add_service_clusters(inputs, prod_vnet, workloads_mg)
+                # Add other service clusters based on input and get service collections for connectivity
+                service_collections = _add_service_clusters(inputs, prod_vnet, workloads_mg)
                 
                 # Core security connections
                 aad >> key_vault
@@ -1100,6 +1220,29 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 # Enhanced enterprise resource connections (when enabled)
                 if inputs.show_enterprise_connections:
                     _add_enterprise_resource_connections(inputs, hub_vnet, prod_vnet, dev_vnet, aad, key_vault, network_services)
+                
+                # Add comprehensive service-to-service connections
+                _add_service_to_service_connections(
+                    inputs, 
+                    service_collections.get('compute_services', []),
+                    service_collections.get('storage_services', []), 
+                    service_collections.get('database_services', []),
+                    aad, 
+                    key_vault
+                )
+                
+                # Add monitoring connections to all services (monitoring everything)
+                if service_collections.get('monitoring_services'):
+                    for monitor in service_collections['monitoring_services']:
+                        # Monitor all compute services
+                        for compute in service_collections.get('compute_services', []):
+                            monitor >> Edge(label="Monitoring", style="dotted", color="green") >> compute
+                        # Monitor all databases  
+                        for database in service_collections.get('database_services', []):
+                            monitor >> Edge(label="DB Monitoring", style="dotted", color="green") >> database
+                        # Monitor all storage
+                        for storage in service_collections.get('storage_services', []):
+                            monitor >> Edge(label="Storage Monitoring", style="dotted", color="green") >> storage
                 
                 logger.info("Diagram structure created successfully")
         
@@ -1301,7 +1444,15 @@ def generate_simple_svg_diagram(inputs: CustomerInputs) -> str:
     return svg_content
 
 def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
-    """Helper method to add service clusters to avoid code duplication"""
+    """Helper method to add service clusters to avoid code duplication and return service references for connectivity"""
+    service_collections = {
+        'compute_services': [],
+        'storage_services': [],
+        'database_services': [],
+        'analytics_services': [],
+        'monitoring_services': []
+    }
+    
     try:
         # Compute and Application Services - These go in the spoke with enhanced visualization
         if inputs.compute_services or inputs.workload:
@@ -1320,7 +1471,8 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                         if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                             diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                             service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                            compute_services.append(diagram_class(service_name))
+                            service_instance = diagram_class(service_name)
+                            compute_services.append(service_instance)
                 
                 # Fallback to workload if no specific compute services
                 if not compute_services and inputs.workload:
@@ -1333,7 +1485,10 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 if not compute_services:
                     compute_services.append(AppServices("Azure App Services"))
                 
-                # Connect compute services to production VNet with dashed lines (spoke connection)
+                # Store for connectivity
+                service_collections['compute_services'] = compute_services
+                
+                # Connect compute services to production VNet with enhanced labels
                 for cs in compute_services:
                     prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nWorkload") >> cs
                     workloads_mg >> Edge(style="dotted", color="#666666") >> cs
@@ -1351,12 +1506,16 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                        storage_services.append(diagram_class(service_name))
+                        service_instance = diagram_class(service_name)
+                        storage_services.append(service_instance)
                 
                 if not storage_services:
                     storage_services.append(StorageAccounts("Storage Accounts"))
                 
-                # Connect storage to production VNet with dashed lines (spoke connection)
+                # Store for connectivity
+                service_collections['storage_services'] = storage_services
+                
+                # Connect storage to production VNet with enhanced labels
                 for ss in storage_services:
                     prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nData") >> ss
                     workloads_mg >> Edge(style="dotted", color="#666666") >> ss
@@ -1374,9 +1533,13 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                        database_services.append(diagram_class(service_name))
+                        service_instance = diagram_class(service_name)
+                        database_services.append(service_instance)
                 
-                # Connect databases to production VNet with dashed lines (spoke connection)
+                # Store for connectivity
+                service_collections['database_services'] = database_services
+                
+                # Connect databases to production VNet with enhanced labels
                 for ds in database_services:
                     prod_vnet >> Edge(style="dashed", color="#d83b01", label="Spoke\nDatabase") >> ds
                     workloads_mg >> Edge(style="dotted", color="#666666") >> ds
@@ -1389,11 +1552,15 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                     if service in AZURE_SERVICES_MAPPING and AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                         diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                         service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                        analytics_services.append(diagram_class(service_name))
+                        service_instance = diagram_class(service_name)
+                        analytics_services.append(service_instance)
                 
-                # Connect analytics to production VNet and workloads
+                # Store for connectivity
+                service_collections['analytics_services'] = analytics_services
+                
+                # Connect analytics to production VNet and workloads with data flow labels
                 for as_service in analytics_services:
-                    prod_vnet >> as_service
+                    prod_vnet >> Edge(label="Analytics Data", style="solid", color="purple") >> as_service
                     workloads_mg >> as_service
         
         # Integration Services
@@ -1408,7 +1575,7 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 
                 # Connect integration services to production VNet and workloads
                 for is_service in integration_services:
-                    prod_vnet >> is_service
+                    prod_vnet >> Edge(label="Integration Flow", style="solid", color="teal") >> is_service
                     workloads_mg >> is_service
         
         # DevOps Services  
@@ -1423,7 +1590,7 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 
                 # Connect DevOps services to management
                 for ds in devops_services:
-                    workloads_mg >> ds
+                    workloads_mg >> Edge(label="CI/CD Pipeline", style="dotted", color="gray") >> ds
         
         # Monitoring & Management Services
         if inputs.monitoring_services:
@@ -1431,26 +1598,27 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 monitoring_services_list = []
                 for service in inputs.monitoring_services:
                     if service in AZURE_SERVICES_MAPPING:
-                        # Since Azure Monitor doesn't have a diagram class, we'll create a text representation
-                        # For services with diagram classes, use them; otherwise skip visual representation
-                        # This allows the service to be tracked but not break the diagram
                         if AZURE_SERVICES_MAPPING[service]["diagram_class"]:
                             diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
                             service_name = AZURE_SERVICES_MAPPING[service]["name"]
-                            monitoring_services_list.append(diagram_class(service_name))
+                            service_instance = diagram_class(service_name)
+                            monitoring_services_list.append(service_instance)
                         else:
-                            # For services like Azure Monitor that don't have diagram classes,
-                            # we'll log that they're included but not add visual components
                             logger.info(f"Monitoring service '{service}' included but no visual diagram component available")
                 
-                # Connect monitoring services to VNets and management
+                # Store for connectivity
+                service_collections['monitoring_services'] = monitoring_services_list
+                
+                # Connect monitoring services to VNets and management with observability labels
                 for ms in monitoring_services_list:
-                    prod_vnet >> ms
+                    prod_vnet >> Edge(label="Telemetry", style="dotted", color="darkgreen") >> ms
                     workloads_mg >> ms
-                    
+    
     except Exception as e:
         logger.warning(f"Error adding service clusters: {str(e)}")
         # Don't fail the entire diagram generation for service cluster issues
+    
+    return service_collections
 
 
 def generate_architecture_template(inputs: CustomerInputs) -> Dict[str, Any]:
@@ -1679,6 +1847,103 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
                 f"        {service_id} -.->|\"Telemetry\"| DEVVNET"
             ])
     
+    # Enhanced service-to-service connectivity
+    lines.append("        %% Enhanced Service-to-Service Connectivity")
+    
+    # Database connectivity patterns
+    if inputs.database_services:
+        for db_service in inputs.database_services:
+            if db_service == "sql_database":
+                lines.extend([
+                    "        %% SQL Database Connections",
+                    "        PRODDB[\"🗄️ SQL Database<br/>Production Data\"]",
+                    "        FIREWALL -->|\"Database Security\"| PRODDB",
+                    "        KEYVAULT -.->|\"Connection Strings\"| PRODDB",
+                    "        AAD -.->|\"Database Authentication\"| PRODDB"
+                ])
+                # Connect to compute services if they exist
+                if inputs.compute_services:
+                    for compute in inputs.compute_services:
+                        if compute == "virtual_machines":
+                            lines.append("        PROD_VIRTUALMACHINES -->|\"Application Data\"| PRODDB")
+                        elif compute == "app_services":
+                            lines.append("        PRODAPP -->|\"Application Data\"| PRODDB")
+            elif db_service == "cosmos_db":
+                lines.extend([
+                    "        %% Cosmos DB Connections", 
+                    "        PRODCOSMOS[\"🌍 Cosmos DB<br/>NoSQL Database\"]",
+                    "        FIREWALL -->|\"NoSQL Security\"| PRODCOSMOS",
+                    "        AAD -.->|\"Cosmos Authentication\"| PRODCOSMOS"
+                ])
+    
+    # Storage service connections
+    if inputs.storage_services:
+        lines.extend([
+            "        %% Storage Connectivity",
+            "        PRODSTORAGE[\"💾 Storage Accounts<br/>Data Persistence\"]",
+            "        KEYVAULT -.->|\"Storage Keys\"| PRODSTORAGE",
+            "        AAD -.->|\"Storage Access Control\"| PRODSTORAGE"
+        ])
+        # Connect to compute services
+        if inputs.compute_services:
+            for compute in inputs.compute_services:
+                if compute == "virtual_machines":
+                    lines.append("        PROD_VIRTUALMACHINES -->|\"Data Storage\"| PRODSTORAGE")
+                elif compute == "app_services":
+                    lines.append("        PRODAPP -->|\"App Data\"| PRODSTORAGE")
+    
+    # Analytics service connections (data flow patterns)
+    if inputs.analytics_services:
+        lines.extend([
+            "        %% Analytics & Data Flow",
+            "        ANALYTICS[\"🧠 Analytics Services<br/>Data Processing\"]"
+        ])
+        
+        # Connect storage to analytics for data flow
+        if inputs.storage_services:
+            lines.append("        PRODSTORAGE -->|\"Data Pipeline\"| ANALYTICS")
+        
+        # Connect databases to analytics
+        if inputs.database_services:
+            if "sql_database" in inputs.database_services:
+                lines.append("        PRODDB -->|\"Data Export\"| ANALYTICS")
+            if "cosmos_db" in inputs.database_services:
+                lines.append("        PRODCOSMOS -->|\"Document Analytics\"| ANALYTICS")
+    
+    # DevOps service connections
+    if inputs.devops_services:
+        lines.extend([
+            "        %% DevOps & CI/CD",
+            "        DEVOPS[\"⚙️ DevOps Services<br/>CI/CD Pipeline\"]",
+            "        AAD -.->|\"DevOps Authentication\"| DEVOPS",
+            "        KEYVAULT -.->|\"Deployment Secrets\"| DEVOPS"
+        ])
+        
+        # Connect DevOps to compute services
+        if inputs.compute_services:
+            for compute in inputs.compute_services:
+                if compute == "virtual_machines":
+                    lines.append("        DEVOPS -->|\"VM Deployment\"| PROD_VIRTUALMACHINES")
+                elif compute == "app_services":
+                    lines.append("        DEVOPS -->|\"App Deployment\"| PRODAPP")
+                elif compute == "aks":
+                    lines.append("        DEVOPS -->|\"Container Deployment\"| PRODAKS")
+    
+    # Integration service connections
+    if inputs.integration_services:
+        lines.extend([
+            "        %% Integration Services",
+            "        INTEGRATION[\"🔗 Integration Services<br/>API Management\"]",
+            "        AAD -.->|\"API Authentication\"| INTEGRATION"
+        ])
+        
+        # Connect integration to databases and storage
+        if inputs.database_services:
+            lines.append("        INTEGRATION -->|\"Data Integration\"| PRODDB")
+        if inputs.storage_services:
+            lines.append("        INTEGRATION -->|\"Storage Integration\"| PRODSTORAGE")
+    
+    
     lines.extend([
         "",
         "    end",
@@ -1699,7 +1964,17 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         "    class ONPREM,INTERNET,ER,VPN crossPremStyle;"
     ])
     
-    # Apply workload styles
+    # Apply workload styles - include new services
+    workload_services = ["PROD_VIRTUALMACHINES", "DEV_COMPUTE", "PRODAPP", "PRODAKS", "PRODDB", "PRODCOSMOS", "PRODSTORAGE", "ANALYTICS", "DEVOPS", "INTEGRATION"]
+    
+    # Only include services that actually exist in the diagram
+    existing_workload_services = []
+    for service_id in workload_services:
+        if any(service_id in line for line in lines):
+            existing_workload_services.append(service_id)
+    
+    if existing_workload_services:
+        lines.append(f"    class {','.join(existing_workload_services)} workloadStyle;")
     if inputs.compute_services or inputs.database_services:
         workload_ids = []
         if inputs.compute_services:
@@ -1911,22 +2186,123 @@ def _generate_orchestrated_mermaid(inputs: CustomerInputs, orchestration_result:
     lines.extend([
         "    INTERNET -->|\"Public Traffic\"| FIREWALL",
         "",
+        "    %% Enhanced Service-to-Service Connections"
+    ])
+    
+    # Add enhanced service-to-service connectivity based on services present
+    spoke_services = spokes_data.get("services", [])
+    
+    # Identity and security service connections
+    if "azure_ad" in hub_services:
+        lines.extend([
+            "    AD -.->|\"Authentication\"| PRODVNET",
+            "    AD -.->|\"Authentication\"| DEVVNET"
+        ])
+    
+    # Key Vault connections (if present in security services)
+    if inputs.security_services and "key_vault" in inputs.security_services:
+        lines.extend([
+            "    %% Key Vault Integration",
+            "    KEYVAULT[\"🔐 Azure Key Vault<br/>Secrets Management\"]",
+            "    KEYVAULT -.->|\"Secrets & Certificates\"| PRODVNET",
+            "    KEYVAULT -.->|\"Secrets & Certificates\"| DEVVNET",
+            "    KEYVAULT -.->|\"Firewall Certificates\"| FIREWALL"
+        ])
+    
+    # Database and storage connectivity patterns
+    if inputs.database_services:
+        for db_service in inputs.database_services:
+            if db_service == "sql_database":
+                lines.extend([
+                    "    %% Database Connectivity",
+                    "    FIREWALL -->|\"Database Security\"| PRODDB",
+                    "    PRODAPP -->|\"Application Data\"| PRODDB",
+                    "    PRODVM -->|\"Database Access\"| PRODDB"
+                ])
+            elif db_service == "cosmos_db":
+                lines.extend([
+                    "    %% Cosmos DB Connectivity", 
+                    "    FIREWALL -->|\"NoSQL Security\"| PRODCOSMOS",
+                    "    PRODAPP -->|\"Document Data\"| PRODCOSMOS"
+                ])
+    
+    # Storage service connections
+    if inputs.storage_services:
+        lines.extend([
+            "    %% Storage Connectivity",
+            "    PRODSTORAGE -->|\"Data Persistence\"| PRODAPP",
+            "    PRODSTORAGE -->|\"VM Storage\"| PRODVM",
+            "    FIREWALL -->|\"Storage Security\"| PRODSTORAGE"
+        ])
+    
+    # Monitoring connections to all services
+    if inputs.monitoring_services and "monitor" in inputs.monitoring_services:
+        lines.extend([
+            "    %% Monitoring & Observability",
+            "    MONITOR[\"📊 Azure Monitor<br/>Observability\"]",
+            "    MONITOR -.->|\"Telemetry\"| PRODVNET",
+            "    MONITOR -.->|\"Telemetry\"| DEVVNET",
+            "    MONITOR -.->|\"Hub Monitoring\"| HUBVNET"
+        ])
+        
+        # Monitor specific services if they exist
+        service_monitors = {
+            "PRODAPP": "App Insights",
+            "PRODVM": "VM Metrics", 
+            "PRODDB": "DB Performance",
+            "FIREWALL": "Security Logs"
+        }
+        
+        for service_id, monitor_type in service_monitors.items():
+            # Check if service exists in the diagram by looking for it in lines
+            if any(service_id in line for line in lines):
+                lines.append(f"    MONITOR -.->|\"{monitor_type}\"| {service_id}")
+    
+    # Analytics and AI service connections (data flow patterns)
+    if inputs.analytics_services:
+        lines.extend([
+            "    %% Analytics & Data Flow",
+            "    ANALYTICS[\"🧠 Analytics Services<br/>Data Processing\"]"
+        ])
+        
+        # Connect storage to analytics for data flow
+        if inputs.storage_services:
+            lines.append("    PRODSTORAGE -->|\"Data Pipeline\"| ANALYTICS")
+        
+        # Connect databases to analytics
+        if inputs.database_services:
+            lines.append("    PRODDB -->|\"Data Export\"| ANALYTICS")
+    
+    # DevOps service connections
+    if inputs.devops_services:
+        lines.extend([
+            "    %% DevOps & CI/CD",
+            "    DEVOPS[\"⚙️ DevOps Services<br/>CI/CD Pipeline\"]",
+            "    DEVOPS -->|\"Deployment\"| PRODAPP",
+            "    DEVOPS -->|\"Deployment\"| DEVAPP",
+            "    DEVOPS -.->|\"Infrastructure Updates\"| PRODVM"
+        ])
+    
+    lines.extend([
+        "",
         "    %% Apply Styling",
         "    class HUBVNET,FIREWALL,BASTION,DNS hubStyle",
         "    class PRODVNET,DEVVNET spokeStyle"
     ])
     
-    # Add styling for hub services
-    hub_service_ids = ["AD", "SC", "LA", "VPN", "ER"]
+    # Add styling for hub services including new services
+    hub_service_ids = ["AD", "SC", "LA", "VPN", "ER", "KEYVAULT", "MONITOR"]
     existing_hub_ids = [id for id in hub_service_ids if any(id in line for line in lines)]
     if existing_hub_ids:
         lines.append(f"    class {','.join(existing_hub_ids)} sharedStyle")
     
-    # Add styling for workload components
+    # Add styling for workload and analytics components
     workload_ids = []
+    analytics_ids = ["ANALYTICS", "DEVOPS"]
+    
     for line in lines:
-        if any(wl in line for wl in ["PRODAPP", "PRODVM", "PRODAKS", "PRODDB", "PRODCOSMOS", "DEVAPP", "DEVVM", "DEVDB"]):
-            # Extract ID from line like "PRODAPP[...]"
+        # Extract workload IDs
+        if any(wl in line for wl in ["PRODAPP", "PRODVM", "PRODAKS", "PRODDB", "PRODCOSMOS", "PRODSTORAGE", "DEVAPP", "DEVVM", "DEVDB"]):
             if "[" in line:
                 id_part = line.split("[")[0].strip()
                 if id_part and id_part not in workload_ids:
@@ -1934,6 +2310,11 @@ def _generate_orchestrated_mermaid(inputs: CustomerInputs, orchestration_result:
     
     if workload_ids:
         lines.append(f"    class {','.join(workload_ids)} workloadStyle")
+    
+    # Add styling for analytics services
+    existing_analytics_ids = [id for id in analytics_ids if any(id in line for line in lines)]
+    if existing_analytics_ids:
+        lines.append(f"    class {','.join(existing_analytics_ids)} sharedStyle")
     
     lines.extend([
         "",
