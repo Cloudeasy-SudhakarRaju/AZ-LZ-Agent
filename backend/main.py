@@ -1856,41 +1856,38 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
             if db_service == "sql_database":
                 lines.extend([
                     "        %% SQL Database Connections",
-                    "        PRODDB[\"🗄️ SQL Database<br/>Production Data\"]",
-                    "        FIREWALL -->|\"Database Security\"| PRODDB",
-                    "        KEYVAULT -.->|\"Connection Strings\"| PRODDB",
-                    "        AAD -.->|\"Database Authentication\"| PRODDB"
+                    "        FIREWALL -->|\"Database Security\"| PROD_SQLDATABASE",
+                    "        KEYVAULT -.->|\"Connection Strings\"| PROD_SQLDATABASE",
+                    "        AAD -.->|\"Database Authentication\"| PROD_SQLDATABASE"
                 ])
                 # Connect to compute services if they exist
                 if inputs.compute_services:
                     for compute in inputs.compute_services:
                         if compute == "virtual_machines":
-                            lines.append("        PROD_VIRTUALMACHINES -->|\"Application Data\"| PRODDB")
+                            lines.append("        PROD_VIRTUALMACHINES -->|\"Application Data\"| PROD_SQLDATABASE")
                         elif compute == "app_services":
-                            lines.append("        PRODAPP -->|\"Application Data\"| PRODDB")
+                            lines.append("        PROD_APPSERVICES -->|\"Application Data\"| PROD_SQLDATABASE")
             elif db_service == "cosmos_db":
                 lines.extend([
                     "        %% Cosmos DB Connections", 
-                    "        PRODCOSMOS[\"🌍 Cosmos DB<br/>NoSQL Database\"]",
-                    "        FIREWALL -->|\"NoSQL Security\"| PRODCOSMOS",
-                    "        AAD -.->|\"Cosmos Authentication\"| PRODCOSMOS"
+                    "        FIREWALL -->|\"NoSQL Security\"| PROD_COSMOSDB",
+                    "        AAD -.->|\"Cosmos Authentication\"| PROD_COSMOSDB"
                 ])
     
     # Storage service connections
     if inputs.storage_services:
         lines.extend([
             "        %% Storage Connectivity",
-            "        PRODSTORAGE[\"💾 Storage Accounts<br/>Data Persistence\"]",
-            "        KEYVAULT -.->|\"Storage Keys\"| PRODSTORAGE",
-            "        AAD -.->|\"Storage Access Control\"| PRODSTORAGE"
+            "        KEYVAULT -.->|\"Storage Keys\"| PROD_STORAGEACCOUNTS",
+            "        AAD -.->|\"Storage Access Control\"| PROD_STORAGEACCOUNTS"
         ])
         # Connect to compute services
         if inputs.compute_services:
             for compute in inputs.compute_services:
                 if compute == "virtual_machines":
-                    lines.append("        PROD_VIRTUALMACHINES -->|\"Data Storage\"| PRODSTORAGE")
+                    lines.append("        PROD_VIRTUALMACHINES -->|\"Data Storage\"| PROD_STORAGEACCOUNTS")
                 elif compute == "app_services":
-                    lines.append("        PRODAPP -->|\"App Data\"| PRODSTORAGE")
+                    lines.append("        PROD_APPSERVICES -->|\"App Data\"| PROD_STORAGEACCOUNTS")
     
     # Analytics service connections (data flow patterns)
     if inputs.analytics_services:
@@ -1901,14 +1898,14 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         
         # Connect storage to analytics for data flow
         if inputs.storage_services:
-            lines.append("        PRODSTORAGE -->|\"Data Pipeline\"| ANALYTICS")
+            lines.append("        PROD_STORAGEACCOUNTS -->|\"Data Pipeline\"| ANALYTICS")
         
         # Connect databases to analytics
         if inputs.database_services:
             if "sql_database" in inputs.database_services:
-                lines.append("        PRODDB -->|\"Data Export\"| ANALYTICS")
+                lines.append("        PROD_SQLDATABASE -->|\"Data Export\"| ANALYTICS")
             if "cosmos_db" in inputs.database_services:
-                lines.append("        PRODCOSMOS -->|\"Document Analytics\"| ANALYTICS")
+                lines.append("        PROD_COSMOSDB -->|\"Document Analytics\"| ANALYTICS")
     
     # DevOps service connections
     if inputs.devops_services:
@@ -1925,9 +1922,9 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
                 if compute == "virtual_machines":
                     lines.append("        DEVOPS -->|\"VM Deployment\"| PROD_VIRTUALMACHINES")
                 elif compute == "app_services":
-                    lines.append("        DEVOPS -->|\"App Deployment\"| PRODAPP")
+                    lines.append("        DEVOPS -->|\"App Deployment\"| PROD_APPSERVICES")
                 elif compute == "aks":
-                    lines.append("        DEVOPS -->|\"Container Deployment\"| PRODAKS")
+                    lines.append("        DEVOPS -->|\"Container Deployment\"| PROD_AKS")
     
     # Integration service connections
     if inputs.integration_services:
@@ -1939,9 +1936,9 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         
         # Connect integration to databases and storage
         if inputs.database_services:
-            lines.append("        INTEGRATION -->|\"Data Integration\"| PRODDB")
+            lines.append("        INTEGRATION -->|\"Data Integration\"| PROD_SQLDATABASE")
         if inputs.storage_services:
-            lines.append("        INTEGRATION -->|\"Storage Integration\"| PRODSTORAGE")
+            lines.append("        INTEGRATION -->|\"Storage Integration\"| PROD_STORAGEACCOUNTS")
     
     
     lines.extend([
@@ -1964,8 +1961,8 @@ def generate_professional_mermaid(inputs: CustomerInputs) -> str:
         "    class ONPREM,INTERNET,ER,VPN crossPremStyle;"
     ])
     
-    # Apply workload styles - include new services
-    workload_services = ["PROD_VIRTUALMACHINES", "DEV_COMPUTE", "PRODAPP", "PRODAKS", "PRODDB", "PRODCOSMOS", "PRODSTORAGE", "ANALYTICS", "DEVOPS", "INTEGRATION"]
+    # Apply workload styles - include new services with correct naming
+    workload_services = ["PROD_VIRTUALMACHINES", "DEV_COMPUTE", "PROD_APPSERVICES", "PROD_AKS", "PROD_SQLDATABASE", "PROD_COSMOSDB", "PROD_STORAGEACCOUNTS", "ANALYTICS", "DEVOPS", "INTEGRATION"]
     
     # Only include services that actually exist in the diagram
     existing_workload_services = []
