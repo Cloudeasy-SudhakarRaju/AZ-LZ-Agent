@@ -237,9 +237,8 @@ class OpenAILLMOrchestrator:
         if any(word in text_lower for word in ['virtual network', 'vnet', 'network']):
             services.append("virtual_network")
         
-        # Default services if none detected
-        if not services:
-            services = ["virtual_machines", "virtual_network", "storage_accounts", "key_vault"]
+        # Only use explicitly detected services - DO NOT add defaults
+        # This ensures we only create what the user specifically requests
         
         # Determine network topology
         topology = "hub-spoke"
