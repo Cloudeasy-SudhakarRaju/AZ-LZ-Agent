@@ -61,42 +61,46 @@ logger = logging.getLogger(__name__)
 
 # Azure service categorization for hub and spoke separation
 HUB_SERVICES = {
-    # Shared Infrastructure Services
+    # Shared Network Infrastructure Services (Hub only)
     'firewall', 'azure_firewall', 'network_security_groups',
     'dns', 'private_dns', 'azure_dns',
     'bastion', 'azure_bastion',
+    'vpn_gateway', 'vpn', 'expressroute',
+    'virtual_network_gateway',
+    'application_gateway', 'load_balancer', 'traffic_manager',
+    # Shared Monitoring and Security (Hub only)
+    'monitor', 'log_analytics',
     'active_directory', 'azure_ad', 'entra_id',
     'security_center', 'defender_for_cloud',
     'sentinel', 'azure_sentinel',
     'policy', 'azure_policy',
     'management_groups',
-    'log_analytics', 'monitor',
     'backup', 'site_recovery',
-    # Network Hub Services
-    'virtual_network_gateway', 'vpn_gateway', 'expressroute',
-    'application_gateway', 'load_balancer', 'traffic_manager',
-    # Identity and Access
-    'key_vault', 'managed_identity',
-    # Governance
+    # Shared Key Vault (Hub level for shared secrets)
+    'key_vault_shared', 'shared_key_vault',
+    # Identity and Governance
+    'managed_identity',
     'cost_management', 'advisor'
 }
 
 SPOKE_SERVICES = {
-    # Compute Services
+    # Compute Services (Spoke only)
     'virtual_machines', 'vm', 'vmss',
     'app_services', 'web_apps', 'function_apps',
-    'aks', 'kubernetes', 'container_instances',
+    'aks', 'kubernetes', 'container_instances', 'k8s',
     'service_fabric', 'batch',
-    # Database Services  
+    # Database Services (Spoke only)
     'sql_database', 'mysql', 'postgresql', 'cosmos_db',
     'redis_cache', 'database_for_mysql', 'database_for_postgresql',
-    # Storage Services
+    # Storage Services (Spoke only)
     'storage_accounts', 'blob_storage', 'file_shares',
     'data_lake', 'synapse_analytics',
-    # Application Services
+    # Spoke-specific Key Vault (for workload secrets)
+    'key_vault', 'keyvault',
+    # Application Services (Spoke only)
     'api_management', 'service_bus', 'event_hubs',
     'logic_apps', 'event_grid',
-    # Analytics & AI
+    # Analytics & AI (Spoke only)
     'databricks', 'data_factory', 'cognitive_services',
     'machine_learning', 'search_service'
 }
@@ -287,6 +291,9 @@ class SpokeAgent:
         # Filter spoke services
         spoke_services = [svc for svc in all_services if any(spoke_svc in svc.lower() for spoke_svc in SPOKE_SERVICES)]
         
+        # CRITICAL: Ensure VMs are always placed in spoke VNets when requested
+        spoke_services = self._enforce_vm_spoke_placement(spoke_services, inputs)
+        
         # Design workload components based on architecture pattern
         workload_components = self._design_workload_components(inputs, spoke_services, hub_context)
         
@@ -307,30 +314,60 @@ class SpokeAgent:
             scaling_configuration=scaling_configuration
         )
     
+    def _enforce_vm_spoke_placement(self, spoke_services: List[str], inputs: Dict[str, Any]) -> List[str]:
+        """Ensure VMs are always properly categorized as spoke services and require spoke VNet creation"""
+        vm_services = ['vm', 'virtual_machines', 'virtual_machine']
+        
+        # Check if any VM services are mentioned in any category
+        vm_requested = False
+        for service_category in inputs:
+            if isinstance(inputs[service_category], list):
+                for service in inputs[service_category]:
+                    if any(vm_svc in service.lower() for vm_svc in vm_services):
+                        vm_requested = True
+                        break
+        
+        # If VMs are requested but not in spoke_services, add them
+        if vm_requested:
+            if not any(any(vm_svc in svc.lower() for vm_svc in vm_services) for svc in spoke_services):
+                spoke_services.append('virtual_machines')
+            
+            # Log the enforcement action
+            logger.info("VM placement enforced: VMs will be created in spoke VNet as per hub-spoke architecture")
+        
+        return spoke_services
+    
     def _design_workload_components(self, inputs: Dict[str, Any], spoke_services: List[str], hub_context: Dict[str, Any]) -> Dict[str, Any]:
         """Design workload-specific components"""
         
         # Determine spoke architecture pattern
         architecture_style = inputs.get('architecture_style', 'n_tier')
         
+        # Ensure spoke VNet is created when VMs or other compute services are requested
+        vm_services_present = any(svc in spoke_services for svc in ['virtual_machines', 'vm', 'vmss', 'aks', 'k8s', 'kubernetes'])
+        
         components = {
             "production_spoke": {
                 "vnet": {
                     "name": "Production-Spoke-VNet",
                     "address_space": "10.1.0.0/16",
-                    "subnets": self._design_spoke_subnets(spoke_services, "production")
+                    "subnets": self._design_spoke_subnets(spoke_services, "production"),
+                    # Ensure VNet is created when compute services are present
+                    "required": vm_services_present or len(spoke_services) > 0
                 },
                 "services": self._categorize_spoke_services(spoke_services, "production"),
-                "peering_to_hub": True
+                "peering_to_hub": True if hub_context else False
             },
             "development_spoke": {
                 "vnet": {
                     "name": "Development-Spoke-VNet", 
                     "address_space": "10.2.0.0/16",
-                    "subnets": self._design_spoke_subnets(spoke_services, "development")
+                    "subnets": self._design_spoke_subnets(spoke_services, "development"),
+                    # Ensure VNet is created when compute services are present
+                    "required": vm_services_present or len(spoke_services) > 0
                 },
                 "services": self._categorize_spoke_services(spoke_services, "development"),
-                "peering_to_hub": True
+                "peering_to_hub": True if hub_context else False
             }
         }
         
@@ -348,13 +385,18 @@ class SpokeAgent:
         
         subnet_counter = 1
         
+        # VM subnet - REQUIRED when VMs are requested
+        if any(svc in spoke_services for svc in ['virtual_machines', 'vm', 'vmss']):
+            subnets[f"VirtualMachinesSubnet"] = f"{base_cidr}.{subnet_counter}.0/24"
+            subnet_counter += 1
+        
         # Web tier subnet if web services present
         if any(svc in spoke_services for svc in ['app_services', 'web_apps']):
             subnets[f"WebTierSubnet"] = f"{base_cidr}.{subnet_counter}.0/24"
             subnet_counter += 1
         
         # App tier subnet if compute services present  
-        if any(svc in spoke_services for svc in ['virtual_machines', 'aks', 'function_apps']):
+        if any(svc in spoke_services for svc in ['aks', 'function_apps', 'k8s', 'kubernetes']):
             subnets[f"AppTierSubnet"] = f"{base_cidr}.{subnet_counter}.0/24"
             subnet_counter += 1
         
@@ -363,8 +405,8 @@ class SpokeAgent:
             subnets[f"DataTierSubnet"] = f"{base_cidr}.{subnet_counter}.0/24"
             subnet_counter += 1
         
-        # Container subnet if container services present
-        if any(svc in spoke_services for svc in ['aks', 'container_instances']):
+        # Container subnet if container services present (AKS/K8S needs larger address space)
+        if any(svc in spoke_services for svc in ['aks', 'container_instances', 'k8s', 'kubernetes']):
             subnets[f"ContainerSubnet"] = f"{base_cidr}.{subnet_counter}.0/23"
             subnet_counter += 2
         

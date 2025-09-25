@@ -828,18 +828,30 @@ def generate_diagram_structure(architecture: Dict[str, Any], validation_result: 
             'cosmos_db': 'cosmosdb',
             'cosmosdb': 'cosmosdb',
             'azure_firewall': 'firewall',
-            'azurefirewall': 'firewall'
+            'azurefirewall': 'firewall',
+            'key_vault': 'keyvault',
+            'keyvault': 'keyvault',
+            'azure_kubernetes_service': 'aks',
+            'kubernetes': 'k8s',
+            'k8s': 'k8s'
         }
         
         normalized_type = type_mappings.get(resource_type, resource_type)
         
-        # Hub services (shared infrastructure)
-        if normalized_type in ['firewall', 'vpn_gateway', 'expressroute', 'bastion']:
+        # Hub services (shared infrastructure) - only network services, monitoring, and shared security
+        if normalized_type in ['firewall', 'vpn_gateway', 'expressroute', 'bastion', 'dns', 'monitor', 'log_analytics']:
             hub_resources.append(resource)
-        # Spoke services (workload-specific)
-        elif normalized_type in ['vm', 'aks', 'app_service', 'appservice', 'sql']:
+        # Spoke services (workload-specific) - VMs, K8s, databases, and spoke-level keyvaults
+        elif normalized_type in ['vm', 'aks', 'app_service', 'appservice', 'sql', 'storage', 'k8s', 'kubernetes']:
             spoke_resources.append(resource)
-        # Shared services
+        # KeyVault handling - can be in both hub and spoke depending on context
+        elif normalized_type in ['key_vault', 'keyvault']:
+            # Place in spoke by default (workload-specific secrets), unless specifically marked as shared
+            if resource.get('scope', '').lower() == 'shared' or resource.get('name', '').lower().find('shared') != -1:
+                hub_resources.append(resource)
+            else:
+                spoke_resources.append(resource)
+        # Other shared services
         else:
             shared_resources.append(resource)
     
