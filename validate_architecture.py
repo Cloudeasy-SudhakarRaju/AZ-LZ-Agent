@@ -303,6 +303,33 @@ AZ_LZ_RULES = {
             "throughput_optimization": "required",
             "rule_id": "COSMOS004"
         }
+    },
+    "KeyVault": {
+        "placement": {
+            "private_endpoint": "required",
+            "vnet_integration": "recommended",
+            "rule_id": "KV001"
+        },
+        "security": {
+            "public_network_access": "forbidden",
+            "firewall_enabled": "required",
+            "purge_protection": "required",
+            "soft_delete": "required",
+            "access_policies": "required",
+            "rule_id": "KV002"
+        },
+        "monitoring": {
+            "diagnostic_logs": "required",
+            "audit_logs": "required",
+            "metrics_enabled": "recommended",
+            "rule_id": "KV003"
+        },
+        "governance": {
+            "key_rotation": "required",
+            "backup_policy": "recommended",
+            "access_reviews": "required",
+            "rule_id": "KV004"
+        }
     }
 }
 
@@ -341,7 +368,9 @@ def validate_resource(resource: Dict[str, Any], resource_type: str, architecture
         'COSMOS_DB': 'CosmosDB',
         'COSMOSDB': 'CosmosDB',
         'REDIS_CACHE': 'Redis',
-        'REDISCACHE': 'Redis'
+        'REDISCACHE': 'Redis',
+        'KEY_VAULT': 'KeyVault',
+        'KEYVAULT': 'KeyVault'
     }
     
     # First try exact match, then try mapped version

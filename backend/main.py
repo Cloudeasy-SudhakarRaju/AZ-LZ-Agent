@@ -41,6 +41,15 @@ from intelligent_diagram_generator import IntelligentArchitectureDiagramGenerato
 # Import LangGraph orchestrator
 from langgraph_workflow import AzureLandingZoneOrchestrator, categorize_services_by_hub_spoke, create_orchestrator
 
+# Import architecture validation
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from validate_architecture import (
+    validate_architecture, validate_resource, generate_diagram_structure,
+    ValidationResult, DiagramStructure, AZ_LZ_RULES
+)
+
 app = FastAPI(
     title="Azure Landing Zone Agent",
     description="Professional Azure Landing Zone Architecture Generator",
@@ -520,6 +529,245 @@ def generate_ai_enhanced_recommendations(inputs: CustomerInputs, url_analysis: s
     except Exception as e:
         logger.error(f"Error generating AI recommendations: {e}")
         return f"Error generating AI recommendations: {str(e)}"
+
+def convert_customer_inputs_to_architecture(inputs: CustomerInputs) -> Dict[str, Any]:
+    """
+    Convert CustomerInputs to the architecture format expected by the validation system.
+    
+    Args:
+        inputs: CustomerInputs object from the API
+        
+    Returns:
+        Dictionary representing the architecture with resources for validation
+    """
+    architecture = {
+        "metadata": {
+            "name": f"Azure Landing Zone - {inputs.business_objective or 'Enterprise Architecture'}",
+            "version": "1.0",
+            "compliance_requirements": []
+        },
+        "resources": []
+    }
+    
+    # Add compliance requirements based on regulatory input
+    if inputs.regulatory:
+        regulatory_mapping = {
+            "pci": "PCI-DSS",
+            "hipaa": "HIPAA", 
+            "sox": "SOX",
+            "gdpr": "GDPR",
+            "iso27001": "ISO27001"
+        }
+        reg_lower = inputs.regulatory.lower()
+        for key, value in regulatory_mapping.items():
+            if key in reg_lower:
+                architecture["metadata"]["compliance_requirements"].append(value)
+    
+    # Convert service selections to resources
+    resource_id_counter = 1
+    
+    # Process compute services
+    if inputs.compute_services:
+        for service in inputs.compute_services:
+            resource = _create_resource_from_service(service, "compute", resource_id_counter, inputs)
+            if resource:
+                architecture["resources"].append(resource)
+                resource_id_counter += 1
+    
+    # Process network services
+    if inputs.network_services:
+        for service in inputs.network_services:
+            resource = _create_resource_from_service(service, "network", resource_id_counter, inputs)
+            if resource:
+                architecture["resources"].append(resource)
+                resource_id_counter += 1
+    
+    # Process storage services
+    if inputs.storage_services:
+        for service in inputs.storage_services:
+            resource = _create_resource_from_service(service, "storage", resource_id_counter, inputs)
+            if resource:
+                architecture["resources"].append(resource)
+                resource_id_counter += 1
+    
+    # Process database services
+    if inputs.database_services:
+        for service in inputs.database_services:
+            resource = _create_resource_from_service(service, "database", resource_id_counter, inputs)
+            if resource:
+                architecture["resources"].append(resource)
+                resource_id_counter += 1
+    
+    # Process security services
+    if inputs.security_services:
+        for service in inputs.security_services:
+            resource = _create_resource_from_service(service, "security", resource_id_counter, inputs)
+            if resource:
+                architecture["resources"].append(resource)
+                resource_id_counter += 1
+    
+    return architecture
+
+def _create_resource_from_service(service: str, category: str, resource_id: int, inputs: CustomerInputs) -> Optional[Dict[str, Any]]:
+    """
+    Create a resource configuration from a service string and customer inputs.
+    """
+    service_lower = service.lower().replace("-", "_").replace(" ", "_")
+    
+    # Map service names to resource types and configurations
+    service_mappings = {
+        # Compute services
+        "virtual_machines": {
+            "type": "VM",
+            "base_config": {
+                "subnet": "private-subnet" if inputs.security_posture == "zero-trust" else "public-subnet",
+                "vnet": f"spoke-{category}-vnet",
+                "availability_zones": inputs.scalability in ["high", "critical"],
+                "network_security_group": True,
+                "backup_enabled": inputs.backup in ["comprehensive", "standard"],
+                "disk_encryption": True
+            }
+        },
+        "aks": {
+            "type": "AKS", 
+            "base_config": {
+                "private_cluster": inputs.security_posture == "zero-trust",
+                "rbac_enabled": True,
+                "network_policy": inputs.security_posture == "zero-trust",
+                "container_insights": inputs.monitoring in ["azure-monitor", "comprehensive"]
+            }
+        },
+        "app_services": {
+            "type": "AppService",
+            "base_config": {
+                "vnet_integration": inputs.security_posture == "zero-trust",
+                "private_endpoint": inputs.security_posture == "zero-trust",
+                "https_only": True,
+                "managed_identity": True,
+                "application_insights": inputs.monitoring in ["azure-monitor", "application-insights"]
+            }
+        },
+        # Database services
+        "sql_database": {
+            "type": "SQL",
+            "base_config": {
+                "public_access": inputs.security_posture != "zero-trust",
+                "private_endpoint": inputs.security_posture == "zero-trust", 
+                "encryption_at_rest": True,
+                "encryption_in_transit": True,
+                "auditing": inputs.regulatory is not None,
+                "backup_retention_days": 30 if inputs.backup in ["comprehensive", "standard"] else 7
+            }
+        },
+        "cosmos_db": {
+            "type": "CosmosDB",
+            "base_config": {
+                "public_network_access": inputs.security_posture != "zero-trust",
+                "private_endpoint": inputs.security_posture == "zero-trust",
+                "encryption_at_rest": True,
+                "firewall_enabled": True
+            }
+        },
+        # Storage services
+        "storage_accounts": {
+            "type": "Storage", 
+            "base_config": {
+                "public_blob_access": inputs.security_posture != "zero-trust",
+                "private_endpoint": inputs.security_posture == "zero-trust",
+                "https_only": True,
+                "min_tls_version": "1.2",
+                "storage_analytics": inputs.monitoring in ["azure-monitor", "log-analytics"]
+            }
+        },
+        # Network services
+        "azure_firewall": {
+            "type": "Firewall",
+            "base_config": {
+                "hub_vnet": True,
+                "threat_intelligence": True,
+                "diagnostic_logs": inputs.monitoring in ["azure-monitor", "log-analytics"]
+            }
+        },
+        "firewall": {
+            "type": "Firewall",
+            "base_config": {
+                "hub_vnet": True,
+                "threat_intelligence": True,
+                "diagnostic_logs": inputs.monitoring in ["azure-monitor", "log-analytics"]
+            }
+        },
+        "key_vault": {
+            "type": "KeyVault",
+            "base_config": {
+                "public_network_access": inputs.security_posture != "zero-trust",
+                "private_endpoint": inputs.security_posture == "zero-trust"
+            }
+        }
+    }
+    
+    if service_lower not in service_mappings:
+        logger.warning(f"Unknown service type: {service}")
+        return None
+    
+    mapping = service_mappings[service_lower]
+    resource_name = f"{service.replace('_', '-')}-{resource_id:02d}"
+    
+    # Create base resource structure
+    resource = {
+        "name": resource_name,
+        "type": mapping["type"],
+        **mapping["base_config"]
+    }
+    
+    # Add common tags based on inputs
+    resource["tags"] = {
+        "environment": "production",  # Default assumption
+        "project": inputs.business_objective or "azure-landing-zone"
+    }
+    
+    # Add owner tag if we can derive it from org structure
+    if inputs.org_structure:
+        resource["tags"]["owner"] = inputs.org_structure.lower().replace(" ", "")
+    
+    # Apply security posture configurations
+    if inputs.security_posture == "zero-trust":
+        _apply_zero_trust_config(resource)
+    elif inputs.security_posture == "defense-in-depth":
+        _apply_defense_in_depth_config(resource)
+    
+    return resource
+
+def _apply_zero_trust_config(resource: Dict[str, Any]) -> None:
+    """Apply zero trust security configurations to a resource"""
+    resource_type = resource.get("type", "")
+    
+    # Universal zero trust settings
+    if "public_access" in resource:
+        resource["public_access"] = False
+    if "public_blob_access" in resource:
+        resource["public_blob_access"] = False
+    if "public_network_access" in resource:
+        resource["public_network_access"] = False
+    
+    # Enable private endpoints where applicable
+    resource["private_endpoint"] = True
+    
+    # Type-specific zero trust configurations
+    if resource_type == "VM":
+        resource["subnet"] = "private-subnet"
+    elif resource_type in ["SQL", "CosmosDB", "Storage"]:
+        resource["firewall_enabled"] = True
+
+def _apply_defense_in_depth_config(resource: Dict[str, Any]) -> None:
+    """Apply defense in depth security configurations to a resource"""
+    # More permissive than zero trust but still secure
+    resource_type = resource.get("type", "")
+    
+    if resource_type == "VM":
+        resource["network_security_group"] = True
+        resource["vulnerability_assessment"] = True
+    elif resource_type in ["SQL", "Storage"]:
+        resource["firewall_rules"] = "restrictive"
 
 def validate_customer_inputs(inputs: CustomerInputs) -> None:
     """Validate customer inputs to prevent potential errors"""
@@ -2076,11 +2324,22 @@ def root():
     return {
         "message": "Azure Landing Zone Agent API",
         "version": "1.0.0",
+        "features": [
+            "Architecture validation with compliance scoring",
+            "Intelligent diagram generation with validation feedback", 
+            "Comprehensive Azure Landing Zone templates",
+            "Hub-spoke topology optimization",
+            "Security best practices validation"
+        ],
         "endpoints": [
             "/docs - API Documentation",
+            "/validate-architecture - Validate architecture against Azure Landing Zone rules",
+            "/validate-and-generate-diagram - Validate and generate diagrams with feedback",
             "/generate-diagram - Generate architecture diagram (Mermaid + Draw.io)",
             "/generate-azure-diagram - Generate Azure architecture diagram with official Azure icons (Python Diagrams)",
             "/generate-drawio - Generate Draw.io XML",
+            "/generate-comprehensive-azure-architecture - Full architecture generation",
+            "/generate-intelligent-diagram - AI-powered diagram generation",
             "/health - Health check"
         ]
     }
@@ -2981,6 +3240,144 @@ def enhance_diagram(request: Dict[str, str]):
     except Exception as e:
         error_msg = f"Error enhancing diagram: {str(e)}"
         logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+@app.post("/validate-architecture")
+def validate_architecture_endpoint(inputs: CustomerInputs):
+    """
+    Validate Azure Landing Zone architecture based on customer inputs.
+    
+    This endpoint converts customer inputs to architecture format and validates
+    all resources against Azure Landing Zone best practices and compliance rules.
+    """
+    try:
+        logger.info("Starting architecture validation from customer inputs")
+        
+        # Convert customer inputs to architecture format
+        architecture = convert_customer_inputs_to_architecture(inputs)
+        
+        # Validate the architecture
+        validation_result = validate_architecture(architecture)
+        
+        # Generate diagram structure with validation results
+        diagram_structure = generate_diagram_structure(architecture, validation_result)
+        
+        # Prepare response
+        response = {
+            "success": True,
+            "validation": {
+                "passed": validation_result.passed,
+                "compliance_score": validation_result.compliance_score,
+                "total_resources": validation_result.total_resources,
+                "total_issues": validation_result.issues_count,
+                "summary": validation_result.summary,
+                "issues": [
+                    {
+                        "resource_name": issue.resource_name,
+                        "resource_type": issue.resource_type,
+                        "issue_type": issue.issue_type,
+                        "severity": issue.severity.value,
+                        "message": issue.message,
+                        "recommendation": issue.recommendation,
+                        "rule_id": issue.rule_id,
+                        "compliance_impact": issue.compliance_impact
+                    }
+                    for issue in validation_result.issues
+                ]
+            },
+            "diagram_structure": {
+                "nodes": len(diagram_structure.nodes),
+                "connections": len(diagram_structure.connections), 
+                "layout_type": diagram_structure.layout.get("type", "hub-spoke"),
+                "metadata": diagram_structure.metadata
+            },
+            "architecture": architecture,
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0.0",
+                "agent": "Azure Landing Zone Agent - Architecture Validator"
+            }
+        }
+        
+        logger.info(f"Architecture validation completed. Score: {validation_result.compliance_score}%, Issues: {validation_result.issues_count}")
+        return response
+        
+    except Exception as e:
+        error_msg = f"Error validating architecture: {str(e)}"
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_msg)
+
+@app.post("/validate-and-generate-diagram")
+def validate_and_generate_diagram(inputs: CustomerInputs):
+    """
+    Validate architecture and generate comprehensive diagram with validation feedback.
+    
+    This endpoint combines validation with diagram generation, providing both
+    architectural validation results and visual diagram output.
+    """
+    try:
+        logger.info("Starting validation and diagram generation")
+        
+        # Convert and validate architecture
+        architecture = convert_customer_inputs_to_architecture(inputs)
+        validation_result = validate_architecture(architecture)
+        diagram_structure = generate_diagram_structure(architecture, validation_result)
+        
+        # Generate traditional outputs (mermaid, drawio)
+        mermaid_diagram = generate_professional_mermaid(inputs)
+        drawio_xml = generate_enhanced_drawio_xml(inputs)
+        
+        # Generate documentation
+        docs = generate_professional_documentation(inputs)
+        
+        # Create comprehensive response
+        response = {
+            "success": True,
+            "validation": {
+                "passed": validation_result.passed,
+                "compliance_score": validation_result.compliance_score,
+                "total_issues": validation_result.issues_count,
+                "critical_issues": validation_result.summary.get("critical_issues", 0),
+                "high_issues": validation_result.summary.get("high_issues", 0),
+                "top_recommendations": validation_result.summary.get("top_recommendations", [])[:5]
+            },
+            "diagrams": {
+                "mermaid": mermaid_diagram,
+                "drawio": drawio_xml
+            },
+            "documentation": {
+                "tsd": docs["tsd"],
+                "hld": docs["hld"], 
+                "lld": docs["lld"]
+            },
+            "architecture_template": generate_architecture_template(inputs),
+            "validation_details": [
+                {
+                    "resource": issue.resource_name,
+                    "type": issue.resource_type,
+                    "severity": issue.severity.value,
+                    "message": issue.message,
+                    "recommendation": issue.recommendation
+                }
+                for issue in validation_result.issues
+                if issue.severity.value in ["critical", "high"]
+            ][:10],  # Top 10 most important issues
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0.0",
+                "agent": "Azure Landing Zone Agent - Validation + Generation",
+                "validation_enabled": True
+            }
+        }
+        
+        logger.info("Validation and diagram generation completed successfully")
+        return response
+        
+    except Exception as e:
+        error_msg = f"Error in validation and diagram generation: {str(e)}"
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/services")
