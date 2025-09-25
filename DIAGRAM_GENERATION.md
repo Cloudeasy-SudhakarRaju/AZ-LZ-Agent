@@ -115,6 +115,101 @@ Generated diagrams are saved as PNG files with:
 - File sizes typically 150-300KB
 - Suitable for documentation and architecture reviews
 
+## Enterprise Resource Auto-Inclusion
+
+The Azure Landing Zone Agent automatically includes enterprise-critical resources in diagrams to ensure compliance with Azure best practices.
+
+### Auto-Included Enterprise Resources
+
+The following resources are automatically included when not explicitly specified by the user:
+
+- **Azure Key Vault**: Secrets, keys, and certificate management
+- **Azure Active Directory**: Identity and access management
+- **Azure Firewall**: Network security and traffic filtering
+- **Azure Monitor**: Observability, logging, and alerting
+
+### Configuration Modes
+
+#### `auto_when_missing` (Default)
+- Includes enterprise resources only when they are not already specified by the user
+- Provides compliance without being intrusive
+- Recommended for most use cases
+
+#### `always_include`
+- Always includes enterprise resources regardless of user input
+- Ensures maximum compliance and consistency
+- Recommended for highly regulated environments
+
+#### `never_auto_include`
+- Never automatically includes enterprise resources
+- Only includes what the user explicitly specifies
+- Provides maximum user control
+
+### Enhanced Connections
+
+When `show_enterprise_connections` is enabled (default), the system creates explicit visual connections:
+
+- **Key Vault → VNets**: For VM secret access
+- **Active Directory → VNets**: For authentication services
+- **Azure Firewall → VNets**: For security filtering
+- **Security Services Interconnection**: Shows integrated security architecture
+
+### API Usage with Enterprise Resources
+
+```bash
+# Use default auto-inclusion behavior
+curl -X POST "http://localhost:8000/generate-azure-diagram" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "Web application deployment",
+    "compute_services": ["virtual_machines"],
+    "network_services": ["virtual_network"],
+    "enterprise_resources_mode": "auto_when_missing",
+    "show_enterprise_connections": true
+  }'
+```
+
+```bash
+# Always include enterprise resources
+curl -X POST "http://localhost:8000/generate-azure-diagram" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_objective": "Enterprise application",
+    "compute_services": ["aks"],
+    "enterprise_resources_mode": "always_include",
+    "show_enterprise_connections": true
+  }'
+```
+
+### User Prompt Information
+
+Get the enterprise resource configuration prompt:
+
+```bash
+curl -X GET "http://localhost:8000/enterprise-resources-prompt"
+```
+
+This returns information about available modes, resource descriptions, and default settings to help users configure their preferences.
+
+### Enhanced Response Format
+
+When enterprise resources are auto-included, the response includes additional information:
+
+```json
+{
+  "success": true,
+  "diagram_base64": "...",
+  "enterprise_resources": {
+    "auto_included": true,
+    "resources": ["key_vault", "active_directory", "firewall", "monitor"],
+    "prompt": "Would you like to always include these enterprise resources...",
+    "current_mode": "auto_when_missing",
+    "show_connections": true
+  },
+  "metadata": {...}
+}
+```
+
 ## Troubleshooting
 
 ### Draw.io XML Issues

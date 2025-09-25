@@ -182,6 +182,16 @@ class CustomerInputs(BaseModel):
     free_text_input: Optional[str] = Field(None, description="Free-form text input for additional requirements and context")
     url_input: Optional[str] = Field(None, description="URL for web content analysis")
     uploaded_files_info: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Information about uploaded files")
+    
+    # Enterprise Resource Auto-Inclusion Preferences
+    enterprise_resources_mode: Optional[str] = Field(
+        "auto_when_missing", 
+        description="Enterprise resources inclusion mode: 'always_include', 'auto_when_missing', or 'never_auto_include'"
+    )
+    show_enterprise_connections: Optional[bool] = Field(
+        True, 
+        description="Whether to explicitly show connections between enterprise resources and VM/VNet"
+    )
 
 
 # Azure Architecture Templates and Patterns
@@ -813,6 +823,117 @@ def validate_customer_inputs(inputs: CustomerInputs) -> None:
         if len(inputs.uploaded_files_info) > 10:  # Reasonable limit
             raise ValueError(f"Too many uploaded files: {len(inputs.uploaded_files_info)} (max 10)")
 
+def _get_enterprise_resources() -> List[str]:
+    """Get the list of enterprise resources that should be auto-included"""
+    return ["key_vault", "active_directory", "firewall", "monitor"]
+
+def _should_include_enterprise_resources(inputs: CustomerInputs, enterprise_resources: List[str]) -> bool:
+    """Determine if enterprise resources should be included based on user preferences and current input"""
+    mode = inputs.enterprise_resources_mode or "auto_when_missing"
+    
+    if mode == "always_include":
+        return True
+    elif mode == "never_auto_include":
+        return False
+    else:  # "auto_when_missing"
+        # Check if any enterprise resources are missing from user's explicit selections
+        all_selected_services = set()
+        all_selected_services.update(inputs.security_services or [])
+        all_selected_services.update(inputs.network_services or [])
+        all_selected_services.update(inputs.monitoring_services or [])
+        
+        # Check if any enterprise resources are missing
+        missing_resources = [res for res in enterprise_resources if res not in all_selected_services]
+        return len(missing_resources) > 0
+
+def _ensure_enterprise_resources_included(inputs: CustomerInputs) -> CustomerInputs:
+    """Ensure enterprise resources are included in the input based on user preferences"""
+    enterprise_resources = _get_enterprise_resources()
+    
+    if not _should_include_enterprise_resources(inputs, enterprise_resources):
+        return inputs
+    
+    # Create a copy of inputs to modify
+    modified_inputs = inputs.model_copy()
+    
+    # Ensure lists are initialized
+    if not modified_inputs.security_services:
+        modified_inputs.security_services = []
+    if not modified_inputs.network_services:
+        modified_inputs.network_services = []
+    if not modified_inputs.monitoring_services:
+        modified_inputs.monitoring_services = []
+    
+    # Add missing enterprise resources
+    if "key_vault" not in modified_inputs.security_services:
+        modified_inputs.security_services.append("key_vault")
+        logger.info("Auto-included Key Vault for enterprise compliance")
+    
+    if "active_directory" not in modified_inputs.security_services:
+        modified_inputs.security_services.append("active_directory")
+        logger.info("Auto-included Active Directory for enterprise compliance")
+    
+    if "firewall" not in modified_inputs.network_services:
+        modified_inputs.network_services.append("firewall")
+        logger.info("Auto-included Azure Firewall for enterprise compliance")
+    
+    if "monitor" not in modified_inputs.monitoring_services:
+        modified_inputs.monitoring_services.append("monitor")
+        logger.info("Auto-included Azure Monitor for enterprise compliance")
+    
+    return modified_inputs
+
+def _get_user_prompt_for_enterprise_resources() -> str:
+    """Generate user prompt about enterprise resource preferences"""
+    return ("Would you like to always include these enterprise resources (Key Vault, Active Directory, "
+            "Firewall, Azure Monitor) in every diagram, or only when not specified? "
+            "Should connections between these resources and VM/VNet be explicitly shown?")
+
+def _add_enterprise_resource_connections(inputs: CustomerInputs, hub_vnet, prod_vnet, dev_vnet, aad, key_vault, network_services):
+    """Add explicit connections between enterprise resources and infrastructure components"""
+    logger.info("Adding enhanced enterprise resource connections")
+    
+    # Find the firewall in network services
+    firewall_service = None
+    for ns in network_services:
+        if hasattr(ns, '_name') and 'Firewall' in ns._name:
+            firewall_service = ns
+            break
+    
+    # Connect Key Vault to VNets (for VM access)
+    try:
+        key_vault >> prod_vnet
+        key_vault >> dev_vnet
+        logger.debug("Connected Key Vault to VNets")
+    except Exception as e:
+        logger.debug(f"Key Vault connection to VNets: {e}")
+    
+    # Connect Active Directory to VNets (for authentication)
+    try:
+        aad >> prod_vnet
+        aad >> dev_vnet
+        logger.debug("Connected Active Directory to VNets")
+    except Exception as e:
+        logger.debug(f"Active Directory connection to VNets: {e}")
+    
+    # Connect Firewall to VNets (for security)
+    if firewall_service:
+        try:
+            firewall_service >> prod_vnet
+            firewall_service >> dev_vnet
+            logger.debug("Connected Firewall to VNets")
+        except Exception as e:
+            logger.debug(f"Firewall connection to VNets: {e}")
+    
+    # Connect security services to each other for integrated security
+    if firewall_service:
+        try:
+            aad >> firewall_service
+            key_vault >> firewall_service
+            logger.debug("Connected security services together")
+        except Exception as e:
+            logger.debug(f"Security services interconnection: {e}")
+
 def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str = None, format: str = "png") -> str:
     """Generate Azure architecture diagram using the Python Diagrams library with proper Azure icons"""
     
@@ -822,6 +943,9 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
         # Validate inputs first
         validate_customer_inputs(inputs)
         logger.info("Input validation completed successfully")
+        
+        # Apply enterprise resource auto-inclusion logic
+        inputs = _ensure_enterprise_resources_included(inputs)
         
         # Get safe output directory
         if output_dir is None:
@@ -952,6 +1076,10 @@ def generate_azure_architecture_diagram(inputs: CustomerInputs, output_dir: str 
                 # Core security connections
                 aad >> key_vault
                 platform_mg >> [aad, key_vault]
+                
+                # Enhanced enterprise resource connections (when enabled)
+                if inputs.show_enterprise_connections:
+                    _add_enterprise_resource_connections(inputs, hub_vnet, prod_vnet, dev_vnet, aad, key_vault, network_services)
                 
                 logger.info("Diagram structure created successfully")
         
@@ -1260,6 +1388,29 @@ def _add_service_clusters(inputs: CustomerInputs, prod_vnet, workloads_mg):
                 # Connect DevOps services to management
                 for ds in devops_services:
                     workloads_mg >> ds
+        
+        # Monitoring & Management Services
+        if inputs.monitoring_services:
+            with Cluster("Monitoring & Observability", graph_attr={"bgcolor": "#e8f4f8", "style": "rounded"}):
+                monitoring_services_list = []
+                for service in inputs.monitoring_services:
+                    if service in AZURE_SERVICES_MAPPING:
+                        # Since Azure Monitor doesn't have a diagram class, we'll create a text representation
+                        # For services with diagram classes, use them; otherwise skip visual representation
+                        # This allows the service to be tracked but not break the diagram
+                        if AZURE_SERVICES_MAPPING[service]["diagram_class"]:
+                            diagram_class = AZURE_SERVICES_MAPPING[service]["diagram_class"]
+                            service_name = AZURE_SERVICES_MAPPING[service]["name"]
+                            monitoring_services_list.append(diagram_class(service_name))
+                        else:
+                            # For services like Azure Monitor that don't have diagram classes,
+                            # we'll log that they're included but not add visual components
+                            logger.info(f"Monitoring service '{service}' included but no visual diagram component available")
+                
+                # Connect monitoring services to VNets and management
+                for ms in monitoring_services_list:
+                    prod_vnet >> ms
+                    workloads_mg >> ms
                     
     except Exception as e:
         logger.warning(f"Error adding service clusters: {str(e)}")
@@ -2658,7 +2809,11 @@ def generate_azure_diagram_endpoint(inputs: CustomerInputs):
         import base64
         diagram_base64 = base64.b64encode(diagram_data).decode('utf-8')
         
-        return {
+        # Get enterprise resources information for user feedback
+        enterprise_resources = _get_enterprise_resources()
+        was_enterprise_included = _should_include_enterprise_resources(inputs, enterprise_resources)
+        
+        response = {
             "success": True,
             "diagram_path": diagram_path,
             "diagram_base64": diagram_base64,
@@ -2673,6 +2828,18 @@ def generate_azure_diagram_endpoint(inputs: CustomerInputs):
                 "diagram_format": "PNG with Azure official icons"
             }
         }
+        
+        # Add enterprise resources information and prompt
+        if was_enterprise_included:
+            response["enterprise_resources"] = {
+                "auto_included": True,
+                "resources": enterprise_resources,
+                "prompt": _get_user_prompt_for_enterprise_resources(),
+                "current_mode": inputs.enterprise_resources_mode or "auto_when_missing",
+                "show_connections": inputs.show_enterprise_connections if inputs.show_enterprise_connections is not None else True
+            }
+        
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating Azure diagram: {str(e)}")
@@ -3379,6 +3546,31 @@ def validate_and_generate_diagram(inputs: CustomerInputs):
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
+
+@app.get("/enterprise-resources-prompt")
+def get_enterprise_resources_prompt():
+    """Get information about enterprise resource auto-inclusion and user prompt"""
+    enterprise_resources = _get_enterprise_resources()
+    
+    return {
+        "prompt": _get_user_prompt_for_enterprise_resources(),
+        "enterprise_resources": enterprise_resources,
+        "resource_descriptions": {
+            "key_vault": "Azure Key Vault for secrets, keys, and certificate management",
+            "active_directory": "Azure Active Directory for identity and access management", 
+            "firewall": "Azure Firewall for network security and traffic filtering",
+            "monitor": "Azure Monitor for observability, logging, and alerting"
+        },
+        "modes": {
+            "always_include": "Always include enterprise resources in every diagram",
+            "auto_when_missing": "Include enterprise resources only when not explicitly specified (default)",
+            "never_auto_include": "Never automatically include enterprise resources"
+        },
+        "default_settings": {
+            "enterprise_resources_mode": "auto_when_missing",
+            "show_enterprise_connections": True
+        }
+    }
 
 @app.get("/services")
 def get_services():
