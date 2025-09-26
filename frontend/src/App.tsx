@@ -86,26 +86,70 @@ function App() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        
+        // Handle detailed error objects
+        let errorMessage: string;
+        if (typeof errorData.detail === 'object' && errorData.detail.error) {
+          errorMessage = errorData.detail.error;
+          
+          // Add suggestion if available
+          if (errorData.detail.suggestion) {
+            errorMessage += ` ${errorData.detail.suggestion}`;
+          }
+        } else if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data: IntelligentDiagramResult = await response.json();
       setResult(data);
 
-      toast({
-        title: "Success!",
-        description: "Azure architecture diagram generated successfully.",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
+      // Check for execution errors even in successful responses
+      if (data.execution_error) {
+        toast({
+          title: "Warning",
+          description: `Diagram generated but with execution issue: ${data.execution_error}`,
+          status: "warning",
+          duration: 7000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Azure architecture diagram generated successfully.",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     } catch (error) {
       console.error("Error generating diagram:", error);
+      
+      let errorTitle = "Generation Failed";
+      let errorDescription = "Failed to generate diagram. Please try again.";
+      
+      if (error instanceof Error) {
+        errorDescription = error.message;
+        
+        // Customize error title based on error content
+        if (error.message.includes("API key")) {
+          errorTitle = "API Key Required";
+        } else if (error.message.includes("API call failed")) {
+          errorTitle = "API Error";
+        } else if (error.message.includes("execution")) {
+          errorTitle = "Execution Error";
+        }
+      }
+      
       toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate diagram. Please try again.",
+        title: errorTitle,
+        description: errorDescription,
         status: "error",
-        duration: 5000,
+        duration: 8000,
         isClosable: true,
       });
     } finally {

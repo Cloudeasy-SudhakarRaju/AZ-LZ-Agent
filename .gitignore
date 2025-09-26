@@ -79,4 +79,7 @@ htmlcov/
 azure_landing_zone_*.png
 azure_landing_zone_*.dot
 azure_landing_zone_*.svg
+azure_architecture_intelligent*.png
+azure_architecture_intelligent*.svg
 tmp/
+/tmp/

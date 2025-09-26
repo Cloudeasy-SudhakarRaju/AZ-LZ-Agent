@@ -38,36 +38,37 @@ class OpenAILLMOrchestrator:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
-            logger.warning("OpenAI API key not provided. Using intelligent mock responses.")
-            self.mock_mode = True
-        else:
-            self.mock_mode = False
+            logger.error("OpenAI API key not provided. The intelligent diagram generator requires a valid OpenAI API key.")
+            raise ValueError("OpenAI API key is required for intelligent diagram generation. Please set OPENAI_API_KEY environment variable.")
+        
+        # Validate API key format (basic check)
+        if not self.api_key.startswith('sk-'):
+            logger.error("Invalid OpenAI API key format. API keys should start with 'sk-'.")
+            raise ValueError("Invalid OpenAI API key format. API keys should start with 'sk-'.")
+        
+        self.mock_mode = False
     
     def parse_natural_language_requirements(self, requirements_text: str) -> ArchitectureRequirement:
         """Parse natural language architecture requirements into structured format"""
         
-        if self.mock_mode:
-            return self._intelligent_parse_requirements(requirements_text)
-        
-        # OpenAI API call would go here
+        # OpenAI API call
         try:
             return self._call_openai_parse(requirements_text)
         except Exception as e:
             logger.error(f"Error parsing requirements with OpenAI: {e}")
-            return self._intelligent_parse_requirements(requirements_text)
+            # Re-raise the error instead of falling back to mock
+            raise RuntimeError(f"OpenAI API call failed: {str(e)}") from e
     
     def generate_diagram_code(self, requirements: ArchitectureRequirement) -> str:
         """Generate Python diagrams code based on architecture requirements"""
         
-        if self.mock_mode:
-            return self._intelligent_generate_diagram_code(requirements)
-        
-        # OpenAI API call would go here
+        # OpenAI API call
         try:
             return self._call_openai_generate(requirements)
         except Exception as e:
             logger.error(f"Error generating diagram code with OpenAI: {e}")
-            return self._intelligent_generate_diagram_code(requirements)
+            # Re-raise the error instead of falling back to mock
+            raise RuntimeError(f"OpenAI API call failed: {str(e)}") from e
     
     def _call_openai_parse(self, requirements_text: str) -> ArchitectureRequirement:
         """Call OpenAI API for requirements parsing"""

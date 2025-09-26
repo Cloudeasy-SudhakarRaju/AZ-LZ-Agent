@@ -26,8 +26,13 @@ Professional Azure Landing Zone Architecture Generator with **Intelligent AI-Pow
 sudo apt-get update
 sudo apt-get install -y graphviz graphviz-dev
 
-# Optional: Set OpenAI API key for enhanced AI features
+# REQUIRED: Set OpenAI API key for intelligent diagram generation
+# The intelligent diagram generator requires a valid OpenAI API key
+# Get your API key from: https://platform.openai.com/api-keys
 export OPENAI_API_KEY="your-openai-api-key"
+```
+
+⚠️ **Important**: The intelligent diagram generation feature requires a valid OpenAI API key. Without it, the `/generate-intelligent-diagram` endpoint will return a 503 error. Traditional diagram generation endpoints will still work without the API key.
 ```
 
 ### Backend Server

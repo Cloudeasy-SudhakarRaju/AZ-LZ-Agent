@@ -88,10 +88,14 @@ except Exception as e:
 
 # Initialize intelligent diagram generator
 try:
-    # Try to get OpenAI API key from environment, fallback to intelligent mock mode
+    # Try to get OpenAI API key from environment
     openai_api_key = os.getenv('OPENAI_API_KEY')
-    intelligent_generator = IntelligentArchitectureDiagramGenerator(openai_api_key)
-    logger.info("Intelligent Architecture Diagram Generator initialized")
+    if not openai_api_key:
+        logger.warning("OpenAI API key not found. Intelligent diagram generator will not be available.")
+        intelligent_generator = None
+    else:
+        intelligent_generator = IntelligentArchitectureDiagramGenerator(openai_api_key)
+        logger.info("Intelligent Architecture Diagram Generator initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize intelligent generator: {e}")
     intelligent_generator = None
@@ -3769,7 +3773,13 @@ def generate_intelligent_diagram(request: Dict[str, str]):
         
         # Check if intelligent generator is available
         if not intelligent_generator:
-            raise HTTPException(status_code=503, detail="Intelligent diagram generator not available")
+            # Check if the issue is missing API key
+            openai_api_key = os.getenv('OPENAI_API_KEY')
+            if not openai_api_key:
+                error_detail = "OpenAI API key is required for intelligent diagram generation. Please set the OPENAI_API_KEY environment variable with a valid OpenAI API key."
+            else:
+                error_detail = "Intelligent diagram generator failed to initialize. Please check your OpenAI API key and try again."
+            raise HTTPException(status_code=503, detail=error_detail)
         
         # Generate diagram from natural language
         result = intelligent_generator.generate_from_natural_language(requirements_text)
@@ -3907,7 +3917,7 @@ def generate_intelligent_diagram(request: Dict[str, str]):
                 "generated_at": datetime.now().isoformat(),
                 "version": "1.0.0",
                 "agent": "Intelligent Azure Architecture Generator",
-                "llm_mode": "mock" if intelligent_generator.llm_orchestrator.mock_mode else "openai"
+                "llm_mode": "openai"
             }
         }
         
@@ -3920,7 +3930,25 @@ def generate_intelligent_diagram(request: Dict[str, str]):
         error_msg = f"Error generating intelligent diagram: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=error_msg)
+        
+        # Create detailed error response for different types of errors
+        error_detail = {
+            "error": error_msg,
+            "error_type": type(e).__name__
+        }
+        
+        # Add specific handling for common errors
+        if "OpenAI API" in str(e) or "API call failed" in str(e):
+            error_detail["error_category"] = "api_error"
+            error_detail["suggestion"] = "Please check your OpenAI API key and internet connection."
+        elif "execution_error" in str(e):
+            error_detail["error_category"] = "execution_error"
+            error_detail["suggestion"] = "There was an error executing the generated diagram code."
+        else:
+            error_detail["error_category"] = "general_error"
+            error_detail["suggestion"] = "Please try again or contact support if the issue persists."
+        
+        raise HTTPException(status_code=500, detail=error_detail)
 
 @app.post("/enhance-diagram")
 def enhance_diagram(request: Dict[str, str]):
